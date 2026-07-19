@@ -1,5 +1,13 @@
 # Changelog / research notes
 
+## 2026-07-19 — Host SSH setup docs (rev r4) — 155 tools
+
+**Why:** Lab operator enabled `ssh` + `host_overrides` in config but still could not use host `pct exec` — missing public key on the node and no MCP reload after config change. Docs described the schema, not the end-to-end trust loop.
+
+**Shipped (docs only):** Full SETUP SSH checklist (keygen, node `authorized_keys`, worked `host_overrides`, verify `pct version`, reload MCP); host-trust in `proxmox-config/README.md`; README + wiki Troubleshooting/Setup; agent-feedback entry.
+
+**Out of scope:** Auto-install of host keys; `SSHConfig` schema changes.
+
 ## 2026-07-19 — LXC guest auth + honest bootstrap (rev r3 / v1.1.2) — 155 tools
 
 **Why:** Agents set `password=` on create but guest SSH still failed; still saw 501 `/exec`; empty nesting CT mistaken for deployed Docker host; no post-create password/key path.

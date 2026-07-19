@@ -8,6 +8,7 @@ Pair with [changelog-notes.md](changelog-notes.md) (research “why”) and root
 | 2026-07-19 | r1 | Phase E baseline: LXC parity, `*_guest`, ops completeness | 152 | D1, next-expansion Phase E |
 | 2026-07-19 | r2 | Agent feedback: fix LXC exec (SSH+pct), guest IP, QEMU/LXC UX | 153 | D4 revised; `get_lxc_network` |
 | 2026-07-19 | r3 | Guest auth: ssh_public_keys, set_lxc_password/keys, honest create | **155** | D21; see agent-feedback-log |
+| 2026-07-19 | r4 | Docs: host SSH checklist (authorized_keys, overrides, reload) | 155 | SETUP + proxmox-config README; agent-feedback |
 
 ## How to update
 

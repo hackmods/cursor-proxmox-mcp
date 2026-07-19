@@ -30,3 +30,13 @@ Prefer **only** `PROXMOX_MCP_CONFIG` (tokens in the JSON file / `${ENV}` interpo
 ## Auth / Privilege Separation
 
 Proxmox tokens default to **privsep=Yes**: ACL must be on `user@realm!tokenid`. Empty lists often mean missing token ACL — use `get_token_permissions`.
+
+## Opt-in host SSH (LXC exec)
+
+`execute_lxc_command` / runtime IPs need SSH **to the Proxmox node** for `pct exec` — not the same as guest `ssh_public_keys` inside a CT.
+
+1. Install paramiko (`cursor-proxmox-mcp[ssh]`), put the public key in the node’s `authorized_keys`, set `ssh.enabled` + `private_key_path` (and `host_overrides` if API host ≠ node SSH IP).
+2. Verify: `ssh -i <key> user@host "pct version"`.
+3. **Reload MCP** after editing `config.json`.
+
+Full checklist: [SETUP.md — SSH for LXC exec](https://github.com/hackmods/cursor-proxmox-mcp/blob/main/SETUP.md#ssh-for-lxc-exec-opt-in).

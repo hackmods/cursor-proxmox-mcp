@@ -20,7 +20,7 @@ Copy `config.example.json` → `config.json` and fill in host + API token fields
 | `ssh.user` | if enabled | SSH user on the node (often `root` or a sudo-capable user that can run `pct`) |
 | `ssh.port` | optional | SSH port (default `22`) |
 | `ssh.private_key_path` | recommended | Absolute path to private key; agent/`look_for_keys` also tried |
-| `ssh.host_overrides` | optional | Map `{ "pve1": "10.0.0.5" }` when API host ≠ node SSH address |
+| `ssh.host_overrides` | optional | Map node name → SSH address when API host ≠ node, e.g. `{ "pve": "192.168.0.23" }` |
 | `ssh.pct_path` | optional | Default `/usr/sbin/pct` |
 | `ssh.timeout` | optional | Seconds (default `30`) |
 
@@ -32,9 +32,22 @@ Full walkthrough: [SETUP.md §1](../SETUP.md#1-create-a-proxmox-api-token).
 
 ## SSH + LXC exec (opt-in)
 
-Proxmox has **no REST API** for LXC guest shell. `execute_lxc_command` and runtime IPs in `get_lxc_network` use host-side `pct exec` over SSH when `ssh.enabled` is true. Install the optional dependency: `pip install 'cursor-proxmox-mcp[ssh]'` (paramiko).
+Proxmox has **no REST API** for LXC guest shell. `execute_lxc_command`, `set_lxc_password`, `set_lxc_ssh_keys`, and runtime IPs in `get_lxc_network` use host-side `pct exec` over SSH when `ssh.enabled` is true. Install the optional dependency: `pip install 'cursor-proxmox-mcp[ssh]'` (paramiko).
 
-Without SSH, set a static `ip=` on create/update and use `get_lxc_network` / list configured IP only.
+**Host SSH ≠ guest SSH.** Host SSH is MCP → Proxmox node → `pct`. Guest keys inside a CT (`ssh_public_keys` / `set_lxc_ssh_keys`) are separate.
+
+Without host SSH, set a static `ip=` on create/update and use `get_lxc_network` / list configured IP only.
+
+### Host trust (required when enabling SSH)
+
+Editing `config.json` alone is not enough:
+
+1. Install the matching **public** key on the node’s `authorized_keys` (lab: often `/root/.ssh/`).
+2. Set `host_overrides` when the API host differs from the node SSH address, e.g. `"host_overrides": { "pve": "192.168.0.23" }` (key = Proxmox **node name**).
+3. Verify: `ssh -i <private_key> user@<override-or-host> "pct version"`.
+4. **Reload** the MCP server in Cursor — config is read at process start.
+
+Full checklist (keygen, `authorized_keys`, firewall 22/tcp): [SETUP.md — SSH for LXC exec](../SETUP.md#ssh-for-lxc-exec-opt-in).
 
 ## Point Cursor at this file
 

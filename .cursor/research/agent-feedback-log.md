@@ -90,3 +90,34 @@ Use this to avoid re-learning the same failures across sessions.
 - Baking Docker into `create_lxc`
 - REST password change (does not exist upstream)
 - Guest SSH without keys/pct when host ssh config is off
+
+---
+
+## 2026-07-19 — Host SSH setup gap (config alone not enough)
+
+**Session context:** Operator set `ssh.enabled`, `private_key_path`, and `host_overrides.pve` in `config.json`, but host SSH for `pct exec` still was not usable.
+
+### Symptoms
+
+| Symptom | Impact |
+|---------|--------|
+| Config has `ssh.enabled: true` + key path + overrides | Tools still fail or MCP process ignores new block |
+| New keypair generated locally | No access until public key is on the node |
+| Running MCP still on old config | Edits to `config.json` not picked up without reload |
+
+### Root causes
+
+| Item | Cause |
+|------|--------|
+| Missing host trust | Docs listed schema / “create a key-restricted user” but never spelled out installing the **public** key into node `authorized_keys` |
+| Weak reload guidance | Error strings said “reload MCP”; SETUP reload checklist was framed as post-`git pull` / tool count, not “after enabling SSH” |
+| Host vs guest confusion | Easy to mix host `authorized_keys` with LXC `ssh_public_keys` / `set_lxc_ssh_keys` |
+
+### Fix (docs only)
+
+Expanded SETUP SSH checklist (keygen → node `authorized_keys` → `host_overrides` example → verify `pct version` → reload MCP); host-trust section in `proxmox-config/README.md`; README + wiki Troubleshooting/Setup pointers.
+
+### Out of scope
+
+- Automating public-key install on the Proxmox host
+- Schema / `SSHConfig` field changes

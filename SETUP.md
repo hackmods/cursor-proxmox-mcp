@@ -254,25 +254,72 @@ Do **not** commit `config.json` — it holds credentials. It is gitignored (`pro
 
 ### SSH for LXC exec (opt-in)
 
-Proxmox **does not** expose a REST API to run shell inside LXC (unlike QEMU guest-agent). `execute_lxc_command` and runtime IPs from `get_lxc_network` use host-side `pct exec` over SSH.
+Proxmox **does not** expose a REST API to run shell inside LXC (unlike QEMU guest-agent). `execute_lxc_command`, `set_lxc_password`, `set_lxc_ssh_keys`, and runtime IPs from `get_lxc_network` use host-side `pct exec` over SSH from the machine running Cursor.
 
-1. Install paramiko: `pip install 'cursor-proxmox-mcp[ssh]'` (or `uvx` with the `[ssh]` extra when packaging supports it).
-2. Create a key-restricted SSH user on each node that can run `/usr/sbin/pct` (often `root` in labs; prefer a dedicated user + sudoers for `pct` in production).
-3. Add to `config.json`:
+**Host SSH ≠ guest SSH.** This section is about SSH **to the Proxmox node** so MCP can run `pct`. Guest access into a CT (`ssh root@<ct-ip>`) uses `ssh_public_keys` on `create_lxc` or `set_lxc_ssh_keys` — that is separate and does **not** replace host SSH below.
 
-```json
-"ssh": {
-  "enabled": true,
-  "user": "root",
-  "port": 22,
-  "private_key_path": "C:/Users/YOU/.ssh/proxmox_mcp",
-  "host_overrides": {},
-  "pct_path": "/usr/sbin/pct",
-  "timeout": 30
-}
-```
+#### Checklist
 
-Without SSH, prefer static `ip=` on `create_lxc` / `update_lxc_config`, then `get_lxc_network` / list configured IP. Always call `wait_for_task` after create before start.
+1. **Install paramiko** (optional extra):
+
+   ```bash
+   pip install 'cursor-proxmox-mcp[ssh]'
+   ```
+
+   Or use `uvx` with the `[ssh]` extra when packaging supports it.
+
+2. **Generate a dedicated keypair** on the machine that runs Cursor (lab example):
+
+   ```powershell
+   ssh-keygen -t ed25519 -f $env:USERPROFILE\.ssh\proxmox_mcp_ed25519 -C "cursor-proxmox-mcp"
+   ```
+
+3. **Install the public key on each Proxmox node** the MCP will use. From a shell that already has host access (console, existing SSH, etc.):
+
+   ```bash
+   mkdir -p /root/.ssh && chmod 700 /root/.ssh
+   echo 'ssh-ed25519 AAAA... cursor-proxmox-mcp' >> /root/.ssh/authorized_keys
+   chmod 600 /root/.ssh/authorized_keys
+   ```
+
+   Paste the contents of `proxmox_mcp_ed25519.pub` (not the private key). Lab setups often use `root`; production should prefer a dedicated user that can run `/usr/sbin/pct` (sudoers restricted to `pct` is better than full root).
+
+4. **Allow SSH from the Cursor host** — node firewall must permit **22/tcp** (or your custom `ssh.port`) from that client, in addition to **8006** for the API.
+
+5. **Add `ssh` to `config.json`.** Use `host_overrides` when the API `proxmox.host` is not the address you SSH to (common: API VIP/DNS vs node management IP, or node name `pve` ≠ `192.168.x.x`):
+
+   ```json
+   "ssh": {
+     "enabled": true,
+     "user": "root",
+     "port": 22,
+     "private_key_path": "C:/Users/YOU/.ssh/proxmox_mcp_ed25519",
+     "host_overrides": {
+       "pve": "192.168.0.23"
+     },
+     "pct_path": "/usr/sbin/pct",
+     "timeout": 30
+   }
+   ```
+
+   | Field | Meaning |
+   |-------|---------|
+   | `enabled` | Must be `true` or LXC exec tools refuse with a clear error |
+   | `private_key_path` | Absolute path to the **private** key (forward slashes on Windows are fine) |
+   | `host_overrides` | Map Proxmox **node name** → SSH hostname/IP. If omitted/empty, MCP SSHs to `proxmox.host` |
+   | `user` / `port` / `pct_path` / `timeout` | Defaults shown above; change only if your nodes differ |
+
+6. **Verify outside Cursor** before expecting MCP tools to work:
+
+   ```powershell
+   ssh -i $env:USERPROFILE\.ssh\proxmox_mcp_ed25519 root@192.168.0.23 "pct version"
+   ```
+
+   Use the override IP (or `proxmox.host` if overrides are empty). Success prints a `pct` version line.
+
+7. **Reload the Proxmox MCP server in Cursor** (Disable → Enable, or fully quit Cursor). Config is read at process start — editing `config.json` alone does nothing until reload.
+
+Without host SSH, prefer static `ip=` on `create_lxc` / `update_lxc_config`, then `get_lxc_network` for the configured address only. Always call `wait_for_task` after create before start. Field reference: [`proxmox-config/README.md`](proxmox-config/README.md).
 
 ### Smoke-test outside Cursor
 
@@ -485,6 +532,9 @@ Home labs are ideal for learning where AI+MCP helps (health checks, template clo
 | `ModuleNotFoundError: proxmox_mcp` | Prefer `uvx cursor-proxmox-mcp` or `uvx --from <repo>`; or set `PYTHONPATH` to `.../src` |
 | Green MCP but agent never calls tools | Explicitly say “use the Proxmox MCP tools”; confirm tool list is long (~155) in Cursor MCP settings |
 | Green MCP but only ~13–14 tools | Stale Cursor catalog or wrong package (`uvx proxmox-mcp-server` ≠ this repo). Disable/Enable proxmox, quit Cursor fully, use `uvx --from <checkout> cursor-proxmox-mcp` |
+| Host SSH auth failed / permission denied | Public key missing on the **node** `authorized_keys` (not guest CT keys). Verify `ssh -i <key> user@host "pct version"` — see [SSH for LXC exec](#ssh-for-lxc-exec-opt-in) |
+| Enabled `ssh` in config but tools still say not configured | Reload MCP (config is process-start only); confirm `ssh.enabled: true` and paramiko/`[ssh]` extra |
+| `pct` SSH timeout / wrong host | Set `host_overrides` (node name → SSH IP); allow **22/tcp** from the Cursor host |
 
 Local verification:
 
