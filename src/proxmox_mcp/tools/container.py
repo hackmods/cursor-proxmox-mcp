@@ -471,3 +471,29 @@ class ContainerTools(ProxmoxTool):
             raise
         except Exception as e:
             self._handle_error(f"execute command on LXC {vmid}", e)
+
+    def create_vnc_ticket(self, node: str, vmid: str, websocket: bool = True) -> List[Content]:
+        """Mint a VNC proxy ticket for an LXC (no websocket proxy)."""
+        try:
+            result = self.proxmox.nodes(node).lxc(vmid).vncproxy.post(
+                websocket=1 if websocket else 0
+            )
+            return self._format_response(result)
+        except Exception as e:
+            self._handle_error(f"create VNC ticket for LXC {vmid}", e)
+
+    def create_termproxy_ticket(self, node: str, vmid: str) -> List[Content]:
+        """Mint a termproxy ticket for an LXC console."""
+        try:
+            result = self.proxmox.nodes(node).lxc(vmid).termproxy.post()
+            return self._format_response(result)
+        except Exception as e:
+            self._handle_error(f"create termproxy ticket for LXC {vmid}", e)
+
+    def get_lxc_status(self, node: str, vmid: str) -> List[Content]:
+        """Get current runtime status for a single LXC."""
+        try:
+            status = self.proxmox.nodes(node).lxc(vmid).status.current.get()
+            return self._format_response(status)
+        except Exception as e:
+            self._handle_error(f"get status for LXC {vmid}", e)

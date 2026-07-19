@@ -1,94 +1,141 @@
 # cursor-proxmox-mcp
 
-**Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 85 tools covering QEMU VMs, LXC, storage admin, cluster/tasks, snapshots, backups, migration, HA, firewall, and access control.
+**Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 128 tools covering QEMU VMs, LXC, storage admin, cluster/tasks, snapshots, backups, migration, HA, firewall, access control, replication, SDN (read), ACME (read), pools, and console tickets.
 
 **Repo:** [hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)
 
-Docs: [API coverage guide](docs/api-coverage.md) · Research matrix: [`.cursor/research/proxmox-api-coverage.md`](.cursor/research/proxmox-api-coverage.md)
+Docs: [**Setup guide**](SETUP.md) · [API coverage](docs/api-coverage.md) · Research matrix: [`.cursor/research/proxmox-api-coverage.md`](.cursor/research/proxmox-api-coverage.md)
 
-## MCP tools (85)
+## MCP tools
 
-Registered in `ProxmoxMCPServer._setup_tools()` — inventory locked by `tests/expected_tools.py`.
+Registered in `ProxmoxMCPServer._setup_tools()` — inventory locked by `tests/expected_tools.py` (CI fails on drift).
 
 | Domain | Tools |
 |--------|--------|
-| **Nodes** | `get_nodes`, `get_node_status`, `list_node_networks` |
-| **Cluster / tasks** | `get_cluster_status`, `get_next_vmid`, `get_task_status`, `list_tasks` |
-| **QEMU** | `get_vms`, `create_vm`, `get_vm_config`, `update_vm_config`, `execute_vm_command`, `start_vm`, `stop_vm`, `shutdown_vm`, `reset_vm`, `reboot_vm`, `suspend_vm`, `resume_vm`, `delete_vm`, `clone_vm`, `resize_vm_disk`, `convert_vm_to_template` |
-| **LXC** | `get_containers`, `create_lxc`, `get_lxc_config`, `update_lxc_config`, `start_lxc`, `stop_lxc`, `shutdown_lxc`, `reboot_lxc`, `delete_lxc`, `update_lxc_features`, `clone_lxc`, `resize_lxc_disk`, `convert_lxc_to_template`, `execute_lxc_command` |
-| **Snapshots** | `list_snapshots`, `create_snapshot`, `delete_snapshot`, `rollback_snapshot` (`guest_type=qemu\|lxc`) |
-| **Backups** | `create_backup`, `list_backups`, `restore_backup`, `delete_backup` |
-| **Storage** | `get_storage`, `get_storage_content`, `delete_storage_content`, `download_url_to_storage`, `create_storage`, `update_storage`, `delete_storage` |
-| **Migrate** | `migrate_guest` |
-| **HA** | `get_ha_status`, `list_ha_groups`, `create_ha_group`, `delete_ha_group`, `list_ha_resources`, `create_ha_resource`, `update_ha_resource`, `delete_ha_resource` |
-| **Firewall** | cluster + guest options/rules CRUD (`get/set/list/create/delete_*_firewall_*`) |
-| **Access** | `list_users`, `get_user`, `create_user`, `delete_user`, `list_groups`, `create_group`, `delete_group`, `list_roles`, `list_acl`, `update_acl`, `list_tokens`, `create_token`, `delete_token`, `get_permissions` |
+| **Nodes** | `get_nodes`, `get_node_status`, `list_node_networks`, `get_node_subscription`, `list_node_certificates`, `get_node_report`, `list_node_services`, `get_node_time`, `wake_node` |
+| **Cluster / tasks** | `get_cluster_status`, `get_next_vmid`, `get_task_status`, `list_tasks`, `get_version`, `get_cluster_resources`, `get_cluster_log`, `get_cluster_options` |
+| **QEMU** | lifecycle + config + `get_vm_status`, `get_vm_rrd_data`, `create_vnc_ticket_vm`, `create_spice_ticket_vm`, `create_termproxy_ticket_vm` |
+| **LXC** | lifecycle + config + `get_lxc_status`, `create_vnc_ticket_lxc`, `create_termproxy_ticket_lxc` |
+| **Snapshots / Backups** | list/create/delete/rollback snapshot; create/list/restore/delete backup |
+| **Storage** | list, content, download-url, definition CRUD |
+| **Migrate / HA** | `migrate_guest`; HA groups + resources CRUD |
+| **Firewall** | cluster + guest rules/options; aliases, IP sets, macros |
+| **Access** | users, groups, roles, ACL, tokens, permissions |
+| **Replication** | list/status/run/create/delete jobs |
+| **SDN** | list zones/vnets/controllers/ipams/dns + `apply_sdn` |
+| **ACME** | list plugins/accounts/directories (read) |
+| **Pools** | list/get/create/delete |
 
 ### Suggested agent flow
 
 1. `get_next_vmid` → `get_storage_content` (templates/ISOs) → `list_node_networks`
 2. `create_lxc` / `create_vm` → `get_task_status`
 3. `create_snapshot` before risky changes → `update_*_config` / power tools
-4. `migrate_guest` / HA / firewall / access as needed
-
-## Features
-
-- Token auth to Proxmox via proxmoxer
-- Full guest lifecycle (create, power, clone, resize, template, delete)
-- Snapshots + vzdump backups/restore
-- Storage content browse + storage definition CRUD + URL download
-- Cluster HA, firewall, and access/ACL/token admin
-- Windows-friendly Cursor `mcp.json` launch; optional OpenAPI via `mcpo`
-- Local + GitHub CI (`ruff` + `pytest`)
-
-### Intentionally excluded
-
-SDN, Ceph OSD internals, cluster bootstrap/join, VNC/SPICE websocket consoles — see [coverage matrix](.cursor/research/proxmox-api-coverage.md).
-
-## Built With
-
-- [Cursor](https://cursor.com) · [Proxmoxer](https://github.com/proxmoxer/proxmoxer) · [MCP SDK](https://github.com/modelcontextprotocol/sdk) · [Pydantic](https://www.pydantic.dev/)
+4. `migrate_guest` / HA / firewall / access / replication as needed
 
 ## Installation
 
 ### Prerequisites
 
-- Python 3.10+
+- [uv](https://github.com/astral-sh/uv) (recommended) **or** Python 3.10+
 - Proxmox API token
-- Optional: [uv](https://github.com/astral-sh/uv)
+
+### Path 1 — uvx (recommended, no clone)
+
+Once the package is installed (or published), the console script is `proxmox-mcp-server` (alias of `proxmox-mcp`).
+
+```bash
+# Install uv if needed:  pip install uv   OR   winget install astral-sh.uv
+uvx --from . proxmox-mcp-server   # from a local checkout
+# after publish:  uvx proxmox-mcp-server
+```
+
+Cursor MCP (uvx + config file):
+
+```json
+{
+  "mcpServers": {
+    "proxmox": {
+      "command": "uvx",
+      "args": ["--from", "C:/Users/YOU/Projects/cursor-proxmox-mcp", "proxmox-mcp-server"],
+      "env": {
+        "PROXMOX_MCP_CONFIG": "C:/Users/YOU/Projects/cursor-proxmox-mcp/proxmox-config/config.json"
+      }
+    }
+  }
+}
+```
+
+Why uvx: it resolves dependencies into an isolated ephemeral env so Cursor does not depend on a hand-managed venv/`PYTHONPATH`. That is what made local MCP startup reliable when a system Python alone was incomplete.
+
+### Path 2 — uv from source
 
 ```bash
 git clone https://github.com/hackmods/cursor-proxmox-mcp.git
 cd cursor-proxmox-mcp
-python -m venv .venv
+uv venv
 # Windows: .\.venv\Scripts\Activate.ps1
 # Linux/macOS: source .venv/bin/activate
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
 cp proxmox-config/config.example.json proxmox-config/config.json
-# Edit proxmox-config/config.json with host + token
+# Edit host + token, then:
+uv run proxmox-mcp-server
 ```
 
-### Verify
-
-```bash
-pytest
-# or full local CI:
-# Windows: .\scripts\ci-local.ps1
-# Unix:    ./scripts/ci-local.sh
-```
+### Path 3 — pip fallback
 
 ```bash
-# Linux/macOS
-PROXMOX_MCP_CONFIG="proxmox-config/config.json" python -m proxmox_mcp.server
-# Windows PowerShell
-$env:PROXMOX_MCP_CONFIG="proxmox-config\config.json"; python -m proxmox_mcp.server
+python -m venv .venv
+# activate venv
+pip install -e ".[dev]"
+# optional OpenAPI bridge: pip install -e ".[openapi]"
+$env:PROXMOX_MCP_CONFIG="proxmox-config\config.json"   # PowerShell
+python -m proxmox_mcp.server
 ```
+
+Cursor MCP (direct Python — use absolute paths):
+
+```json
+{
+  "mcpServers": {
+    "proxmox": {
+      "command": "python",
+      "args": ["-m", "proxmox_mcp.server"],
+      "cwd": "C:/Users/YOU/Projects/cursor-proxmox-mcp",
+      "env": {
+        "PROXMOX_MCP_CONFIG": "C:/Users/YOU/Projects/cursor-proxmox-mcp/proxmox-config/config.json",
+        "PYTHONPATH": "C:/Users/YOU/Projects/cursor-proxmox-mcp/src"
+      }
+    }
+  }
+}
+```
+
+Restart the **proxmox** MCP server in Cursor after pulling new tools. `start.bat` is a manual Windows fallback only.
+
+### Verify / local CI
+
+```powershell
+.\scripts\ci-local.ps1
+```
+
+```bash
+./scripts/ci-local.sh
+```
+
+Runs: editable install → entrypoint smoke → ruff → pytest → inventory floor (≥100 tools).
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| `spawn uvx ENOENT` | Install uv (`pip install uv` or `winget install astral-sh.uv`), then restart Cursor |
+| `ModuleNotFoundError: proxmox_mcp` | Use uvx/`uv run`, or set `PYTHONPATH=.../src` for plain python |
+| `PROXMOX_MCP_CONFIG ... must be set` | Point env at `proxmox-config/config.json` |
+| 403 on HA / firewall / `keyctl` | Token needs elevated role; many ops require `root@pam` |
+| Tools missing in Cursor | Restart MCP server after git pull |
 
 ## Configuration
-
-### Proxmox API token
-
-In the Proxmox UI: Datacenter → Permissions → API Tokens → Add. Grant roles appropriate for the tools you use (VM/CT allocate, datastore, Sys.Audit/Modify for HA/firewall/access).
 
 Example `proxmox-config/config.json`:
 
@@ -113,48 +160,38 @@ Example `proxmox-config/config.json`:
 }
 ```
 
-### Cursor MCP
+Create the token in Proxmox UI: Datacenter → Permissions → API Tokens. Grant roles matching the tools you use (`VM.Allocate`, `Datastore.*`, `Sys.Audit`/`Sys.Modify` for HA/firewall/access).
 
-Add to Cursor MCP settings (path adjusted):
+## Features
 
-```json
-{
-  "mcpServers": {
-    "proxmox": {
-      "command": "python",
-      "args": ["-m", "proxmox_mcp.server"],
-      "cwd": "C:/Users/YOU/Projects/cursor-proxmox-mcp",
-      "env": {
-        "PROXMOX_MCP_CONFIG": "C:/Users/YOU/Projects/cursor-proxmox-mcp/proxmox-config/config.json",
-        "PYTHONPATH": "C:/Users/YOU/Projects/cursor-proxmox-mcp/src"
-      }
-    }
-  }
-}
-```
+- Token auth via proxmoxer
+- Full guest lifecycle, snapshots, vzdump backups
+- Storage content + definition CRUD + URL download
+- Cluster HA, firewall (rules/aliases/ipsets), access/ACL/tokens
+- Replication jobs, SDN read + apply, ACME read, pools
+- Console **ticket mint** only (VNC/SPICE/termproxy) — no websocket proxy
+- uvx / uv / pip install paths; optional `.[openapi]` for mcpo
+- Local + GitHub CI (`ruff` + `pytest` + inventory lock)
 
-Restart the **proxmox** MCP server after pulling new tools.
+### Planned (Phase C — not implemented)
 
-`start.bat` is a manual fallback (avoid stdout noise for MCP stdio).
+SDN write CRUD, ACME order/renew, Ceph OSD/MON admin, cluster join/bootstrap, full VNC/SPICE websocket proxy, PBS direct admin, node reboot/shutdown — see [coverage matrix](.cursor/research/proxmox-api-coverage.md).
 
-## Development / CI
+## Development
 
 ```powershell
 .\scripts\ci-local.ps1
 ```
 
-GitHub Actions runs the same gate on push/PR (Python 3.10 + 3.12).
-
-- Tests: `pytest`
-- Lint: `ruff check src tests`
-- After adding a tool: update `definitions.py`, README table, `.cursor/research/proxmox-api-coverage.md`, and `tests/expected_tools.py`
+After adding a tool: update `definitions.py`, README table, `.cursor/research/proxmox-api-coverage.md`, and `tests/expected_tools.py`.
 
 ## Status
 
-- [x] Formal multi-domain Proxmox API coverage (85 tools)
-- [x] Snapshots, backups, migrate, HA, firewall, access, storage admin
-- [x] Discovery QOL (`get_storage_content`, `get_next_vmid`, `get_task_status`)
-- [x] Local + GitHub CI
+- [x] Formal multi-domain Proxmox API coverage (128 tools)
+- [x] Phase B: replication, SDN read, ACME read, certs, console tickets, pools, firewall extras
+- [x] uvx `proxmox-mcp-server` entrypoint + install docs
+- [x] Local + GitHub CI with inventory floor
+- [ ] Phase C heavy/dangerous endpoints (documented only)
 
 ## License
 

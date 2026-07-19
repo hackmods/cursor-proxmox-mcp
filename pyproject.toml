@@ -42,6 +42,9 @@ dev = [
     "ruff>=0.1.0,<1.0.0",
     "types-requests>=2.31.0,<3.0.0",
 ]
+openapi = [
+    "mcpo>=0.0.1",
+]
 
 [project.urls]
 Homepage = "https://github.com/hackmods/cursor-proxmox-mcp"
@@ -51,6 +54,7 @@ Issues = "https://github.com/hackmods/cursor-proxmox-mcp/issues"
 
 [project.scripts]
 proxmox-mcp = "proxmox_mcp.server:main"
+proxmox-mcp-server = "proxmox_mcp.server:main"
 
 [tool.pytest.ini_options]
 asyncio_mode = "strict"

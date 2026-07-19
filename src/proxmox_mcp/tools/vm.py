@@ -630,3 +630,47 @@ class VMTools(ProxmoxTool):
             ]
         except Exception as e:
             self._handle_error(f"convert VM {vmid} to template", e)
+
+    def create_vnc_ticket(self, node: str, vmid: str, websocket: bool = True) -> List[Content]:
+        """Mint a VNC proxy ticket (no websocket proxy — connect externally)."""
+        try:
+            result = self.proxmox.nodes(node).qemu(vmid).vncproxy.post(
+                websocket=1 if websocket else 0
+            )
+            return self._format_response(result)
+        except Exception as e:
+            self._handle_error(f"create VNC ticket for VM {vmid}", e)
+
+    def create_spice_ticket(self, node: str, vmid: str) -> List[Content]:
+        """Mint a SPICE proxy ticket for a VM."""
+        try:
+            result = self.proxmox.nodes(node).qemu(vmid).spiceproxy.post()
+            return self._format_response(result)
+        except Exception as e:
+            self._handle_error(f"create SPICE ticket for VM {vmid}", e)
+
+    def create_termproxy_ticket(self, node: str, vmid: str) -> List[Content]:
+        """Mint a serial/termproxy ticket for a VM console."""
+        try:
+            result = self.proxmox.nodes(node).qemu(vmid).termproxy.post()
+            return self._format_response(result)
+        except Exception as e:
+            self._handle_error(f"create termproxy ticket for VM {vmid}", e)
+
+    def get_vm_status(self, node: str, vmid: str) -> List[Content]:
+        """Get current runtime status for a single VM."""
+        try:
+            status = self.proxmox.nodes(node).qemu(vmid).status.current.get()
+            return self._format_response(status)
+        except Exception as e:
+            self._handle_error(f"get status for VM {vmid}", e)
+
+    def get_vm_rrd_data(
+        self, node: str, vmid: str, timeframe: str = "hour"
+    ) -> List[Content]:
+        """Get RRD performance data for a VM (timeframe: hour|day|week|month|year)."""
+        try:
+            data = self.proxmox.nodes(node).qemu(vmid).rrddata.get(timeframe=timeframe)
+            return self._format_response(data)
+        except Exception as e:
+            self._handle_error(f"get RRD data for VM {vmid}", e)

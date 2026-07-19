@@ -30,6 +30,10 @@ from .tools.ha import HATools
 from .tools.firewall import FirewallTools
 from .tools.access import AccessTools
 from .tools.network import NetworkTools
+from .tools.replication import ReplicationTools
+from .tools.acme import ACMETools
+from .tools.sdn import SDNTools
+from .tools.pool import PoolTools
 from .tools import definitions as D
 
 
@@ -56,6 +60,10 @@ class ProxmoxMCPServer:
         self.firewall_tools = FirewallTools(self.proxmox)
         self.access_tools = AccessTools(self.proxmox)
         self.network_tools = NetworkTools(self.proxmox)
+        self.replication_tools = ReplicationTools(self.proxmox)
+        self.acme_tools = ACMETools(self.proxmox)
+        self.sdn_tools = SDNTools(self.proxmox)
+        self.pool_tools = PoolTools(self.proxmox)
 
         self.mcp = FastMCP("ProxmoxMCP")
         self._setup_tools()
@@ -726,6 +734,239 @@ class ProxmoxMCPServer:
         @self.mcp.tool(description=D.GET_PERMISSIONS_DESC)
         def get_permissions():
             return self.access_tools.get_permissions()
+
+        # --- Cluster extras ---
+        @self.mcp.tool(description=D.GET_VERSION_DESC)
+        def get_version():
+            return self.cluster_tools.get_version()
+
+        @self.mcp.tool(description=D.GET_CLUSTER_RESOURCES_DESC)
+        def get_cluster_resources(
+            type: Annotated[Optional[str], Field(description="vm|storage|node|sdn", default=None)] = None,
+        ):
+            return self.cluster_tools.get_cluster_resources(type)
+
+        @self.mcp.tool(description=D.GET_CLUSTER_LOG_DESC)
+        def get_cluster_log(
+            max_entries: Annotated[int, Field(description="Max log lines", default=50)] = 50,
+        ):
+            return self.cluster_tools.get_cluster_log(max_entries)
+
+        @self.mcp.tool(description=D.GET_CLUSTER_OPTIONS_DESC)
+        def get_cluster_options():
+            return self.cluster_tools.get_cluster_options()
+
+        # --- Node extras ---
+        @self.mcp.tool(description=D.GET_NODE_SUBSCRIPTION_DESC)
+        def get_node_subscription(node: Annotated[str, Field(description="Node")]):
+            return self.node_tools.get_node_subscription(node)
+
+        @self.mcp.tool(description=D.LIST_NODE_CERTIFICATES_DESC)
+        def list_node_certificates(node: Annotated[str, Field(description="Node")]):
+            return self.node_tools.list_node_certificates(node)
+
+        @self.mcp.tool(description=D.GET_NODE_REPORT_DESC)
+        def get_node_report(node: Annotated[str, Field(description="Node")]):
+            return self.node_tools.get_node_report(node)
+
+        @self.mcp.tool(description=D.LIST_NODE_SERVICES_DESC)
+        def list_node_services(node: Annotated[str, Field(description="Node")]):
+            return self.node_tools.list_node_services(node)
+
+        @self.mcp.tool(description=D.GET_NODE_TIME_DESC)
+        def get_node_time(node: Annotated[str, Field(description="Node")]):
+            return self.node_tools.get_node_time(node)
+
+        @self.mcp.tool(description=D.WAKE_NODE_DESC)
+        def wake_node(node: Annotated[str, Field(description="Node")]):
+            return self.node_tools.wake_node(node)
+
+        # --- Guest status / RRD / console tickets ---
+        @self.mcp.tool(description=D.GET_VM_STATUS_DESC)
+        def get_vm_status(
+            node: Annotated[str, Field(description="Node")],
+            vmid: Annotated[str, Field(description="VM ID")],
+        ):
+            return self.vm_tools.get_vm_status(node, vmid)
+
+        @self.mcp.tool(description=D.GET_VM_RRD_DATA_DESC)
+        def get_vm_rrd_data(
+            node: Annotated[str, Field(description="Node")],
+            vmid: Annotated[str, Field(description="VM ID")],
+            timeframe: Annotated[str, Field(description="hour|day|week|month|year", default="hour")] = "hour",
+        ):
+            return self.vm_tools.get_vm_rrd_data(node, vmid, timeframe)
+
+        @self.mcp.tool(description=D.CREATE_VNC_TICKET_VM_DESC)
+        def create_vnc_ticket_vm(
+            node: Annotated[str, Field(description="Node")],
+            vmid: Annotated[str, Field(description="VM ID")],
+            websocket: Annotated[bool, Field(description="Websocket", default=True)] = True,
+        ):
+            return self.vm_tools.create_vnc_ticket(node, vmid, websocket)
+
+        @self.mcp.tool(description=D.CREATE_SPICE_TICKET_VM_DESC)
+        def create_spice_ticket_vm(
+            node: Annotated[str, Field(description="Node")],
+            vmid: Annotated[str, Field(description="VM ID")],
+        ):
+            return self.vm_tools.create_spice_ticket(node, vmid)
+
+        @self.mcp.tool(description=D.CREATE_TERMPROXY_TICKET_VM_DESC)
+        def create_termproxy_ticket_vm(
+            node: Annotated[str, Field(description="Node")],
+            vmid: Annotated[str, Field(description="VM ID")],
+        ):
+            return self.vm_tools.create_termproxy_ticket(node, vmid)
+
+        @self.mcp.tool(description=D.GET_LXC_STATUS_DESC)
+        def get_lxc_status(
+            node: Annotated[str, Field(description="Node")],
+            vmid: Annotated[str, Field(description="CT ID")],
+        ):
+            return self.container_tools.get_lxc_status(node, vmid)
+
+        @self.mcp.tool(description=D.CREATE_VNC_TICKET_LXC_DESC)
+        def create_vnc_ticket_lxc(
+            node: Annotated[str, Field(description="Node")],
+            vmid: Annotated[str, Field(description="CT ID")],
+            websocket: Annotated[bool, Field(description="Websocket", default=True)] = True,
+        ):
+            return self.container_tools.create_vnc_ticket(node, vmid, websocket)
+
+        @self.mcp.tool(description=D.CREATE_TERMPROXY_TICKET_LXC_DESC)
+        def create_termproxy_ticket_lxc(
+            node: Annotated[str, Field(description="Node")],
+            vmid: Annotated[str, Field(description="CT ID")],
+        ):
+            return self.container_tools.create_termproxy_ticket(node, vmid)
+
+        # --- Replication ---
+        @self.mcp.tool(description=D.LIST_REPLICATION_JOBS_DESC)
+        def list_replication_jobs():
+            return self.replication_tools.list_replication_jobs()
+
+        @self.mcp.tool(description=D.GET_REPLICATION_STATUS_DESC)
+        def get_replication_status(
+            node: Annotated[str, Field(description="Node")],
+            jobid: Annotated[str, Field(description="Job id")],
+        ):
+            return self.replication_tools.get_replication_status(node, jobid)
+
+        @self.mcp.tool(description=D.RUN_REPLICATION_JOB_DESC)
+        def run_replication_job(
+            node: Annotated[str, Field(description="Node")],
+            jobid: Annotated[str, Field(description="Job id")],
+        ):
+            return self.replication_tools.run_replication_job(node, jobid)
+
+        @self.mcp.tool(description=D.CREATE_REPLICATION_JOB_DESC)
+        def create_replication_job(
+            id: Annotated[str, Field(description="Job id e.g. 100-0")],
+            target: Annotated[str, Field(description="Target node")],
+            schedule: Annotated[Optional[str], Field(description="Schedule", default=None)] = None,
+            comment: Annotated[Optional[str], Field(description="Comment", default=None)] = None,
+            enabled: Annotated[bool, Field(description="Enabled", default=True)] = True,
+        ):
+            return self.replication_tools.create_replication_job(id, target, schedule, comment, enabled)
+
+        @self.mcp.tool(description=D.DELETE_REPLICATION_JOB_DESC)
+        def delete_replication_job(id: Annotated[str, Field(description="Job id")]):
+            return self.replication_tools.delete_replication_job(id)
+
+        # --- ACME ---
+        @self.mcp.tool(description=D.LIST_ACME_PLUGINS_DESC)
+        def list_acme_plugins():
+            return self.acme_tools.list_acme_plugins()
+
+        @self.mcp.tool(description=D.LIST_ACME_ACCOUNTS_DESC)
+        def list_acme_accounts():
+            return self.acme_tools.list_acme_accounts()
+
+        @self.mcp.tool(description=D.GET_ACME_DIRECTORIES_DESC)
+        def get_acme_directories():
+            return self.acme_tools.get_acme_directories()
+
+        # --- SDN ---
+        @self.mcp.tool(description=D.LIST_SDN_ZONES_DESC)
+        def list_sdn_zones():
+            return self.sdn_tools.list_sdn_zones()
+
+        @self.mcp.tool(description=D.LIST_SDN_VNETS_DESC)
+        def list_sdn_vnets():
+            return self.sdn_tools.list_sdn_vnets()
+
+        @self.mcp.tool(description=D.LIST_SDN_CONTROLLERS_DESC)
+        def list_sdn_controllers():
+            return self.sdn_tools.list_sdn_controllers()
+
+        @self.mcp.tool(description=D.LIST_SDN_IPAMS_DESC)
+        def list_sdn_ipams():
+            return self.sdn_tools.list_sdn_ipams()
+
+        @self.mcp.tool(description=D.LIST_SDN_DNS_DESC)
+        def list_sdn_dns():
+            return self.sdn_tools.list_sdn_dns()
+
+        @self.mcp.tool(description=D.APPLY_SDN_DESC)
+        def apply_sdn():
+            return self.sdn_tools.apply_sdn()
+
+        # --- Pools ---
+        @self.mcp.tool(description=D.LIST_POOLS_DESC)
+        def list_pools():
+            return self.pool_tools.list_pools()
+
+        @self.mcp.tool(description=D.GET_POOL_DESC)
+        def get_pool(poolid: Annotated[str, Field(description="Pool id")]):
+            return self.pool_tools.get_pool(poolid)
+
+        @self.mcp.tool(description=D.CREATE_POOL_DESC)
+        def create_pool(
+            poolid: Annotated[str, Field(description="Pool id")],
+            comment: Annotated[Optional[str], Field(description="Comment", default=None)] = None,
+        ):
+            return self.pool_tools.create_pool(poolid, comment)
+
+        @self.mcp.tool(description=D.DELETE_POOL_DESC)
+        def delete_pool(poolid: Annotated[str, Field(description="Pool id")]):
+            return self.pool_tools.delete_pool(poolid)
+
+        # --- Firewall extras ---
+        @self.mcp.tool(description=D.LIST_FIREWALL_ALIASES_DESC)
+        def list_firewall_aliases():
+            return self.firewall_tools.list_firewall_aliases()
+
+        @self.mcp.tool(description=D.CREATE_FIREWALL_ALIAS_DESC)
+        def create_firewall_alias(
+            name: Annotated[str, Field(description="Alias name")],
+            cidr: Annotated[str, Field(description="CIDR or IP")],
+            comment: Annotated[Optional[str], Field(description="Comment", default=None)] = None,
+        ):
+            return self.firewall_tools.create_firewall_alias(name, cidr, comment)
+
+        @self.mcp.tool(description=D.DELETE_FIREWALL_ALIAS_DESC)
+        def delete_firewall_alias(name: Annotated[str, Field(description="Alias name")]):
+            return self.firewall_tools.delete_firewall_alias(name)
+
+        @self.mcp.tool(description=D.LIST_FIREWALL_IPSETS_DESC)
+        def list_firewall_ipsets():
+            return self.firewall_tools.list_firewall_ipsets()
+
+        @self.mcp.tool(description=D.CREATE_FIREWALL_IPSET_DESC)
+        def create_firewall_ipset(
+            name: Annotated[str, Field(description="IP set name")],
+            comment: Annotated[Optional[str], Field(description="Comment", default=None)] = None,
+        ):
+            return self.firewall_tools.create_firewall_ipset(name, comment)
+
+        @self.mcp.tool(description=D.DELETE_FIREWALL_IPSET_DESC)
+        def delete_firewall_ipset(name: Annotated[str, Field(description="IP set name")]):
+            return self.firewall_tools.delete_firewall_ipset(name)
+
+        @self.mcp.tool(description=D.LIST_FIREWALL_MACROS_DESC)
+        def list_firewall_macros():
+            return self.firewall_tools.list_firewall_macros()
 
     def start(self) -> None:
         import anyio

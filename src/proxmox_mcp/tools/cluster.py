@@ -10,7 +10,7 @@ This module provides tools for monitoring and managing Proxmox clusters:
 The tools provide essential information for maintaining
 cluster health and ensuring proper operation.
 """
-from typing import List
+from typing import List, Optional
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
 
@@ -83,3 +83,38 @@ class ClusterTools(ProxmoxTool):
             return [Content(type="text", text=f"Next free VMID: {nextid}")]
         except Exception as e:
             self._handle_error("get next VMID", e)
+
+    def get_version(self) -> List[Content]:
+        """Get Proxmox VE API/version info."""
+        try:
+            version = self.proxmox.version.get()
+            return self._format_response(version)
+        except Exception as e:
+            self._handle_error("get version", e)
+
+    def get_cluster_resources(self, type: Optional[str] = None) -> List[Content]:
+        """List cluster resources (vms, storage, node, sdn). Optional type filter."""
+        try:
+            params = {}
+            if type:
+                params["type"] = type
+            resources = self.proxmox.cluster.resources.get(**params)
+            return self._format_response(resources)
+        except Exception as e:
+            self._handle_error("get cluster resources", e)
+
+    def get_cluster_log(self, max_entries: int = 50) -> List[Content]:
+        """Get recent cluster log entries."""
+        try:
+            log = self.proxmox.cluster.log.get(max=max_entries)
+            return self._format_response(log)
+        except Exception as e:
+            self._handle_error("get cluster log", e)
+
+    def get_cluster_options(self) -> List[Content]:
+        """Get cluster-wide options."""
+        try:
+            options = self.proxmox.cluster.options.get()
+            return self._format_response(options)
+        except Exception as e:
+            self._handle_error("get cluster options", e)

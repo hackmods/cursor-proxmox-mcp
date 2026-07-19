@@ -132,3 +132,63 @@ LIST_TOKENS_DESC = """List API tokens for a user. Parameters: userid*"""
 CREATE_TOKEN_DESC = """Create API token (secret shown once). Parameters: userid*, tokenid*, comment?, privsep?=true"""
 DELETE_TOKEN_DESC = """Delete API token. Parameters: userid*, tokenid*"""
 GET_PERMISSIONS_DESC = """Get effective permissions for the current auth identity."""
+
+# Replication
+LIST_REPLICATION_JOBS_DESC = """List cluster storage replication jobs."""
+GET_REPLICATION_STATUS_DESC = """Get replication job status. Parameters: node*, jobid*"""
+RUN_REPLICATION_JOB_DESC = """Schedule a replication job to run now. Parameters: node*, jobid*"""
+CREATE_REPLICATION_JOB_DESC = """Create replication job. Parameters: id* (e.g. 100-0), target*, schedule?, comment?, enabled?=true"""
+DELETE_REPLICATION_JOB_DESC = """Delete replication job. Parameters: id*"""
+
+# ACME
+LIST_ACME_PLUGINS_DESC = """List ACME challenge plugins."""
+LIST_ACME_ACCOUNTS_DESC = """List ACME accounts."""
+GET_ACME_DIRECTORIES_DESC = """List known ACME directories (Let's Encrypt etc.)."""
+
+# SDN
+LIST_SDN_ZONES_DESC = """List SDN zones."""
+LIST_SDN_VNETS_DESC = """List SDN virtual networks."""
+LIST_SDN_CONTROLLERS_DESC = """List SDN controllers."""
+LIST_SDN_IPAMS_DESC = """List SDN IPAMs."""
+LIST_SDN_DNS_DESC = """List SDN DNS entries."""
+APPLY_SDN_DESC = """Apply pending SDN configuration cluster-wide."""
+
+# Pools
+LIST_POOLS_DESC = """List resource pools."""
+GET_POOL_DESC = """Get a resource pool and its members. Parameters: poolid*"""
+CREATE_POOL_DESC = """Create a resource pool. Parameters: poolid*, comment?"""
+DELETE_POOL_DESC = """Delete a resource pool. Parameters: poolid*"""
+
+# Node extras
+GET_NODE_SUBSCRIPTION_DESC = """Get node subscription status (read-only). Parameters: node*"""
+LIST_NODE_CERTIFICATES_DESC = """List SSL certificates on a node. Parameters: node*"""
+GET_NODE_REPORT_DESC = """Get diagnostic report for a node. Parameters: node*"""
+LIST_NODE_SERVICES_DESC = """List Proxmox-managed services on a node. Parameters: node*"""
+GET_NODE_TIME_DESC = """Get node timezone and time. Parameters: node*"""
+WAKE_NODE_DESC = """Send Wake-on-LAN to a node. Parameters: node*"""
+
+# Console tickets (mint only — no websocket proxy)
+CREATE_VNC_TICKET_VM_DESC = """Mint VNC ticket for a VM (connect externally). Parameters: node*, vmid*, websocket?=true"""
+CREATE_SPICE_TICKET_VM_DESC = """Mint SPICE ticket for a VM. Parameters: node*, vmid*"""
+CREATE_TERMPROXY_TICKET_VM_DESC = """Mint termproxy ticket for a VM. Parameters: node*, vmid*"""
+CREATE_VNC_TICKET_LXC_DESC = """Mint VNC ticket for an LXC. Parameters: node*, vmid*, websocket?=true"""
+CREATE_TERMPROXY_TICKET_LXC_DESC = """Mint termproxy ticket for an LXC. Parameters: node*, vmid*"""
+GET_VM_STATUS_DESC = """Get current runtime status for one VM. Parameters: node*, vmid*"""
+GET_LXC_STATUS_DESC = """Get current runtime status for one LXC. Parameters: node*, vmid*"""
+GET_VM_RRD_DATA_DESC = """Get RRD metrics for a VM. Parameters: node*, vmid*, timeframe?=hour"""
+
+# Cluster extras
+GET_VERSION_DESC = """Get Proxmox VE version/API info."""
+GET_CLUSTER_RESOURCES_DESC = """List cluster resources. Parameters: type? (vm|storage|node|sdn)"""
+GET_CLUSTER_LOG_DESC = """Get recent cluster log. Parameters: max_entries?=50"""
+GET_CLUSTER_OPTIONS_DESC = """Get cluster-wide options."""
+
+# Firewall extras
+LIST_FIREWALL_ALIASES_DESC = """List cluster firewall aliases."""
+CREATE_FIREWALL_ALIAS_DESC = """Create firewall alias. Parameters: name*, cidr*, comment?"""
+DELETE_FIREWALL_ALIAS_DESC = """Delete firewall alias. Parameters: name*"""
+LIST_FIREWALL_IPSETS_DESC = """List cluster firewall IP sets."""
+CREATE_FIREWALL_IPSET_DESC = """Create firewall IP set. Parameters: name*, comment?"""
+DELETE_FIREWALL_IPSET_DESC = """Delete firewall IP set. Parameters: name*"""
+LIST_FIREWALL_MACROS_DESC = """List available firewall macros."""
+

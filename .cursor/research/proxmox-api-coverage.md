@@ -1,6 +1,6 @@
 # Proxmox API → MCP coverage matrix
 
-Living inventory for cursor-proxmox-mcp. Status: **done** | **excluded**.
+Living inventory for cursor-proxmox-mcp. Status: **done** | **planned** | **excluded**.
 
 Source of truth for registered names: `ProxmoxMCPServer._setup_tools()` and `tests/expected_tools.py`.
 
@@ -8,30 +8,38 @@ Source of truth for registered names: `ProxmoxMCPServer._setup_tools()` and `tes
 
 | Domain | MCP tools | API (representative) |
 |--------|-----------|----------------------|
-| Nodes | get_nodes, get_node_status, list_node_networks | /nodes, /nodes/{n}/status, /nodes/{n}/network |
-| Cluster | get_cluster_status, get_next_vmid | /cluster/status, /cluster/nextid |
+| Nodes | get_nodes, get_node_status, list_node_networks, subscription, certificates, report, services, time, wakeonlan | /nodes... |
+| Cluster | get_cluster_status, get_next_vmid, get_version, get_cluster_resources, get_cluster_log, get_cluster_options | /cluster..., /version |
 | Tasks | get_task_status, list_tasks | /nodes/{n}/tasks... |
-| QEMU lifecycle | get_vms, create_vm, start/stop/shutdown/reset/reboot/suspend/resume_vm, delete_vm | /nodes/{n}/qemu... |
-| QEMU config | get_vm_config, update_vm_config, resize_vm_disk, convert_vm_to_template, clone_vm | config, resize, template, clone |
-| QEMU agent | execute_vm_command | /agent/exec |
-| LXC lifecycle | get_containers, create_lxc, power suite, delete_lxc, update_lxc_features | /nodes/{n}/lxc... |
-| LXC config | get_lxc_config, update_lxc_config, resize_lxc_disk, convert_lxc_to_template, clone_lxc | config, resize, template, clone |
-| LXC exec | execute_lxc_command | /lxc/{vmid}/exec (version-dependent) |
-| Snapshots | list/create/delete/rollback_snapshot | .../snapshot |
-| Backups | create/list/restore/delete_backup | vzdump + storage content |
-| Storage | get_storage, get_storage_content, delete_storage_content, download_url_to_storage, create/update/delete_storage | /storage, content, download-url |
+| QEMU | full lifecycle + config + status + rrd + VNC/SPICE/termproxy tickets | /nodes/{n}/qemu... |
+| LXC | full lifecycle + config + status + VNC/termproxy tickets + exec | /nodes/{n}/lxc... |
+| Snapshots | list/create/delete/rollback | .../snapshot |
+| Backups | create/list/restore/delete | vzdump + storage content |
+| Storage | get/content/delete/download-url + definition CRUD | /storage... |
 | Migrate | migrate_guest | .../migrate |
-| HA | get_ha_status, list/create/delete_ha_group, list/create/update/delete_ha_resource | /cluster/ha... |
-| Firewall | cluster + guest options/rules CRUD | /cluster/firewall, guest firewall |
+| HA | status, groups, resources CRUD | /cluster/ha... |
+| Firewall | cluster+guest rules/options; aliases; ipsets; macros | /cluster/firewall... |
 | Access | users, groups, roles, ACL, tokens, permissions | /access/... |
+| Replication | list/status/run/create/delete | /cluster/replication, /nodes/{n}/replication |
+| ACME | list plugins/accounts/directories (read) | /cluster/acme... |
+| SDN | list zones/vnets/controllers/ipams/dns + apply | /cluster/sdn... |
+| Pools | list/get/create/delete | /pools |
 
-## Excluded (with reason)
+## Planned (Phase C)
+
+| Area | Reason to defer |
+|------|-----------------|
+| SDN write CRUD (zones/vnets/subnets) | Multi-object graph + apply orchestration UX |
+| ACME account create + order + renew | Multi-step DNS plugin credentials |
+| Ceph OSD/MON/MGR create/destroy | Cluster-invasive sequenced ops |
+| Cluster join / corosync bootstrap | One-shot, dangerous, no rollback |
+| Full VNC/SPICE websocket proxy | Long-lived stream ≠ MCP request/response |
+| PBS direct admin | Separate product; use storage.type=pbs |
+| Node reboot/shutdown | Physical host power needs extra confirmation UX |
+
+## Excluded
 
 | Area | Reason |
 |------|--------|
-| SDN / zones / VNets | Large nested surface; niche for Cursor agents |
-| Ceph OSD/MON/MGR admin | Ops-heavy; use Ceph tooling |
-| Cluster join / corosync bootstrap | Dangerous one-shot ops |
-| VNC/SPICE websocket console | Needs long-lived proxy; poor MCP fit |
-| Subscription / ACME full lifecycle | Low day-to-day agent value |
-| Replication job orchestration | Beyond list/status for now |
+| Ceph deep admin beyond planned | Prefer native Ceph tooling |
+| Subscription write / license upload | Rare; UI-driven |

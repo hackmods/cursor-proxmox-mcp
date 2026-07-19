@@ -19,3 +19,11 @@ Proxmox does not expose `pct exec` as universally as QEMU guest-agent. `execute_
 ## D5 — Docs / inventory lockstep
 
 `tests/expected_tools.py` must equal registered tool names. CI fails on drift. README + coverage matrix update in the same change.
+
+## D6 — VNC/SPICE ticket-only, no proxy
+
+MCP request/response does not fit long-lived websocket console streams. Tools mint `vncproxy` / `spiceproxy` / `termproxy` tickets and return JSON; external viewers connect. Full proxy remains Phase C / excluded.
+
+## D7 — uvx as recommended install path
+
+Cursor MCP reliability improved when using `uvx` (or `uv run`) with console script `proxmox-mcp-server` instead of a fragile system Python + manual `PYTHONPATH`. Keep `python -m proxmox_mcp.server` as documented fallback. Both `proxmox-mcp` and `proxmox-mcp-server` map to `server:main`.

@@ -6,6 +6,11 @@ $env:PYTHONPATH = Join-Path $Root "src"
 
 Write-Host "==> Installing package + dev deps"
 python -m pip install -e ".[dev]" -q
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+Write-Host "==> Entrypoint smoke"
+python -c "from proxmox_mcp.server import main; print('entrypoint ok')"
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "==> Ruff"
 python -m ruff check src tests
@@ -16,7 +21,7 @@ python -m pytest tests/ -q --tb=short
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "==> Tool inventory sanity"
-python -c "from tests.expected_tools import EXPECTED_TOOLS; print(f'Expected tools: {len(EXPECTED_TOOLS)}'); assert len(EXPECTED_TOOLS) >= 70"
+python -c "from tests.expected_tools import EXPECTED_TOOLS; print(f'Expected tools: {len(EXPECTED_TOOLS)}'); assert len(EXPECTED_TOOLS) >= 100"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "==> Local CI passed"

@@ -169,3 +169,62 @@ class FirewallTools(ProxmoxTool):
             return [Content(type="text", text=f"Guest firewall options updated\nResult: {result}")]
         except Exception as e:
             self._handle_error(f"set firewall options for {guest_type} {vmid}", e)
+
+    def list_firewall_aliases(self) -> List[Content]:
+        try:
+            aliases = self.proxmox.cluster.firewall.aliases.get()
+            return self._format_response(aliases)
+        except Exception as e:
+            self._handle_error("list firewall aliases", e)
+
+    def create_firewall_alias(
+        self, name: str, cidr: str, comment: Optional[str] = None
+    ) -> List[Content]:
+        try:
+            params = {"name": name, "cidr": cidr}
+            if comment is not None:
+                params["comment"] = comment
+            result = self.proxmox.cluster.firewall.aliases.post(**params)
+            return [Content(type="text", text=f"Firewall alias '{name}' created\nResult: {result}")]
+        except Exception as e:
+            self._handle_error(f"create firewall alias {name}", e)
+
+    def delete_firewall_alias(self, name: str) -> List[Content]:
+        try:
+            result = self.proxmox.cluster.firewall.aliases(name).delete()
+            return [Content(type="text", text=f"Firewall alias '{name}' deleted\nResult: {result}")]
+        except Exception as e:
+            self._handle_error(f"delete firewall alias {name}", e)
+
+    def list_firewall_ipsets(self) -> List[Content]:
+        try:
+            ipsets = self.proxmox.cluster.firewall.ipset.get()
+            return self._format_response(ipsets)
+        except Exception as e:
+            self._handle_error("list firewall IP sets", e)
+
+    def create_firewall_ipset(
+        self, name: str, comment: Optional[str] = None
+    ) -> List[Content]:
+        try:
+            params = {"name": name}
+            if comment is not None:
+                params["comment"] = comment
+            result = self.proxmox.cluster.firewall.ipset.post(**params)
+            return [Content(type="text", text=f"Firewall IP set '{name}' created\nResult: {result}")]
+        except Exception as e:
+            self._handle_error(f"create firewall IP set {name}", e)
+
+    def delete_firewall_ipset(self, name: str) -> List[Content]:
+        try:
+            result = self.proxmox.cluster.firewall.ipset(name).delete()
+            return [Content(type="text", text=f"Firewall IP set '{name}' deleted\nResult: {result}")]
+        except Exception as e:
+            self._handle_error(f"delete firewall IP set {name}", e)
+
+    def list_firewall_macros(self) -> List[Content]:
+        try:
+            macros = self.proxmox.cluster.firewall.macros.get()
+            return self._format_response(macros)
+        except Exception as e:
+            self._handle_error("list firewall macros", e)

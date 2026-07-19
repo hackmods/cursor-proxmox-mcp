@@ -132,3 +132,51 @@ class NodeTools(ProxmoxTool):
             return self._format_response((node, result), "node_status")
         except Exception as e:
             self._handle_error(f"get status for node {node}", e)
+
+    def get_node_subscription(self, node: str) -> List[Content]:
+        """Get Proxmox subscription status for a node (read-only)."""
+        try:
+            info = self.proxmox.nodes(node).subscription.get()
+            return self._format_response(info)
+        except Exception as e:
+            self._handle_error(f"get subscription for node {node}", e)
+
+    def list_node_certificates(self, node: str) -> List[Content]:
+        """List SSL certificates on a node."""
+        try:
+            certs = self.proxmox.nodes(node).certificates.info.get()
+            return self._format_response(certs)
+        except Exception as e:
+            self._handle_error(f"list certificates on {node}", e)
+
+    def get_node_report(self, node: str) -> List[Content]:
+        """Get a diagnostic report for a node."""
+        try:
+            report = self.proxmox.nodes(node).report.get()
+            return self._format_response(report)
+        except Exception as e:
+            self._handle_error(f"get report for node {node}", e)
+
+    def list_node_services(self, node: str) -> List[Content]:
+        """List systemd services managed by Proxmox on a node."""
+        try:
+            services = self.proxmox.nodes(node).services.get()
+            return self._format_response(services)
+        except Exception as e:
+            self._handle_error(f"list services on {node}", e)
+
+    def get_node_time(self, node: str) -> List[Content]:
+        """Get timezone and current time on a node."""
+        try:
+            info = self.proxmox.nodes(node).time.get()
+            return self._format_response(info)
+        except Exception as e:
+            self._handle_error(f"get time for node {node}", e)
+
+    def wake_node(self, node: str) -> List[Content]:
+        """Send Wake-on-LAN to a node (if configured)."""
+        try:
+            result = self.proxmox.nodes(node).wakeonlan.post()
+            return [Content(type="text", text=f"Wake-on-LAN sent to {node}\nResult: {result}")]
+        except Exception as e:
+            self._handle_error(f"wake node {node}", e)
