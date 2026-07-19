@@ -34,17 +34,100 @@ Optional: Python 3.10+ if you prefer `pip` / editable install instead of `uvx`.
 
 ## 1. Create a Proxmox API token
 
-1. In the Proxmox UI: **Datacenter → Permissions → API Tokens**.
-2. Create a token for a dedicated user (or `root@pam` for full admin — home lab only).
-3. Copy the **token ID** (user + token name) and **secret** once — the secret is shown only at creation.
-4. Assign roles that match what you want the agent to do, for example:
-   - Read / explore: `PVEAuditor` or custom roles with `Sys.Audit`, `VM.Audit`, `Datastore.Audit`
-   - Create VMs / LXCs: `VM.Allocate`, `Datastore.AllocateSpace`, `Datastore.AllocateTemplate`
-   - HA / firewall / access admin: often needs elevated roles (many ops effectively require `root@pam`)
+Tokens are the right way to authenticate MCP (and any automation) to Proxmox. You create them under a **user**; the token never uses that user’s password.
 
-Least privilege is strongly recommended: a token that can only audit is fine for health checks; create a second token for write operations if you want a safer daily-driver.
+### Recommended: dedicated user + token
+
+1. **Datacenter → Permissions → Users → Add**
+   - User: e.g. `mcp@pve` (realm `pve`) or `mcp@pam`
+   - Set a password (needed for UI login only; MCP uses the token)
+2. **Datacenter → Permissions → Add** (ACL for the **user**)
+   - Path: `/` (whole datacenter) or narrower (`/vms`, `/storage`, `/nodes/...`)
+   - User: `mcp@pve`
+   - Role: start with what you need (see [Roles for MCP](#roles-for-mcp) below)
+3. **Datacenter → Permissions → API Tokens → Add**
+   - User: `mcp@pve`
+   - Token ID: e.g. `cursor` (this becomes `mcp@pve!cursor`)
+   - **Privilege Separation:** leave **enabled (Yes)** for best practice — see below
+   - Optional: expiration date
+4. Click **Add**, then **copy the secret immediately** — Proxmox shows it once.
+5. If Privilege Separation is **Yes**, grant ACLs to the **token** as well (next subsection).
+
+Put into `config.json`:
+
+| Config field | Example | Notes |
+|--------------|---------|--------|
+| `auth.user` | `mcp@pve` | User only — no `!token` |
+| `auth.token_name` | `cursor` | Token ID only |
+| `auth.token_value` | `uuid-secret` | The secret from the dialog |
+
+Full token id in Proxmox is `user@realm!tokenid` (e.g. `mcp@pve!cursor`). This project’s config splits that into `user` + `token_name`.
+
+### Privilege Separation (the gotcha)
+
+When you create a token, Proxmox asks for **Privilege Separation**. Default is **Yes**.
+
+| Setting | What it means |
+|---------|----------------|
+| **Yes** (default, recommended) | Token starts with **no** permissions of its own. You must add ACL entries for the **token** (`user@realm!tokenid`). Effective access = intersection of **user** ACLs ∩ **token** ACLs. Token can never do more than the user. |
+| **No** | Token **inherits the user’s full permission set**. No separate token ACLs required. Same blast radius as leaking that user’s credentials. |
+
+#### Why “Privilege Separation = No” feels like a bypass
+
+If Privilege Separation stays **Yes** and you only gave roles to the **user**, the token authenticates but can do almost nothing (empty results, mysterious `401`/`403`, or `data: null`). Unchecking Privilege Separation makes things “just work” because the token suddenly has whatever the user has — including `root@pam`’s full admin if that’s the parent user.
+
+That is a valid **lab shortcut**, not best practice. You traded a missing ACL step for “this token == this user.”
+
+#### Best practice
+
+1. Keep **Privilege Separation = Yes**.
+2. Give the **user** the maximum the human/automation account should ever have.
+3. Give the **token** only the roles MCP needs (often a subset).
+4. Prefer a dedicated `mcp@pve` user over `root@pam` so a leaked token is not full cluster root.
+
+**UI:** Datacenter → Permissions → Add → set **API Token** to `mcp@pve!cursor` (not the user) → Path `/` → Role e.g. `PVEAuditor` or `PVEVMAdmin`.
+
+**CLI equivalent:**
+
+```bash
+# User (example)
+pveum user add mcp@pve --password 'REDACTED'
+pveum acl modify / -user mcp@pve -role PVEAdmin
+
+# Token WITH privilege separation (default)
+pveum user token add mcp@pve cursor --privsep 1
+# Grant the TOKEN its own ACL (required when privsep=1)
+pveum acl modify / -token 'mcp@pve!cursor' -role PVEAdmin
+
+# Lab-only shortcut — token inherits all user perms (privsep off)
+# pveum user token add mcp@pve cursor --privsep 0
+```
+
+### When Privilege Separation = No is OK
+
+- Solo home lab, throwaway cluster, or first-time bring-up while you learn the tool surface.
+- Parent user is already a **narrow** account (e.g. audit-only) so inheriting its perms is still limited.
+
+Switch to privsep **Yes** + token ACLs before anything you care about surviving a leaked `config.json`.
+
+### Roles for MCP
+
+Match roles to what you want the agent to do. Assign them to the **token** when privsep is on (and to the user so the intersection is non-empty).
+
+| Goal | Built-in role / privileges | Notes |
+|------|----------------------------|--------|
+| Read-only health / inventory | `PVEAuditor` | Safest default for daily chat |
+| Create / manage VMs & LXCs | `PVEVMAdmin` or `PVEVMUser` + datastore rights | Needs template/ISO access on storage |
+| Storage content / downloads | `Datastore.Audit`, `Datastore.AllocateSpace`, `Datastore.AllocateTemplate` | Often via `PVEDatastoreAdmin` |
+| Broad lab automation | `PVEAdmin` on `/` for `mcp@pve!cursor` | Still better than `root@pam` token |
+| HA / firewall / access admin | Often needs `Sys.Modify` / elevated roles | Many ops behave like full admin |
+
+Split tokens if useful: one audit token (`PVEAuditor`) for health checks, one write token for create/migrate — both with privsep **Yes**.
+
+Official reference: [Proxmox VE — User Management / API Tokens](https://pve.proxmox.com/pve-docs/chapter-pveum.html#pveum_tokens).
 
 ---
+
 
 ## 2. Install uv
 
@@ -247,6 +330,7 @@ Treat the MCP server like any other admin interface into the cluster.
 | Practice | Why |
 |----------|-----|
 | Dedicated API token | Easy to revoke; audit separately from your UI login |
+| Privilege Separation = Yes | Token gets its own ACLs; leak ≠ full user access |
 | Least privilege roles | A read-only token can’t wipe guests by accident |
 | Know what leaves the box | Cloud models may see tool outputs (hostnames, VM names, logs). Local LLMs keep more in-lab |
 | No secrets in chat | Put tokens in `config.json` / env, not in prompts |
@@ -263,7 +347,8 @@ Home labs are ideal for learning where AI+MCP helps (health checks, template clo
 | `spawn uvx ENOENT` | Install uv; restart Cursor so `PATH` updates |
 | `PROXMOX_MCP_CONFIG ... must be set` | Set `env.PROXMOX_MCP_CONFIG` to the absolute path of `config.json` |
 | Auth / 401 | Check `user`, `token_name`, and `token_value`; confirm token isn’t disabled |
-| 403 on HA / firewall / privileged ops | Token needs a stronger role |
+| Auth works but empty data / odd 403 | Privilege Separation is **Yes** but the **token** has no ACL — grant roles to `user@realm!tokenid`, or (lab only) set Privilege Separation to **No** |
+| 403 on HA / firewall / privileged ops | Token/user need a stronger role |
 | Tools missing after pull | Restart the **proxmox** MCP server in Cursor |
 | `ModuleNotFoundError: proxmox_mcp` | Prefer `uvx --from <repo>`; or set `PYTHONPATH` to `.../src` |
 

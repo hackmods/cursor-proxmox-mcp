@@ -160,7 +160,9 @@ Example `proxmox-config/config.json`:
 }
 ```
 
-Create the token in Proxmox UI: Datacenter → Permissions → API Tokens. Grant roles matching the tools you use (`VM.Allocate`, `Datastore.*`, `Sys.Audit`/`Sys.Modify` for HA/firewall/access).
+Create the token in Proxmox UI: Datacenter → Permissions → API Tokens. See **[SETUP.md — API token & Privilege Separation](SETUP.md#1-create-a-proxmox-api-token)** for the full walkthrough.
+
+**Privilege Separation:** leave **Yes** (default) and grant ACLs to the **token** (`user@realm!tokenid`). Setting it to **No** makes the token inherit the user’s full permissions (common lab shortcut; larger blast radius if leaked). Grant roles matching the tools you use (`PVEAuditor`, `PVEVMAdmin`, `Datastore.*`, `Sys.Audit`/`Sys.Modify` for HA/firewall/access).
 
 ## Features
 
