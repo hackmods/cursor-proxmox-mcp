@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Community announce tooling: `scripts/post-community.ps1` / `.sh` + `docs/community/` draft format (`-Check` / `-Open` / `-CreateDiscussion`).
+
+### Notes
+
+- Phase C remains deferred (D26). Add PyPI Trusted Publisher for `release.yml` + env `pypi` if tag-push PyPI still fails (see PUBLISHING.md).
+
 ## [1.4.0] - 2026-07-19
 
 ### Added

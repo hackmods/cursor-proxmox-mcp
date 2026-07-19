@@ -1,3 +1,7 @@
+<!-- channel: reddit -->
+<!-- version: 1.4.0 -->
+<!-- tools: 163 -->
+
 # Reddit — draft post
 
 **Subreddit ideas:** r/Proxmox, r/selfhosted, r/cursor (where allowed)

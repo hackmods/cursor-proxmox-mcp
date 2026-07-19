@@ -15,6 +15,7 @@ Pair with [changelog-notes.md](changelog-notes.md) (research “why”) and root
 | 2026-07-19 | r7 | Wiki living guide: full tool catalog generator, Recipes, `_Footer.md`, CI lock | **155** | `docs/wiki/` + `scripts/generate-wiki-tools.py` |
 | 2026-07-19 | r8 | Phase F LXC day-2: capabilities, prepare_docker, push/pull, paramiko core | **159** | D4 revised; D24; next-expansion Phase F done |
 | 2026-07-19 | r9 | Phase F.1: get_vm_network, create wait=, push/pull_vm, deploy_static_nginx, probes | **163** | D25; next-expansion Phase F.1 done; v1.4.0 |
+| 2026-07-19 | r10 | Community post tooling + D26 skip Phase C; release.yml Trusted Publisher docs | **163** | scripts/post-community.*; docs/community/; PUBLISHING |
 
 ## How to update
 

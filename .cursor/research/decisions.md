@@ -124,3 +124,7 @@ Nested Docker on unprivileged LXC fails at `docker run` (not install) when host 
 ## D25 — Create auto-wait (Phase F.1 / shipped)
 
 D10 keeps create tools UPID-first. `create_vm` / `create_lxc` accept optional `wait: bool = False` that polls the create UPID when true. **Default remains false** — default-on is high product risk (MCP latency, agent expectations).
+
+## D26 — Community announce tooling before Phase C
+
+Ship operator tooling for `docs/community/` drafts (`scripts/post-community.*`) and keep Phase C (SDN/ACME/Ceph/cluster join/VNC proxy/PBS/node power) **deferred** until a concrete lab demand appears. F/F.1 already cover the day-2 path that unblocked Cursor↔Proxmox agents.

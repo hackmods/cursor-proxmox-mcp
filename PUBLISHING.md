@@ -6,40 +6,58 @@ How to ship `cursor-proxmox-mcp` to PyPI, GHCR, the official MCP Registry, and G
 
 `proxmox-mcp-server` on PyPI is a **different** project. This repo publishes as **`cursor-proxmox-mcp`**.
 
-### One-time: register a trusted publisher
+### Status (v1.4.0)
 
-1. Create a blank project (or pending publisher) at [PyPI publishing](https://pypi.org/manage/account/publishing/).
-2. Use these exact claims:
+| Workflow | Environment | Trusted Publisher | Notes |
+|----------|-------------|-------------------|--------|
+| `publish.yml` | `pypi` | **Registered** (works) | Manual / retry path |
+| `release.yml` | `pypi` | **Add if missing** | Tag-push primary path; `invalid-publisher` without this row |
+
+GitHub environment `pypi` already exists on `hackmods/cursor-proxmox-mcp`.
+
+### One-time: register trusted publishers
+
+1. Open [PyPI publishing](https://pypi.org/manage/account/publishing/) while logged in as the owner of `cursor-proxmox-mcp` (or project → **Publishing**).
+2. Ensure **two** GitHub publishers exist with these claims:
 
 | Field | Value |
 |-------|--------|
 | PyPI project name | `cursor-proxmox-mcp` |
 | Owner | `hackmods` |
 | Repository | `cursor-proxmox-mcp` |
-| Workflow name | `release.yml` **and** a second publisher for `publish.yml` (manual retry) |
-| Environment name | `pypi` |
+| Workflow name | **`release.yml`** (required for tag uploads) |
+| Environment name | **`pypi`** |
 
-If tag-push `release.yml` fails with `invalid-publisher` while `publish.yml` succeeds, the Trusted Publisher is missing for `release.yml` — add/update that entry. PyPI can still ship via Actions → **Publish to PyPI** → Run workflow. GHCR continues from `release.yml` even when the PyPI step fails (`continue-on-error`).
+| Field | Value |
+|-------|--------|
+| PyPI project name | `cursor-proxmox-mcp` |
+| Owner | `hackmods` |
+| Repository | `cursor-proxmox-mcp` |
+| Workflow name | **`publish.yml`** (manual retry) |
+| Environment name | **`pypi`** |
 
-**Debug claims from a failed `release.yml` OIDC exchange (v1.4.0):** configure the publisher so these match:
+If tag-push `release.yml` fails with `invalid-publisher` while `publish.yml` succeeds, only the `release.yml` publisher is missing — add that row. GHCR + GitHub Release still ship (`continue-on-error` on the PyPI step).
+
+**Debug claims from a failed `release.yml` OIDC exchange (v1.4.0):**
 
 | Claim | Expected |
 |-------|----------|
 | Owner | `hackmods` |
 | Repository | `cursor-proxmox-mcp` |
-| Workflow name | `release.yml` (and separately `publish.yml`) |
+| Workflow name | `release.yml` |
 | Environment | `pypi` |
 | `workflow_ref` (example) | `hackmods/cursor-proxmox-mcp/.github/workflows/release.yml@refs/tags/v1.4.0` |
 
-3. In GitHub → **Settings → Environments → `pypi`**, create the environment (no secrets needed for OIDC).
+3. In GitHub → **Settings → Environments → `pypi`**, keep the environment (no secrets needed for OIDC).
 
 ### Publish a version
 
 1. Bump `version` in `pyproject.toml` and `server.json` (and GHCR identifier in `server.json` if present).
-2. Move `[Unreleased]` notes in `CHANGELOG.md` under the new version heading; keep tool count / community drafts (`docs/community/`) aligned.
+2. Move `[Unreleased]` notes in `CHANGELOG.md` under the new version heading; keep tool count / community drafts (`docs/community/`) aligned (`.\scripts\post-community.ps1 -Check`).
 3. Sync GitHub wiki from `docs/wiki/`: `./scripts/sync-wiki.sh` or `.\scripts\sync-wiki.ps1`.
 4. Tag and push: `git tag v1.1.0 && git push fork v1.1.0` (use your release remote).
 5. `release.yml` (with `environment: pypi`) builds the wheel, uploads to PyPI, pushes GHCR, and creates the GitHub Release.
+6. Announce: `.\scripts\post-community.ps1 -Check` then `-Channel cursor-forum -Open` (or `-CreateDiscussion` for GitHub).
 
 > **Gotcha:** GitHub does not re-trigger `release: published` workflows when the Release is created by `GITHUB_TOKEN` inside Actions. That is why PyPI publish lives in `release.yml`, not only in `publish.yml`.
 
@@ -96,9 +114,22 @@ curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.hac
 
 `glama.json` is in the repo root. Submit the GitHub URL at [glama.ai MCP servers](https://glama.ai/mcp/servers) → **Add MCP Server**, or wait for Glama’s GitHub crawl after the file is on `main`.
 
-## Community announcements (drafts)
+## Community announcements
 
-See [`docs/community/`](docs/community/) for Cursor forum and Reddit post drafts.
+Drafts live in [`docs/community/`](docs/community/). Tooling:
+
+```powershell
+.\scripts\post-community.ps1 -Check
+.\scripts\post-community.ps1 -Channel cursor-forum -Open
+.\scripts\post-community.ps1 -Channel github -CreateDiscussion
+```
+
+```bash
+./scripts/post-community.sh --check
+./scripts/post-community.sh --channel reddit --open
+```
+
+See [`docs/community/README.md`](docs/community/README.md) for the full checklist.
 
 ## Repo hardening (manual)
 

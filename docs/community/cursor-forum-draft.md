@@ -1,3 +1,7 @@
+<!-- channel: cursor-forum -->
+<!-- version: 1.4.0 -->
+<!-- tools: 163 -->
+
 # Cursor forum — draft post
 
 **Title:** Formal Proxmox VE MCP for Cursor — 163 tools (QEMU, LXC day-2, storage, HA, firewall)

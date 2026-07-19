@@ -1,5 +1,13 @@
 # Changelog / research notes
 
+## 2026-07-19 — Community announce tooling (rev r10) — 163 tools
+
+**Why:** Make release announcements repeatable; keep Phase C deferred (D26).
+
+**Shipped:** `docs/community/` normalized drafts + README; `scripts/community_drafts.py` + `post-community.ps1`/`.sh` (`-Check` / `-Open` / `-CreateDiscussion`); PUBLISHING community section; D26.
+
+**Operator still required:** add PyPI Trusted Publisher row for workflow **`release.yml`** + environment **`pypi`** (claims in PUBLISHING.md). `publish.yml` already works.
+
 ## 2026-07-19 — Phase F.1 VM parity + create wait (rev r9 / v1.4.0) — 163 tools
 
 **Why:** Close Lumon/F.1 deferrals — VM network parity, optional create wait, guest-agent file push, static nginx recipe, opt-in inventory probes.
