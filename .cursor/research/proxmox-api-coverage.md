@@ -4,6 +4,8 @@ Living inventory for cursor-proxmox-mcp. Status: **done** | **planned** | **excl
 
 Source of truth for registered names: `ProxmoxMCPServer._setup_tools()` and `tests/expected_tools.py`.
 
+**Auth note:** MCP uses API tokens (`config.json`). Proxmox default **Privilege Separation=Yes** requires ACL on `user@realm!tokenid` (not only the user). See `SETUP.md` and decision D8. Some interactive console endpoints are token-incompatible per upstream PVE docs; we mint tickets only.
+
 ## Done
 
 | Domain | MCP tools | API (representative) |

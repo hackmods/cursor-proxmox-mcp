@@ -129,9 +129,9 @@ LIST_ROLES_DESC = """List roles."""
 LIST_ACL_DESC = """List ACL entries."""
 UPDATE_ACL_DESC = """Update ACL. Parameters: path*, roles*, users?, groups?, propagate?=true, delete?=false"""
 LIST_TOKENS_DESC = """List API tokens for a user. Parameters: userid*"""
-CREATE_TOKEN_DESC = """Create API token (secret shown once). Parameters: userid*, tokenid*, comment?, privsep?=true"""
+CREATE_TOKEN_DESC = """Create API token (secret shown once — store immediately). Parameters: userid*, tokenid*, comment?, privsep?=true. privsep=true (default): token needs its own ACL (user@realm!tokenid); effective perms = user ∩ token. privsep=false: token inherits all user permissions (lab shortcut; larger blast radius)."""
 DELETE_TOKEN_DESC = """Delete API token. Parameters: userid*, tokenid*"""
-GET_PERMISSIONS_DESC = """Get effective permissions for the current auth identity."""
+GET_PERMISSIONS_DESC = """Get effective permissions for the current auth identity (useful to verify token ACLs / Privilege Separation)."""
 
 # Replication
 LIST_REPLICATION_JOBS_DESC = """List cluster storage replication jobs."""

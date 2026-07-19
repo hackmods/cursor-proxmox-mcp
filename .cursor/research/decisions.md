@@ -27,3 +27,15 @@ MCP request/response does not fit long-lived websocket console streams. Tools mi
 ## D7 — uvx as recommended install path
 
 Cursor MCP reliability improved when using `uvx` (or `uv run`) with console script `proxmox-mcp-server` instead of a fragile system Python + manual `PYTHONPATH`. Keep `python -m proxmox_mcp.server` as documented fallback. Both `proxmox-mcp` and `proxmox-mcp-server` map to `server:main`.
+
+## D8 — API tokens default to Privilege Separation
+
+Proxmox creates tokens with **Privilege Separation = Yes** (`privsep=1`). Separated tokens start with **no** ACLs; effective permissions are the intersection of user ACLs and token ACLs. Disabling privsep (`privsep=0`) makes the token inherit the user’s full permission set — a common lab “make it work” bypass when operators forget to ACL the token, but a larger blast radius if the secret leaks.
+
+**Project stance:** Document privsep=Yes + explicit token ACL as best practice in `SETUP.md` / `proxmox-auth` rule. Document privsep=No as an explicit lab shortcut, not the recommended default. `create_token` keeps `privsep=True` by default to match Proxmox.
+
+Operators hitting empty results after a “successful” token create should check token ACLs (`pveum user token permissions …` / UI Permissions for `user@realm!tokenid`) before disabling privsep.
+
+## D9 — Setup guide is first-run source of truth
+
+`SETUP.md` is the primary first-run path (token, Cursor `mcp.json`, prompts, security). README stays the inventory + short install reference and links into SETUP for auth depth. `proxmox-config/README.md` covers the config file only.

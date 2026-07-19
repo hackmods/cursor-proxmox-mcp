@@ -131,9 +131,12 @@ Runs: editable install → entrypoint smoke → ruff → pytest → inventory fl
 |---------|-----|
 | `spawn uvx ENOENT` | Install uv (`pip install uv` or `winget install astral-sh.uv`), then restart Cursor |
 | `ModuleNotFoundError: proxmox_mcp` | Use uvx/`uv run`, or set `PYTHONPATH=.../src` for plain python |
-| `PROXMOX_MCP_CONFIG ... must be set` | Point env at `proxmox-config/config.json` |
-| 403 on HA / firewall / `keyctl` | Token needs elevated role; many ops require `root@pam` |
+| `PROXMOX_MCP_CONFIG ... must be set` | Point env at `proxmox-config/config.json` (absolute path) |
+| Auth OK but empty data / odd 403 | Privilege Separation **Yes** without token ACL — see [SETUP.md](SETUP.md#privilege-separation-the-gotcha) |
+| 403 on HA / firewall / `keyctl` | Token needs elevated role; prefer scoped `mcp@pve` over `root@pam` when possible |
 | Tools missing in Cursor | Restart MCP server after git pull |
+
+First-time cluster wiring (token, privsep, Cursor JSON, example prompts): **[SETUP.md](SETUP.md)**.
 
 ## Configuration
 

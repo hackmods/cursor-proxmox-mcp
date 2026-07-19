@@ -1,6 +1,6 @@
 ---
 description: Keep README and docs aligned when MCP tools or APIs change
-globs: src/proxmox_mcp/**/*.py,README.md,test_scripts/**/*.md
+globs: src/proxmox_mcp/**/*.py,README.md,SETUP.md,docs/**/*.md,test_scripts/**/*.md
 alwaysApply: true
 ---
 
@@ -13,14 +13,16 @@ When you add, rename, remove, or change behavior of MCP tools, parameters, or pu
 3. Do not document tools that are not registered in `src/proxmox_mcp/server.py`.
 4. If a tool is planned but not wired yet, mark it clearly as planned — never list it as available.
 5. Keep examples (params, defaults, nesting/features) accurate to the code.
+6. If auth, install, or first-run Cursor wiring changes, update `SETUP.md` (and `proxmox-config/README.md` when config fields change).
 
 ## Checklist before finishing
 
 - [ ] Tool name and params match `@self.mcp.tool` registration in `server.py`
 - [ ] README inventory / detail sections updated
 - [ ] `definitions.py` description updated
+- [ ] `SETUP.md` still accurate for first-run (if install/auth touched)
 - [ ] No stale claims (e.g. endpoint counts, missing tools)
 
 ## Source of truth
 
-Registered tools live in `ProxmoxMCPServer._setup_tools()` in `server.py`. README must match that list.
+Registered tools live in `ProxmoxMCPServer._setup_tools()` in `server.py`. README must match that list. First-run auth/Cursor wiring: `SETUP.md`.

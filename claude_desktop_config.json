@@ -1,11 +1,15 @@
 {
   "mcpServers": {
     "proxmox": {
-      "command": "python",
-      "args": ["-m", "proxmox_mcp.server"],
+      "command": "uvx",
+      "args": [
+        "--from",
+        "/ABS/PATH/TO/cursor-proxmox-mcp",
+        "proxmox-mcp-server"
+      ],
       "env": {
-        "PROXMOX_MCP_CONFIG": "./proxmox-config/config.json"
+        "PROXMOX_MCP_CONFIG": "/ABS/PATH/TO/cursor-proxmox-mcp/proxmox-config/config.json"
       }
     }
   }
-} 
+}

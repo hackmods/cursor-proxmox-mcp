@@ -12,4 +12,5 @@ When adding, renaming, or removing MCP tools:
 2. Note non-obvious API quirks in `.cursor/research/changelog-notes.md`.
 3. Record design choices in `.cursor/research/decisions.md` when changing patterns.
 4. Keep `tests/expected_tools.py` in sync with `server.py` `_setup_tools()`.
-5. Follow `keep-docs-aligned.mdc` for README / definitions.
+5. Follow `keep-docs-aligned.mdc` for README / definitions / SETUP when auth or install changes.
+6. Auth/privsep quirks belong in `changelog-notes.md` + `decisions.md` (see D8) and `.cursor/rules/proxmox-auth.mdc`.

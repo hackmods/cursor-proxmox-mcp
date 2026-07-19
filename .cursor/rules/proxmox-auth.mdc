@@ -1,0 +1,36 @@
+---
+description: Proxmox API token auth, Privilege Separation, and config pitfalls
+globs: SETUP.md,README.md,proxmox-config/**/*,docs/**/*.md,src/proxmox_mcp/tools/access.py,src/proxmox_mcp/config/**/*
+alwaysApply: false
+---
+
+# Proxmox auth & Privilege Separation
+
+When documenting, troubleshooting, or changing auth/access tools:
+
+## Token identity
+
+- Config splits Proxmox’s `user@realm!tokenid` into `auth.user` + `auth.token_name` + `auth.token_value`.
+- Never put `user!token` in `auth.user`.
+- `token_value` is the UUID **secret**, not the token id.
+
+## Privilege Separation
+
+| privsep | Behavior |
+|---------|----------|
+| **Yes** (default, best practice) | Token needs its **own** ACL on `user@realm!tokenid`. Effective perms = user ∩ token. |
+| **No** | Token inherits **all** user permissions. Lab shortcut; larger blast radius if `config.json` leaks. |
+
+Empty API results / odd 401–403 with a “valid” token almost always mean privsep=Yes and no token ACL. Do not “fix” docs by recommending privsep=No as the default — document it as an explicit lab bypass and point to token ACL setup.
+
+## Docs to keep aligned
+
+- User-facing: `SETUP.md` §1, `proxmox-config/README.md`, README Configuration
+- Research: `.cursor/research/decisions.md` (D8), `changelog-notes.md`
+- Tool copy: `CREATE_TOKEN_DESC` / `create_token` `privsep` default `true` in `server.py`
+
+## Safety
+
+- Prefer dedicated `mcp@pve` over `root@pam` tokens.
+- `config.json` must stay gitignored.
+- `create_token` returns the secret once — never log it at INFO.

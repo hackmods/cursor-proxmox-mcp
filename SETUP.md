@@ -126,6 +126,35 @@ Split tokens if useful: one audit token (`PVEAuditor`) for health checks, one wr
 
 Official reference: [Proxmox VE — User Management / API Tokens](https://pve.proxmox.com/pve-docs/chapter-pveum.html#pveum_tokens).
 
+### Realms (`@pve` vs `@pam`)
+
+| Realm | Typical use |
+|-------|-------------|
+| `user@pve` | Proxmox-only account (recommended for MCP). Password lives in PVE, not the Linux host. |
+| `user@pam` | Linux PAM users (including `root@pam`). Convenient for labs; a leaked root token is full host+cluster admin. |
+
+Match the realm in `auth.user` exactly. `mcp@pve` ≠ `mcp@pam`.
+
+### Verify the token actually has rights
+
+After creation (and after wiring MCP), confirm permissions three ways:
+
+1. **UI:** Datacenter → Permissions — you should see rows for both the **user** and (if privsep=Yes) the **API Token** `user@realm!tokenid`.
+2. **CLI:** `pveum user token permissions mcp@pve cursor` and `pveum acl list | grep mcp`
+3. **In Cursor (once MCP is up):** ask *“Call `get_permissions` and summarize what this token can do.”* Empty or tiny permission maps usually mean privsep=Yes with no token ACL.
+
+### Rotate / revoke
+
+- **Revoke fast:** Datacenter → Permissions → API Tokens → remove the token (or disable the user).
+- **Rotate:** create a new token → update `config.json` → restart MCP in Cursor → delete the old token.
+- Prefer an **expiration date** on tokens used from laptops that leave the house.
+
+### Proxmox limits that surprise people
+
+- **Interactive consoles:** Proxmox documents that some VM/system **console** endpoints require a real user session and **cannot** be used via API token. This MCP still **mints** VNC/SPICE/termproxy *tickets* where the API allows; opening a full interactive console may still need UI/password auth depending on version and endpoint.
+- **Guest agent exec** (`execute_vm_command`) needs the QEMU guest agent inside the VM — permissions alone are not enough.
+- **`keyctl` / nested features on LXC** often need privileges beyond a narrow VM role.
+
 ---
 
 
@@ -191,7 +220,26 @@ Edit `proxmox-config/config.json`:
 | `token_name` | Token name only (not `user!token`) |
 | `token_value` | Secret from token creation |
 
-Do **not** commit `config.json` — it holds credentials. Keep using `config.example.json` as the template.
+Do **not** commit `config.json` — it holds credentials. It is gitignored (`proxmox-config/config.json`). Keep using `config.example.json` as the template. See also [`proxmox-config/README.md`](proxmox-config/README.md).
+
+### Network / SSL checklist
+
+| Check | Detail |
+|-------|--------|
+| Reachability | From the machine running Cursor: `https://HOST:8006` must open (or at least TCP 8006). VPN/Tailscale if the cluster is remote. |
+| Host firewall | Allow your client IP to port **8006/tcp** on the Proxmox node(s). |
+| `verify_ssl` | Lab self-signed → `false`. Production with a trusted cert (ACME) → `true`. |
+| Which host? | Any cluster node’s management IP usually works; prefer a stable VIP/DNS name if you have one. |
+
+### Common config mistakes
+
+| Mistake | Symptom | Fix |
+|---------|---------|-----|
+| `user` set to `mcp@pve!cursor` | Auth errors | Split: `user=mcp@pve`, `token_name=cursor` |
+| `token_value` is the token **id** not the secret | 401 | Paste the UUID secret from the create dialog |
+| Relative `PROXMOX_MCP_CONFIG` in Cursor | Server can’t find file | Use an **absolute** path |
+| Backslashes only on Windows paths in JSON | Flaky startup | Prefer `C:/Users/...` forward slashes |
+| Edited `config.example.json` only | Still using empty/defaults | Copy to `config.json` and edit that |
 
 ### Smoke-test outside Cursor
 
@@ -215,10 +263,14 @@ The first run downloads dependencies into an isolated env. If the process starts
 
 ## 4. Wire it into Cursor
 
-Open Cursor MCP settings, or edit the global MCP file:
+Open Cursor MCP settings, or edit the MCP config file:
 
-- Windows: `C:\Users\<you>\.cursor\mcp.json`
-- macOS / Linux: `~/.cursor/mcp.json`
+| Scope | Path |
+|-------|------|
+| **User (global)** — all projects | Windows: `C:\Users\<you>\.cursor\mcp.json` · macOS/Linux: `~/.cursor/mcp.json` |
+| **Project** — this repo only | `.cursor/mcp.json` in the workspace (optional; use if you don’t want Proxmox tools in every chat) |
+
+Prefer **project** MCP config if the token is lab-only and you work on many unrelated repos.
 
 ### Recommended — uvx from a local checkout
 
@@ -269,6 +321,10 @@ uv pip install -e ".[dev]"
 Restart the MCP server in Cursor after `git pull` so new tools appear.
 
 > **Note vs older articles:** some guides set `PROXMOX_HOST`, `PROXMOX_TOKEN_VALUE`, etc. directly in `mcp.json`. This project expects **`PROXMOX_MCP_CONFIG`** pointing at the JSON file above.
+
+### Other MCP clients
+
+**Claude Desktop** can use the same server; see [`claude_desktop_config.json`](claude_desktop_config.json) in the repo as a starting point. Point `PROXMOX_MCP_CONFIG` at an absolute `config.json` and prefer `uvx --from <repo> proxmox-mcp-server` over bare `python` when possible.
 
 ---
 
@@ -334,6 +390,7 @@ Treat the MCP server like any other admin interface into the cluster.
 | Least privilege roles | A read-only token can’t wipe guests by accident |
 | Know what leaves the box | Cloud models may see tool outputs (hostnames, VM names, logs). Local LLMs keep more in-lab |
 | No secrets in chat | Put tokens in `config.json` / env, not in prompts |
+| Rotate / expire tokens | Revoke in UI if laptop lost; set token expiration when practical |
 | Lab first | Build trust on non-prod before pointing at production |
 
 Home labs are ideal for learning where AI+MCP helps (health checks, template clones, boring lookups) and where you still want a human (destructive deletes, firewall cuts, cluster join).
@@ -348,9 +405,12 @@ Home labs are ideal for learning where AI+MCP helps (health checks, template clo
 | `PROXMOX_MCP_CONFIG ... must be set` | Set `env.PROXMOX_MCP_CONFIG` to the absolute path of `config.json` |
 | Auth / 401 | Check `user`, `token_name`, and `token_value`; confirm token isn’t disabled |
 | Auth works but empty data / odd 403 | Privilege Separation is **Yes** but the **token** has no ACL — grant roles to `user@realm!tokenid`, or (lab only) set Privilege Separation to **No** |
+| `get_permissions` nearly empty | Same as above — fix token ACL / privsep |
 | 403 on HA / firewall / privileged ops | Token/user need a stronger role |
+| SSL / connection errors | Ping `:8006`; set `verify_ssl` correctly; check host firewall / VPN |
 | Tools missing after pull | Restart the **proxmox** MCP server in Cursor |
 | `ModuleNotFoundError: proxmox_mcp` | Prefer `uvx --from <repo>`; or set `PYTHONPATH` to `.../src` |
+| Green MCP but agent never calls tools | Explicitly say “use the Proxmox MCP tools”; confirm tool list is long (~128) in Cursor MCP settings |
 
 Local verification:
 

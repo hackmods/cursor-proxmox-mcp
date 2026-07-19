@@ -1,5 +1,17 @@
 # Changelog / research notes
 
+## 2026-07-19 — Setup guide + Privilege Separation depth
+
+**Why:** First-run auth is the #1 footgun. Virtualization Howto–style walkthroughs and this fork’s JSON config differ; operators often disable Privilege Separation without knowing why.
+
+**Shipped docs:**
+- `SETUP.md` — token/user/ACL walkthrough, privsep Yes vs No, realms, verify/`get_permissions`, network/SSL, config mistakes, project vs user `mcp.json`, rotation
+- `proxmox-config/README.md` — config field reference next to the example JSON
+- `.cursor/rules/proxmox-auth.mdc` — keep auth docs and `create_token` defaults aligned
+- Decisions D8 (privsep), D9 (SETUP as first-run SoT)
+
+**Operator quirk:** privsep=Yes + ACL only on the **user** → token auth “works” but returns empty/`403`. Fix = ACL the **token** (`user@realm!tokenid`), not disable privsep (unless lab shortcut).
+
 ## 2026-07-19 — Phase B + uvx QOL
 
 **Why:** Document the real local install path (`uvx` / `proxmox-mcp-server`) and close remaining safe/read-heavy API gaps (replication, SDN read, ACME read, certs, console tickets, pools, firewall aliases/ipsets).
