@@ -2,7 +2,24 @@
 
 ![cursor-proxmox-mcp Screenshot](./scr.png)
 
-Cursor focused Python-based Model Context Protocol (MCP) server for interacting with Proxmox virtualization platform with fixes and enhancements. 
+Cursor-focused Python MCP server for Proxmox — manage QEMU VMs and LXC containers (including **`create_lxc`** with `nesting=1` / features) from Cursor.
+
+**Fork:** [hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)
+
+## MCP tools (registered)
+
+| Tool | Purpose |
+|------|---------|
+| `get_nodes` | List cluster nodes |
+| `get_node_status` | Detailed status for one node |
+| `get_vms` | List VMs across the cluster |
+| `create_vm` | Create a QEMU VM |
+| `create_lxc` 🆕 | Create an LXC container (`features` default `nesting=1`) |
+| `execute_vm_command` | Run a command via QEMU guest agent |
+| `start_vm` / `stop_vm` / `shutdown_vm` / `reset_vm` | VM power control |
+| `delete_vm` | Delete a VM (optional force) |
+| `get_storage` | List storage pools |
+| `get_cluster_status` | Cluster health / status |
 
 ## 🆕 New Features and Improvements
 
@@ -32,7 +49,7 @@ Cursor focused Python-based Model Context Protocol (MCP) server for interacting 
   - Mirrors `create_vm` (node, vmid, CPU, memory, disk, storage auto-detect)
   - Supports container **features** such as `nesting=1` (default), plus `keyctl`, `fuse`, etc.
   - Optional root password and unprivileged container creation
-  - `get_containers` - List all LXC containers and their status
+  - Windows launcher: `start.bat` (sets `PROXMOX_MCP_CONFIG` + `PYTHONPATH=src`)
 
 - 📊 **Enhanced Monitoring and Display**
   - Improved storage pool status monitoring
@@ -65,13 +82,13 @@ Cursor focused Python-based Model Context Protocol (MCP) server for interacting 
 - 🔒 Secure token-based authentication with Proxmox
 - 🖥️ Complete VM lifecycle management (create, start, stop, reset, shutdown, delete)
 - 💻 VM console command execution
-- 🐳 LXC container management — including **`create_lxc`** with nesting/features support
+- 🐳 LXC container creation via **`create_lxc`** (nesting/features support)
 - 🗃️ Intelligent storage type detection (LVM/file-based)
 - 📝 Configurable logging system
 - ✅ Type-safe implementation with Pydantic
 - 🎨 Rich output formatting with customizable themes
 - 🌐 OpenAPI REST endpoints for integration
-- 📡 MCP tools including `create_vm` and `create_lxc`
+- 📡 MCP tools listed in the table above (including `create_vm` and `create_lxc`)
 
 
 ## Installation
@@ -189,9 +206,21 @@ source .venv/bin/activate  # Linux/macOS
 # OR
 .\.venv\Scripts\Activate.ps1  # Windows
 
-# Run the server
+# Run the server (set config first)
+export PROXMOX_MCP_CONFIG=proxmox-config/config.json   # Linux/macOS
+# OR
+$env:PROXMOX_MCP_CONFIG="proxmox-config\config.json"   # Windows PowerShell
 python -m proxmox_mcp.server
 ```
+
+### Windows / Cursor (`start.bat`)
+For Cursor on Windows, use the included launcher (also referenced from `~/.cursor/mcp.json`):
+
+```bat
+start.bat
+```
+
+It sets `PROXMOX_MCP_CONFIG=proxmox-config\config.json`, `PYTHONPATH=...\src`, and runs `python -m proxmox_mcp.server`. After adding tools like `create_lxc`, restart the **proxmox** MCP server in Cursor Settings → MCP so the new tools appear.
 
 ### OpenAPI Deployment (Production Ready)
 
@@ -385,14 +414,15 @@ POST /delete_vm
 
 ### Container Management Tools
 
-> **Highlight:** use **`create_lxc`** (documented above under VM Management Tools) to provision LXC containers with `features` such as `nesting=1`.
+#### create_lxc 🆕
+Documented above — primary LXC provisioning tool (`POST /nodes/{node}/lxc` via proxmoxer).
 
-#### get_containers 🆕
-List all LXC containers across the cluster.
+#### get_containers (planned)
+List all LXC containers across the cluster. Description exists in `definitions.py` but this tool is **not registered yet** in `server.py`.
 
-**API Endpoint:** `POST /get_containers`
+**Planned API Endpoint:** `POST /get_containers`
 
-**Example Response:**
+**Example Response (planned):**
 ```
 🐳 Containers
 
@@ -651,7 +681,8 @@ docker logs proxmox-mcp-api -f
 - [x] VM Creation (user requirement: 1 CPU + 2GB RAM + 10GB storage) 🆕
 - [x] VM Power Management (start VPN-Server ID:101) 🆕
 - [x] VM Deletion Feature 🆕
-- [x] Container Management (LXC) — including `create_lxc` with nesting/features 🆕
+- [x] Container Management (LXC) — `create_lxc` with nesting/features 🆕
+- [ ] `get_containers` tool registration (planned)
 - [x] Storage Compatibility (LVM/file-based)
 - [x] OpenAPI Integration (port 8811)
 - [x] Open WebUI Integration
