@@ -16,7 +16,7 @@ setup(
     package_dir={"": "src"},
     python_requires=">=3.9",
     install_requires=[
-        "mcp @ git+https://github.com/modelcontextprotocol/python-sdk.git",
+        "mcp>=0.2.0",
         "proxmoxer>=2.0.1,<3.0.0",
         "requests>=2.31.0,<3.0.0",
         "pydantic>=2.0.0,<3.0.0",
@@ -39,7 +39,7 @@ setup(
     author="Kevin",
     author_email="kevin@example.com",
     description="A Model Context Protocol server for interacting with Proxmox hypervisors",
-    long_description=open("README.md").read(),
+    long_description=open("README.md", encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     license="MIT",
     keywords=["proxmox", "mcp", "virtualization", "cline", "qemu", "lxc"],

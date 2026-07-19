@@ -27,7 +27,11 @@ Cursor focused Python-based Model Context Protocol (MCP) server for interacting 
   - `shutdown_vm` - Graceful shutdown
   - `reset_vm` - Restart virtual machines
 
-- 🐳 **New Container Support**
+- 🐳 **LXC Container Creation** 🆕
+  - Brand new `create_lxc` tool - Create LXC containers via the Proxmox LXC API (`POST /nodes/{node}/lxc`)
+  - Mirrors `create_vm` (node, vmid, CPU, memory, disk, storage auto-detect)
+  - Supports container **features** such as `nesting=1` (default), plus `keyctl`, `fuse`, etc.
+  - Optional root password and unprivileged container creation
   - `get_containers` - List all LXC containers and their status
 
 - 📊 **Enhanced Monitoring and Display**
@@ -36,10 +40,10 @@ Cursor focused Python-based Model Context Protocol (MCP) server for interacting 
   - Rich output formatting and themes
 
 - 🌐 **Complete OpenAPI Integration**
-  - 11 complete REST API endpoints
+  - REST API endpoints for VM and LXC workflows
   - Production-ready Docker deployment
   - Perfect Open WebUI integration
-  - Natural language VM creation support
+  - Natural language VM / LXC creation support
 
 - 🛡️ **Production-grade Security and Stability**
   - Enhanced error handling mechanisms
@@ -61,13 +65,13 @@ Cursor focused Python-based Model Context Protocol (MCP) server for interacting 
 - 🔒 Secure token-based authentication with Proxmox
 - 🖥️ Complete VM lifecycle management (create, start, stop, reset, shutdown, delete)
 - 💻 VM console command execution
-- 🐳 LXC container management support
+- 🐳 LXC container management — including **`create_lxc`** with nesting/features support
 - 🗃️ Intelligent storage type detection (LVM/file-based)
 - 📝 Configurable logging system
 - ✅ Type-safe implementation with Pydantic
 - 🎨 Rich output formatting with customizable themes
 - 🌐 OpenAPI REST endpoints for integration
-- 📡 11 fully functional API endpoints
+- 📡 MCP tools including `create_vm` and `create_lxc`
 
 
 ## Installation
@@ -251,7 +255,7 @@ For Cline users, add this configuration to your MCP settings file (typically at 
 
 ## Available Tools & API Endpoints
 
-The server provides 11 comprehensive MCP tools and corresponding REST API endpoints:
+The server provides comprehensive MCP tools for VM and LXC management:
 
 ### VM Management Tools
 
@@ -301,6 +305,52 @@ Content-Type: application/json
 🔧 Task ID: UPID:pve:001AB729:0442E853:682FF380:qmcreate:200:root@pam!mcp
 ```
 
+#### create_lxc 🆕
+Create a new LXC container via the Proxmox LXC API (`POST /nodes/{node}/lxc`), mirroring `create_vm` with container-specific options.
+
+**Parameters:**
+- `node` (string, required): Name of the node
+- `vmid` (string, required): ID for the new container
+- `hostname` (string, required): Hostname for the container
+- `ostemplate` (string, required): OS template path (e.g. `local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst`)
+- `cpus` (integer, required): Number of CPU cores (1-32)
+- `memory` (integer, required): Memory in MB (512-131072)
+- `disk_size` (integer, required): Root filesystem size in GB (4-1000)
+- `storage` (string, optional): Storage pool for rootfs (auto-detects `rootdir` storage)
+- `features` (string, optional): LXC features string — **defaults to `nesting=1`**; e.g. `nesting=1,keyctl=1,fuse=1`
+- `password` (string, optional): Root password
+- `unprivileged` (boolean, optional): Create unprivileged container (default: `true`)
+
+**Example (MCP tool call):**
+```json
+{
+    "node": "pve",
+    "vmid": "210",
+    "hostname": "dev-lxc",
+    "ostemplate": "local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst",
+    "cpus": 2,
+    "memory": 2048,
+    "disk_size": 8,
+    "features": "nesting=1"
+}
+```
+
+**Example Response:**
+```
+🎉 LXC container 210 created successfully!
+
+📋 Container Configuration:
+  • Hostname: dev-lxc
+  • Node: pve
+  • Container ID: 210
+  • CPU Cores: 2
+  • Memory: 2048 MB (2.0 GB)
+  • Rootfs: 8 GB (local-lvm)
+  • Features: nesting=1
+  • Unprivileged: True
+  • Network: eth0 (bridge=vmbr0, dhcp)
+```
+
 #### VM Power Management 🆕
 
 **start_vm**: Start a virtual machine
@@ -333,7 +383,9 @@ POST /delete_vm
 {"node": "pve", "vmid": "200", "force": false}
 ```
 
-### 🆕 Container Management Tools
+### Container Management Tools
+
+> **Highlight:** use **`create_lxc`** (documented above under VM Management Tools) to provision LXC containers with `features` such as `nesting=1`.
 
 #### get_containers 🆕
 List all LXC containers across the cluster.
@@ -599,7 +651,7 @@ docker logs proxmox-mcp-api -f
 - [x] VM Creation (user requirement: 1 CPU + 2GB RAM + 10GB storage) 🆕
 - [x] VM Power Management (start VPN-Server ID:101) 🆕
 - [x] VM Deletion Feature 🆕
-- [x] Container Management (LXC) 🆕
+- [x] Container Management (LXC) — including `create_lxc` with nesting/features 🆕
 - [x] Storage Compatibility (LVM/file-based)
 - [x] OpenAPI Integration (port 8811)
 - [x] Open WebUI Integration
