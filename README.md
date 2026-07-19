@@ -1,12 +1,10 @@
-# cursor-proxmox-mcp - Proxmox MCP Server for Cursor with OpenAPI (optional)
+# cursor-proxmox-mcp
 
-![cursor-proxmox-mcp Screenshot](./scr.png)
+Cursor-focused Python MCP server for [Proxmox](https://www.proxmox.com/) — manage QEMU VMs and LXC containers from Cursor (optional OpenAPI/Open WebUI).
 
-Cursor-focused Python MCP server for Proxmox — manage QEMU VMs and LXC containers (including **`create_lxc`** with `nesting=1` / features) from Cursor.
+**Repo:** [hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)
 
-**Fork:** [hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)
-
-## MCP tools (registered)
+## MCP tools
 
 | Tool | Purpose |
 |------|---------|
@@ -14,81 +12,40 @@ Cursor-focused Python MCP server for Proxmox — manage QEMU VMs and LXC contain
 | `get_node_status` | Detailed status for one node |
 | `get_vms` | List VMs across the cluster |
 | `create_vm` | Create a QEMU VM |
-| `create_lxc` 🆕 | Create an LXC container (`features` default `nesting=1`) |
+| `create_lxc` | Create an LXC container (`features` defaults to `nesting=1`) |
 | `execute_vm_command` | Run a command via QEMU guest agent |
 | `start_vm` / `stop_vm` / `shutdown_vm` / `reset_vm` | VM power control |
 | `delete_vm` | Delete a VM (optional force) |
 | `get_storage` | List storage pools |
 | `get_cluster_status` | Cluster health / status |
 
-## 🆕 New Features and Improvements
+`get_containers` is planned but not registered yet.
 
-## All Tests Pass
+## What's in this fork
 
-- Previously tests would not complete so I fixed them up
+- VM lifecycle: `create_vm`, power controls, `delete_vm`, storage auto-detect
+- LXC creation: `create_lxc` via `POST /nodes/{node}/lxc`, with `features` (e.g. `nesting=1,keyctl=1`)
+- Windows-friendly launch: prefer Cursor `mcp.json` → Python directly; `start.bat` is a manual fallback (no stdout noise)
+- OpenAPI/Open WebUI via `mcpo` (optional)
+- Tests fixed so they complete
 
-# Continued Support
-
-- I need this to manage my own proxmox instances so I will continue to publish updates and changes as I see fit.
-
-### Major enhancements compared to the original version:
-
-- ✨ **Complete VM Lifecycle Management**
-  - Brand new `create_vm` tool - Support for creating virtual machines with custom configurations
-  - New `delete_vm` tool - Safe VM deletion (with force deletion option)
-  - Enhanced intelligent storage type detection (LVM/file-based)
-
-- 🔧 **Extended Power Management Features**
-  - `start_vm` - Start virtual machines
-  - `stop_vm` - Force stop virtual machines
-  - `shutdown_vm` - Graceful shutdown
-  - `reset_vm` - Restart virtual machines
-
-- 🐳 **LXC Container Creation** 🆕
-  - Brand new `create_lxc` tool - Create LXC containers via the Proxmox LXC API (`POST /nodes/{node}/lxc`)
-  - Mirrors `create_vm` (node, vmid, CPU, memory, disk, storage auto-detect)
-  - Supports container **features** such as `nesting=1` (default), plus `keyctl`, `fuse`, etc.
-  - Optional root password and unprivileged container creation
-  - Windows launcher: `start.bat` (sets `PROXMOX_MCP_CONFIG` + `PYTHONPATH=src`)
-
-- 📊 **Enhanced Monitoring and Display**
-  - Improved storage pool status monitoring
-  - More detailed cluster health status checks
-  - Rich output formatting and themes
-
-- 🌐 **Complete OpenAPI Integration**
-  - REST API endpoints for VM and LXC workflows
-  - Production-ready Docker deployment
-  - Perfect Open WebUI integration
-  - Natural language VM / LXC creation support
-
-- 🛡️ **Production-grade Security and Stability**
-  - Enhanced error handling mechanisms
-  - Comprehensive parameter validation
-  - Production-level logging
-  - Complete unit test coverage
+Maintained for personal Proxmox + Cursor use; updates land here as needed.
 
 ## Built With
 
 - [Cursor](https://cursor.com)
-- [Proxmoxer](https://github.com/proxmoxer/proxmoxer) - Python wrapper for Proxmox API
-- [MCP SDK](https://github.com/modelcontextprotocol/sdk) - Model Context Protocol SDK
-- [Pydantic](https://docs.pydantic.dev/) - Data validation using Python type annotations
+- [Proxmoxer](https://github.com/proxmoxer/proxmoxer) — Proxmox API wrapper
+- [MCP SDK](https://github.com/modelcontextprotocol/sdk)
+- [Pydantic](https://docs.pydantic.dev/)
 
 ## Features
 
-- 🤖 Full integration with Cursor and Open WebUI
-- 🛠️ Built with the official MCP SDK
-- 🔒 Secure token-based authentication with Proxmox
-- 🖥️ Complete VM lifecycle management (create, start, stop, reset, shutdown, delete)
-- 💻 VM console command execution
-- 🐳 LXC container creation via **`create_lxc`** (nesting/features support)
-- 🗃️ Intelligent storage type detection (LVM/file-based)
-- 📝 Configurable logging system
-- ✅ Type-safe implementation with Pydantic
-- 🎨 Rich output formatting with customizable themes
-- 🌐 OpenAPI REST endpoints for integration
-- 📡 MCP tools listed in the table above (including `create_vm` and `create_lxc`)
+- Token auth to Proxmox
+- QEMU VM create / power / delete / guest-agent commands
+- LXC create with nesting and related features
+- Storage type detection (LVM vs file-based)
+- Typed config, logging, formatted tool output
+- Optional OpenAPI REST proxy for Open WebUI
 
 
 ## Installation
@@ -334,8 +291,8 @@ Content-Type: application/json
 🔧 Task ID: UPID:pve:001AB729:0442E853:682FF380:qmcreate:200:root@pam!mcp
 ```
 
-#### create_lxc 🆕
-Create a new LXC container via the Proxmox LXC API (`POST /nodes/{node}/lxc`), mirroring `create_vm` with container-specific options.
+#### create_lxc
+Create a new LXC container via the Proxmox LXC API (`POST /nodes/{node}/lxc`).
 
 **Parameters:**
 - `node` (string, required): Name of the node
@@ -414,24 +371,11 @@ POST /delete_vm
 
 ### Container Management Tools
 
-#### create_lxc 🆕
-Documented above — primary LXC provisioning tool (`POST /nodes/{node}/lxc` via proxmoxer).
+#### create_lxc
+See full parameter docs above. Creates via Proxmox `POST /nodes/{node}/lxc` (proxmoxer).
 
 #### get_containers (planned)
-List all LXC containers across the cluster. Description exists in `definitions.py` but this tool is **not registered yet** in `server.py`.
-
-**Planned API Endpoint:** `POST /get_containers`
-
-**Example Response (planned):**
-```
-🐳 Containers
-
-🐳 nginx-server (ID: 200)
-  • Status: RUNNING
-  • Node: pve
-  • CPU Cores: 2
-  • Memory: 1.5 GB / 2.0 GB (75.0%)
-```
+Not registered in `server.py` yet. When added, it will list LXC containers across the cluster.
 
 ### Monitoring Tools
 
@@ -674,32 +618,13 @@ tail -f proxmox_mcp.log
 docker logs proxmox-mcp-api -f
 ```
 
-## Deployment Status
+## Status
 
-### ✅ Feature Completion: 100%
-
-- [x] VM Creation (user requirement: 1 CPU + 2GB RAM + 10GB storage) 🆕
-- [x] VM Power Management (start VPN-Server ID:101) 🆕
-- [x] VM Deletion Feature 🆕
-- [x] Container Management (LXC) — `create_lxc` with nesting/features 🆕
-- [ ] `get_containers` tool registration (planned)
-- [x] Storage Compatibility (LVM/file-based)
-- [x] OpenAPI Integration (port 8811)
-- [x] Open WebUI Integration
-- [x] Error Handling & Validation
-- [x] Complete Documentation & Testing
-
-### Production Ready!
-
-**ProxmoxMCP Plus is now fully ready for production use!**
-
-When users say **"Can you create a VM with 1 cpu core and 2 GB ram with 10GB of storage disk"**, the AI assistant can:
-
-1. 📞 Call the `create_vm` API
-2. 🔧 Automatically select appropriate storage and format
-3. 🎯 Create VMs that match requirements
-4. 📊 Return detailed configuration information
-5. 💡 Provide next-step recommendations
+- [x] `create_vm` / power tools / `delete_vm`
+- [x] `create_lxc` with nesting/features
+- [ ] `get_containers` registration
+- [x] LVM / file storage handling
+- [x] Optional OpenAPI (`mcpo`, port 8811)
 
 ## Development
 
@@ -716,15 +641,4 @@ MIT License
 
 ## Acknowledgments
 
-This project is built upon the excellent open-source project [ProxmoxMCP](https://github.com/RekklesNA/ProxmoxMCP-Plus) by [@RekklesNA](https://github.com/RekklesNA). Thanks to the original author for providing the foundational framework and creative inspiration! I will continue to update it specifically for usage with Cursor IDE.
-
-
-## Special Thanks
-- Thanks to [@RekklesNA](https://github.com/RekklesNA) for the enhancements
-- Thanks to [@canvrno](https://github.com/canvrno) for the excellent foundational project [ProxmoxMCP](https://github.com/canvrno/ProxmoxMCP)
-- Thanks to the Proxmox community for providing the powerful virtualization platform
-- Thanks to all contributors and users for their support
-
----
-
-**Ready to Deploy!** 🎉 Your enhanced Proxmox MCP service with OpenAPI integration is ready for production use.
+Based on [ProxmoxMCP](https://github.com/RekklesNA/ProxmoxMCP-Plus) / [canvrno/ProxmoxMCP](https://github.com/canvrno/ProxmoxMCP). Continued for Cursor IDE + personal Proxmox use.
