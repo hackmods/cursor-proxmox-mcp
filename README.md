@@ -5,7 +5,7 @@
 [![PyPI](https://img.shields.io/pypi/v/cursor-proxmox-mcp)](https://pypi.org/project/cursor-proxmox-mcp/)
 [![GHCR](https://img.shields.io/badge/GHCR-cursor--proxmox--mcp-blue)](https://github.com/hackmods/cursor-proxmox-mcp/pkgs/container/cursor-proxmox-mcp)
 
-**Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 170 tools covering QEMU VMs (incl. guest-agent network/file push + `qm_set_vm`), LXC (incl. `provision_lxc`, `bootstrap_docker_lxc`, crun Path B, DNS/SSH helpers), unified guest power, storage admin, cluster/tasks, snapshots, backups (incl. scheduled jobs), migration, HA, firewall (incl. IPSet CIDRs), access control, replication, SDN (read), ACME (read), pools, and console tickets. v1.4.0 ships Phase F.1 VM parity + create `wait=` + optional inventory probes.
+**Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 170 tools covering QEMU VMs (incl. guest-agent network/file push + `qm_set_vm`), LXC (incl. `provision_lxc`, `bootstrap_docker_lxc`, crun Path B, DNS/SSH helpers), unified guest power, storage admin, cluster/tasks, snapshots, backups (incl. scheduled jobs), migration, HA, firewall (incl. IPSet CIDRs), access control, replication, SDN (read), ACME (read), pools, and console tickets. **v1.5.0** adds `provision_lxc` and create-time LXC tags/onboot/description (r11–r13 since v1.4.0).
 
 **Repo:** [hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)
 

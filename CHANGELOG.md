@@ -7,10 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-07-19
+
 ### Added
 
 - **provision_lxc + create knobs (rev r13):** `provision_lxc` one-shot create→start→SSH→IP; `create_lxc` `onboot`/`description`/`tags`; Debian `wget` tip on `execute_lxc_command` (**170 tools**).
-- **Post-r11 (rev r12):** structured ACL denials (HA/firewall/access/SDN/VM); `configure_lxc_ssh`, `get_docker_lxc_status`, `bootstrap_docker_lxc`; `qm_set_vm`; VM `onboot`/`description`/`tags` on create/update (**169 tools**).
+- **Post-r11 (rev r12):** structured ACL denials (HA/firewall/access/SDN/VM); `configure_lxc_ssh`, `get_docker_lxc_status`, `bootstrap_docker_lxc`; `qm_set_vm`; VM `onboot`/`description`/`tags` on create/update.
 - **Docker LXC Path B (rev r11):** `prepare_lxc_for_docker(docker_mode=auto|keyctl|crun)` with modern crun fallback; `configure_lxc_dns`; `pct_set_lxc`; create `nameserver`/`searchdomain`.
 
 ### Notes
