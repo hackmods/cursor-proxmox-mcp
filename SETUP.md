@@ -154,7 +154,7 @@ After creation (and after wiring MCP), confirm permissions three ways:
 - **Interactive consoles:** Proxmox documents that some VM/system **console** endpoints require a real user session and **cannot** be used via API token. This MCP still **mints** VNC/SPICE/termproxy *tickets* where the API allows; opening a full interactive console may still need UI/password auth depending on version and endpoint.
 - **Guest agent exec** (`execute_vm_command`) needs the QEMU guest agent inside the VM — permissions alone are not enough.
 - **LXC exec** (`execute_lxc_command`) needs opt-in **SSH + `pct exec`** on the node (Proxmox has no REST LXC exec API). See [SSH for LXC exec](#ssh-for-lxc-exec-opt-in) below.
-- **`keyctl` / nested features on LXC** often need privileges beyond a narrow VM role (often elevated / historically `root@pam`). The tool does **not** silently strip unsupported flags — Proxmox will reject them.
+- **`keyctl` / nested features on LXC** often need privileges beyond a narrow VM role (often elevated / historically `root@pam`). The tool does **not** silently strip unsupported flags — on 403 you get structured `feature_acl_denied` with `recommended_fallback: crun`. Use `prepare_lxc_for_docker(docker_mode=auto|crun)` or `pct_set_lxc` when host SSH is root-capable.
 
 ---
 
@@ -254,7 +254,7 @@ Do **not** commit `config.json` — it holds credentials. It is gitignored (`pro
 
 ### SSH for LXC exec (opt-in)
 
-Proxmox **does not** expose a REST API to run shell inside LXC (unlike QEMU guest-agent). `execute_lxc_command`, `set_lxc_password`, `set_lxc_ssh_keys`, `prepare_lxc_for_docker`, `push_to_lxc` / `pull_from_lxc`, and runtime IPs from `get_lxc_network` use host-side `pct` over SSH from the machine running Cursor. Call `get_mcp_capabilities` after reload to verify.
+Proxmox **does not** expose a REST API to run shell inside LXC (unlike QEMU guest-agent). `execute_lxc_command`, `set_lxc_password`, `set_lxc_ssh_keys`, `prepare_lxc_for_docker`, `configure_lxc_dns`, `pct_set_lxc`, `push_to_lxc` / `pull_from_lxc`, and runtime IPs from `get_lxc_network` use host-side `pct` over SSH from the machine running Cursor. Call `get_mcp_capabilities` after reload to verify.
 
 **Host SSH ≠ guest SSH.** This section is about SSH **to the Proxmox node** so MCP can run `pct`. Guest access into a CT (`ssh root@<ct-ip>`) uses `ssh_public_keys` on `create_lxc` or `set_lxc_ssh_keys` — that is separate and does **not** replace host SSH below.
 
@@ -441,26 +441,25 @@ Typical tool flow:
 
 ### Provision a nested Docker LXC (end-to-end)
 
-`create_lxc` only provisions an OS template. Nesting/features do **not** install Docker or publish :80. Use `prepare_lxc_for_docker` for the Proxmox-side AppArmor/nesting fix (D24), then smoke with **`docker run`**, not merely `docker --version`.
+`create_lxc` only provisions an OS template. Nesting/features do **not** install Docker or publish :80. Use `prepare_lxc_for_docker` for Proxmox-side prep (D24): **Path A** `nesting+keyctl` + stock runc when ACL allows; **Path B** `docker_mode=auto|crun` installs modern **crun** as Docker `default-runtime` when keyctl is denied (typical privsep tokens). Smoke with **`docker run`**, not merely `docker --version`. Do not claim Docker-ready with nesting-only + stock runc.
 
 **Prerequisites:** config `ssh.enabled=true` + host key trust (paramiko is core). Prefer `ssh_public_keys` on create for guest SSH. Call `get_mcp_capabilities` after reload.
 
 Example prompt:
 
-> Using Proxmox MCP tools only: on node `pve1`, pick the next free VMID, list OS templates and prefer Ubuntu if available, create an unprivileged LXC with `docker_ready=true` (or features `nesting=1,keyctl=1`), bridge `vmbr0`, static or DHCP IP, and my OpenSSH public key via `ssh_public_keys`. Wait for create with `wait_for_task`, start the container, confirm IP with `get_lxc_network`, call `prepare_lxc_for_docker`, **stop then start** the CT if restart_required, then `execute_lxc_command` to install Docker if needed and run `docker run --rm -p 8080:80 nginx:alpine`. Do not claim success until that smoke works. Use `push_to_lxc` for app files.
+> Using Proxmox MCP tools only: on node `pve1`, pick the next free VMID, list OS templates and prefer Ubuntu if available, create an unprivileged LXC with `docker_ready=true`, `nameserver=8.8.8.8 9.9.9.9`, bridge `vmbr0`, and my OpenSSH public key via `ssh_public_keys`. Wait for create with `wait_for_task`, start the container, confirm IP with `get_lxc_network`, optionally `configure_lxc_dns`, call `prepare_lxc_for_docker(docker_mode=auto, install_docker=true, smoke_test=true)`, **stop then start** the CT if restart_required, and re-run smoke if needed. Prefer crun fallback automatically if keyctl is denied. Use `pct_set_lxc` only when REST cannot set features/nameserver but host SSH is root-capable.
 
 Expected tool sequence:
 
 1. `get_mcp_capabilities` (optional probe_node) → `get_nodes` / `get_next_vmid`
 2. `list_os_templates` (`filter=ubuntu`) → optional `download_url_to_storage`
-3. `create_lxc` with **`docker_ready=true`** or `features=nesting=1,keyctl=1`, **`ssh_public_keys=...`**
+3. `create_lxc` with **`docker_ready=true`**, prefer **`nameserver=8.8.8.8 9.9.9.9`**, **`ssh_public_keys=...`**
 4. `wait_for_task` on the create UPID
-5. `start_lxc` → `get_lxc_network`
+5. `start_lxc` → `get_lxc_network` → optional `configure_lxc_dns`
 6. If password SSH needed: `set_lxc_password(..., enable_password_ssh=true)`
-7. `prepare_lxc_for_docker` → if `restart_required`: `stop_lxc` → `start_lxc` (full stop/start, not reboot alone)
-8. Optional `install_docker=true` on prepare, or `execute_lxc_command` to install
-9. Smoke: `docker run --rm -p 8080:80 nginx:alpine` then curl
-10. `push_to_lxc` for app tarball → extract/build via `execute_lxc_command`
+7. `prepare_lxc_for_docker(docker_mode=auto, install_docker=true?, smoke_test=true?)` → if `restart_required`: `stop_lxc` → `start_lxc` (full stop/start, not reboot alone)
+8. Confirm status `docker_path` is `keyctl` or `crun`; smoke `docker run --rm hello-world`
+9. `push_to_lxc` for app tarball → extract/build via `execute_lxc_command`
 
 If host `lxc-pve` is older than **6.0.5-2**, prepare applies the dual AppArmor workaround. Prefer upgrading the host. Do **not** set bare `lxc.apparmor.profile: unconfined` without the `/dev/null` AppArmor bind.
 

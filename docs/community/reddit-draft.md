@@ -1,18 +1,18 @@
 <!-- channel: reddit -->
 <!-- version: 1.4.0 -->
-<!-- tools: 163 -->
+<!-- tools: 165 -->
 
 # Reddit — draft post
 
 **Subreddit ideas:** r/Proxmox, r/selfhosted, r/cursor (where allowed)
 
-**Title:** Cursor MCP for Proxmox VE — 163 tools (VM/LXC day-2, HA, firewall, backups)
+**Title:** Cursor MCP for Proxmox VE — 165 tools (VM/LXC day-2, HA, firewall, backups)
 
 **Body:**
 
 Built [cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp) so Cursor agents can operate a Proxmox lab end-to-end without leaving chat.
 
-- **163 tools** (v1.4.0): QEMU + LXC lifecycle, guest-agent network/file helpers, Docker-in-LXC prepare + `pct` push/pull, optional create `wait=`, snapshots/backups/jobs, migrate/HA, firewall + IPSets, users/tokens/ACL, replication, SDN/ACME read, pools, console tickets
+- **165 tools** (v1.4.0+): QEMU + LXC lifecycle, guest-agent network/file helpers, Docker-in-LXC prepare (keyctl/crun) + DNS + allowlisted `pct set`, optional create `wait=`, snapshots/backups/jobs, migrate/HA, firewall + IPSets, users/tokens/ACL, replication, SDN/ACME read, pools, console tickets
 - Install with `uvx cursor-proxmox-mcp` once on PyPI, or `uvx --from` a checkout / GHCR image
 - First-run: [SETUP.md](https://github.com/hackmods/cursor-proxmox-mcp/blob/main/SETUP.md) (token + Privilege Separation notes + host SSH for LXC exec)
 

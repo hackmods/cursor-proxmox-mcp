@@ -1,5 +1,13 @@
 # Changelog / research notes
 
+## 2026-07-19 — Docker LXC crun Path B (rev r11) — 165 tools
+
+**Why:** FeedForge CT107 lab — `keyctl=1` 403 under privsep token; stock runc fails without keyctl (`ip_unprivileged_port_start`); gateway DNS/IPv6 flaky; no host `pct set` escape hatch for agents.
+
+**Shipped:** `prepare_lxc_for_docker(docker_mode=auto|keyctl|crun)` with pinned crun 1.21 default-runtime; structured `feature_acl_denied` on `update_lxc_features` / prepare; `configure_lxc_dns`; allowlisted `pct_set_lxc`; `create_lxc` `nameserver`/`searchdomain` + docker_ready keyctl→nesting retry (`needs_crun`); D24 Path A/B.
+
+**Out of scope:** `bootstrap_docker_lxc` orchestrator; free-form `execute_host_command`; privileged CT happy path; auto-install Docker on create.
+
 ## 2026-07-19 — Community announce tooling (rev r10) — 163 tools
 
 **Why:** Make release announcements repeatable; keep Phase C deferred (D26).

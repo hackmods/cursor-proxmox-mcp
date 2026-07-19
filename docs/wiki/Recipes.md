@@ -15,15 +15,16 @@ Do **not** claim the guest is “ready for apps” until you verify services you
 
 ## Nested Docker on LXC
 
-Supported path (Phase F):
+Supported path (D24):
 
-1. `create_lxc` with `docker_ready=true` (or `features=nesting=1,keyctl=1`) + `ssh_public_keys`
-2. `wait_for_task` (or `wait=true` on create) → `start_lxc` → confirm IP
-3. `prepare_lxc_for_docker` — host `lxc-pve` gate + dual AppArmor workaround if unpatched
+1. `create_lxc` with `docker_ready=true` + `nameserver=8.8.8.8 9.9.9.9` + `ssh_public_keys` (keyctl ACL deny → nesting-only + `needs_crun`)
+2. `wait_for_task` (or `wait=true` on create) → `start_lxc` → `get_lxc_network` → optional `configure_lxc_dns`
+3. `prepare_lxc_for_docker(docker_mode=auto, install_docker=true?, smoke_test=true?)` — Path A keyctl+runc or Path B nesting+crun
 4. If `restart_required`: **`stop_lxc` then `start_lxc`** (not reboot alone)
-5. Install Docker if needed (`install_docker=true` or `execute_lxc_command`)
-6. Smoke: `docker run --rm nginx:alpine` — **not** merely `docker --version`
-7. `push_to_lxc` for app files
+5. Confirm status `docker_path` (`keyctl` or `crun`); smoke `docker run --rm hello-world` — **not** merely `docker --version`
+6. `push_to_lxc` for app files; use `pct_set_lxc` only when REST cannot set features/nameserver
+
+Do **not** claim Docker-ready with nesting-only + stock runc.
 
 Prompt-style recipe: [SETUP.md — Provision a nested Docker LXC](https://github.com/hackmods/cursor-proxmox-mcp/blob/main/SETUP.md).
 

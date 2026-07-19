@@ -9,6 +9,20 @@ from typing import Any, Dict, List, Optional
 DEFAULT_BRIDGE = "vmbr0"
 DEFAULT_LXC_FEATURES = "nesting=1"
 DEFAULT_NET0 = f"virtio,bridge={DEFAULT_BRIDGE}"
+DEFAULT_DOCKER_NAMESERVERS = "8.8.8.8 9.9.9.9"
+
+# Host ``pct set`` keys exposed by ``pct_set_lxc`` (no free-form shell).
+PCT_SET_ALLOWED_KEYS = frozenset(
+    {"features", "nameserver", "searchdomain", "onboot", "description", "tags"}
+)
+
+# Pinned crun release for Docker-in-LXC Path B (Ubuntu jammy apt crun 0.17 is too old).
+CRUN_VERSION = "1.21"
+CRUN_BIN_PATH = "/usr/local/bin/crun"
+CRUN_DOWNLOAD_URL = (
+    f"https://github.com/containers/crun/releases/download/{CRUN_VERSION}/"
+    f"crun-{CRUN_VERSION}-linux-amd64"
+)
 
 # Appended when *_vm tools miss a guest that may be an LXC
 QEMU_NOT_FOUND_HINT = (
@@ -94,6 +108,129 @@ def privilege_required_note(context: str = "this operation") -> str:
         f"💡 Note: {context} often requires elevated privileges "
         "(e.g. Sys.Modify / root@pam). A 403 usually means token ACL, not a missing tool."
     )
+
+
+def parse_feature_flags(features: str) -> set[str]:
+    """Parse ``nesting=1,keyctl=1`` into ``{'nesting', 'keyctl'}``."""
+    flags: set[str] = set()
+    for part in str(features or "").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        key = part.split("=", 1)[0].strip().lower()
+        if key:
+            flags.add(key)
+    return flags
+
+
+def is_permission_denied_error(error: BaseException) -> bool:
+    """True when an exception looks like HTTP 403 / permission denied."""
+    lower = str(error).lower()
+    return (
+        "permission denied" in lower
+        or "403" in lower
+        or "changing feature flags" in lower
+        or "only allowed for root@pam" in lower
+    )
+
+
+def feature_acl_denied_message(
+    vmid: str,
+    requested: str,
+    *,
+    cause: str = "",
+) -> str:
+    """Structured agent-facing error when keyctl/fuse cannot be set (D24 Path B)."""
+    import json
+
+    flags = parse_feature_flags(requested)
+    gated = sorted(flags & {"keyctl", "fuse"})
+    allowed = sorted(flags - {"keyctl", "fuse"}) or ["nesting"]
+    payload = {
+        "error": "feature_acl_denied",
+        "vmid": str(vmid),
+        "requested": requested,
+        "denied": gated or sorted(flags),
+        "allowed": allowed,
+        "docker_implication": "stock_runc_will_fail",
+        "recommended_fallback": "crun",
+        "host_fix": f"pct set {vmid} -features nesting=1,keyctl=1",
+        "mcp_fallback": (
+            "pct_set_lxc(features='nesting=1,keyctl=1') if host SSH is root-capable; "
+            "else prepare_lxc_for_docker(docker_mode='auto'|'crun') for nesting+crun"
+        ),
+    }
+    if cause:
+        payload["cause"] = sanitize_error_snippet(cause)
+    return (
+        "feature_acl_denied — cannot set privilege-gated LXC features "
+        f"(denied={gated or sorted(flags)}).\n"
+        + json.dumps(payload, indent=2)
+    )
+
+
+def sanitize_error_snippet(text: str, limit: int = 400) -> str:
+    """Truncate a cause string for structured errors (no secret scrub beyond length)."""
+    cleaned = " ".join(str(text or "").split())
+    if len(cleaned) <= limit:
+        return cleaned
+    return cleaned[: limit - 3] + "..."
+
+
+def normalize_docker_mode(mode: Optional[str]) -> str:
+    """Validate ``docker_mode`` for prepare_lxc_for_docker."""
+    value = (mode or "auto").strip().lower()
+    if value not in ("auto", "keyctl", "crun"):
+        raise ValueError(
+            f"docker_mode must be auto|keyctl|crun (got {mode!r})"
+        )
+    return value
+
+
+def crun_daemon_json(
+    *,
+    nameservers: Optional[List[str]] = None,
+    crun_path: str = CRUN_BIN_PATH,
+) -> str:
+    """``/etc/docker/daemon.json`` body for Path B (crun default-runtime)."""
+    import json
+
+    dns = nameservers or DEFAULT_DOCKER_NAMESERVERS.split()
+    return json.dumps(
+        {
+            "runtimes": {"crun": {"path": crun_path}},
+            "default-runtime": "crun",
+            "dns": dns,
+        },
+        indent=2,
+    )
+
+
+def build_crun_install_script(
+    *,
+    nameservers: Optional[List[str]] = None,
+) -> str:
+    """Guest shell script: install modern crun + set Docker default-runtime (idempotent)."""
+    daemon = crun_daemon_json(nameservers=nameservers)
+    # Avoid nested quotes issues in pct exec by using a heredoc.
+    return f"""set -e
+export DEBIAN_FRONTEND=noninteractive
+if command -v docker >/dev/null 2>&1; then
+  rt=$(docker info -f '{{{{.DefaultRuntime}}}}' 2>/dev/null || true)
+  if [ "$rt" = "crun" ] && [ -x {CRUN_BIN_PATH} ]; then
+    echo "crun already default-runtime"
+    exit 0
+  fi
+fi
+curl -fsSL -o {CRUN_BIN_PATH} {CRUN_DOWNLOAD_URL}
+chmod +x {CRUN_BIN_PATH}
+mkdir -p /etc/docker
+cat >/etc/docker/daemon.json <<'EOF'
+{daemon}
+EOF
+systemctl restart docker 2>/dev/null || service docker restart 2>/dev/null || true
+docker info -f '{{{{.DefaultRuntime}}}}'
+"""
 
 
 def validate_download_url(url: str) -> str:

@@ -1,6 +1,6 @@
 # Next expansion phases
 
-Living Cursor note for what to build after the current **163-tool** baseline.
+Living Cursor note for what to build after the current **165-tool** baseline.
 Update this file when priorities change; keep [proxmox-api-coverage.md](proxmox-api-coverage.md), [README.md](../../README.md), and [docs/api-coverage.md](../../docs/api-coverage.md) in sync.
 
 **Baseline (done):** Formal Cursor ↔ Proxmox MCP — guest lifecycle, storage, HA, firewall, access, replication, SDN read, ACME read, pools, console tickets, inventory-locked CI.
@@ -60,7 +60,7 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 | P1 | Exec/SSH QOL: timeouts, field aliases, features pending footer | done |
 | Docs | SETUP/Recipes success = `docker run`, not `docker --version` | done |
 
-**Docker-in-LXC (D24):** CVE-2025-52881 / runc + nested AppArmor → prefer host `lxc-pve ≥ 6.0.5-2`; else dual raw lines via host conf + stop/start; never bare `unconfined`; Docker `--privileged`/`--sysctl` do not fix.
+**Docker-in-LXC (D24):** CVE-2025-52881 / runc + nested AppArmor → prefer host `lxc-pve ≥ 6.0.5-2`; else dual raw lines via host conf + stop/start; never bare `unconfined`; Docker `--privileged`/`--sysctl` do not fix. **Path B:** when keyctl ACL denied, nesting + modern crun default-runtime (`docker_mode=auto|crun`).
 
 ---
 

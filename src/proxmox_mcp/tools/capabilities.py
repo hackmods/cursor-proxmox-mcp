@@ -15,6 +15,8 @@ DAY2_TOOLS = frozenset(
     {
         "get_mcp_capabilities",
         "prepare_lxc_for_docker",
+        "configure_lxc_dns",
+        "pct_set_lxc",
         "push_to_lxc",
         "pull_from_lxc",
         "deploy_static_nginx",

@@ -1,18 +1,18 @@
 <!-- channel: github -->
 <!-- version: 1.4.0 -->
-<!-- tools: 163 -->
+<!-- tools: 165 -->
 
 # GitHub Discussion — draft (Announcements)
 
-**Title:** cursor-proxmox-mcp v1.4.0 — 163 tools (LXC day-2 + VM network/push)
+**Title:** cursor-proxmox-mcp — 165 tools (LXC Docker crun Path B + VM network/push)
 
 **Body:**
 
 ## Summary
 
-**[cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)** v1.4.0 is on [PyPI](https://pypi.org/project/cursor-proxmox-mcp/1.4.0/) and GHCR (`ghcr.io/hackmods/cursor-proxmox-mcp:1.4.0`).
+**[cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)** is on [PyPI](https://pypi.org/project/cursor-proxmox-mcp/) and GHCR (`ghcr.io/hackmods/cursor-proxmox-mcp`).
 
-**163 tools** covering QEMU/LXC lifecycle, guest-agent network + file push/pull, LXC prepare-Docker / `pct` push / `deploy_static_nginx`, optional create `wait=`, snapshots/backups/jobs, migrate/HA, firewall + IPSets, access/ACL, replication, SDN/ACME (read), pools, and console tickets.
+**165 tools** covering QEMU/LXC lifecycle, guest-agent network + file push/pull, LXC prepare-Docker (keyctl or crun fallback) / `configure_lxc_dns` / `pct_set_lxc` / `deploy_static_nginx`, optional create `wait=`, snapshots/backups/jobs, migrate/HA, firewall + IPSets, access/ACL, replication, SDN/ACME (read), pools, and console tickets.
 
 ## Install
 

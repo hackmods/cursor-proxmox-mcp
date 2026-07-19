@@ -111,15 +111,18 @@ Destructive tools already warn in descriptions (D2). Responses must also echo `�
 
 ## D24 — Docker-in-LXC
 
-Nested Docker on unprivileged LXC fails at `docker run` (not install) when host AppArmor + runc CVE-2025-52881 interact (`ip_unprivileged_port_start` reopen denied).
+Nested Docker on unprivileged LXC fails at `docker run` (not install) when host AppArmor + runc CVE-2025-52881 interact (`ip_unprivileged_port_start` reopen denied). Stock `runc` also needs `keyctl=1`; privilege-separated tokens (`root@pam!token`) often cannot set keyctl (403).
 
 **Stance (implemented by `prepare_lxc_for_docker`):**
 
 1. Prefer host **`lxc-pve ≥ 6.0.5-2`** (generated nested AppArmor fix). Strip stale `unconfined` workarounds after upgrade.
 2. Unpatched host: allowlisted dual raw lines via host conf — `lxc.apparmor.profile: unconfined` **and** `lxc.mount.entry: /dev/null sys/module/apparmor/parameters/enabled none bind 0 0` — then full stop/start. Never bare `unconfined` alone (overrides nesting / breaks Docker AppArmor checks).
-3. Do **not** treat Docker `--privileged` / `--sysctl` / containerd downgrade as the supported path.
-4. Keep unprivileged default; privileged CT is last-resort docs only.
-5. Success criterion: `docker run --rm nginx:alpine`, not merely `docker --version`.
+3. **Path A (preferred):** `nesting=1,keyctl=1` + stock runc when ACL / `pct_set_lxc` allows.
+4. **Path B (supported):** when keyctl is denied, `nesting=1` only + **modern crun** (≥1.2x; pinned GitHub release, not Ubuntu jammy apt 0.17) as Docker `default-runtime`. `docker_mode=auto` selects this fallback; do **not** claim Docker-ready with nesting-only + stock runc.
+5. Do **not** treat Docker `--privileged` / `--sysctl` / containerd downgrade as the supported path.
+6. Keep unprivileged default; privileged CT is last-resort docs only.
+7. Success criterion: `docker run --rm hello-world` (or `nginx:alpine`), not merely `docker --version`.
+8. Allowlisted host escape hatch: `pct_set_lxc` (features/nameserver/…) when REST token lacks ACL but host SSH is root-capable — not free-form host shell.
 
 ## D25 — Create auto-wait (Phase F.1 / shipped)
 

@@ -114,6 +114,8 @@ DOMAIN_GROUPS: list[tuple[str, frozenset[str]]] = [
                 "set_lxc_password",
                 "set_lxc_ssh_keys",
                 "prepare_lxc_for_docker",
+                "configure_lxc_dns",
+                "pct_set_lxc",
                 "push_to_lxc",
                 "pull_from_lxc",
                 "deploy_static_nginx",

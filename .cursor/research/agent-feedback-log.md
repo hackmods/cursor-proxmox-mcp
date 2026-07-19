@@ -186,3 +186,34 @@ paramiko core; `get_mcp_capabilities`; `prepare_lxc_for_docker`; `push_to_lxc`/`
 - Baking Docker install as the only create path
 - Privileged CT or containerd downgrade as happy path
 - Free-form raw LXC config mutator
+
+---
+
+## 2026-07-19 — FeedForge CT107 Docker LXC (crun Path B)
+
+**Session context:** Provisioning Ubuntu LXC for Docker (CT **107** / FeedForge) with a privilege-separated MCP token.
+
+### Symptoms
+
+| Symptom | Impact |
+|---------|--------|
+| `keyctl=1` / privileged features → 403 “only allowed for root@pam” | Could not enable stock runc path |
+| Stock Docker + runc on nesting-only | `ip_unprivileged_port_start` permission denied |
+| Gateway DNS / IPv6-first | Flaky pulls when guest has no IPv6 |
+| No host `pct set` MCP tool | Agent could `pct exec` but not elevate features via host |
+
+### Root cause
+
+Privsep tokens often cannot set keyctl; nesting alone is insufficient for stock runc. Ubuntu jammy apt `crun` 0.17 is too old for Docker 29.
+
+### Fix (rev r11)
+
+1. `prepare_lxc_for_docker(docker_mode=auto|crun)` — Path B: modern crun 1.21 as `default-runtime`
+2. Structured `feature_acl_denied` + `recommended_fallback: crun`
+3. `configure_lxc_dns` + create/update `nameserver`
+4. Allowlisted `pct_set_lxc` (not free-form host shell)
+
+### Out of scope
+
+- Full `bootstrap_docker_lxc` orchestrator
+- Free-form `execute_host_command`

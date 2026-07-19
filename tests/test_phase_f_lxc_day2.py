@@ -38,11 +38,13 @@ def test_phase_f_tools_in_inventory():
     for name in (
         "get_mcp_capabilities",
         "prepare_lxc_for_docker",
+        "configure_lxc_dns",
+        "pct_set_lxc",
         "push_to_lxc",
         "pull_from_lxc",
     ):
         assert name in ALL_TOOL_NAMES
-    assert len(ALL_TOOL_NAMES) == 163
+    assert len(ALL_TOOL_NAMES) == 165
 
 
 def test_package_version_nonzero():
@@ -388,3 +390,306 @@ def test_apply_apparmor_already_present():
             applied = pct.apply_docker_apparmor_workaround("pve", "122")
     assert applied == []
     write.assert_not_called()
+
+
+def test_feature_acl_denied_message():
+    from proxmox_mcp.tools.helpers import (
+        crun_daemon_json,
+        feature_acl_denied_message,
+        normalize_docker_mode,
+        parse_feature_flags,
+    )
+
+    assert parse_feature_flags("nesting=1,keyctl=1") == {"nesting", "keyctl"}
+    msg = feature_acl_denied_message("107", "nesting=1,keyctl=1", cause="403")
+    assert "feature_acl_denied" in msg
+    assert "recommended_fallback" in msg
+    assert '"crun"' in msg
+    assert normalize_docker_mode("AUTO") == "auto"
+    with pytest.raises(ValueError):
+        normalize_docker_mode("privileged")
+    body = crun_daemon_json()
+    assert '"default-runtime": "crun"' in body
+
+
+def test_prepare_auto_falls_back_to_crun_on_keyctl_deny():
+    proxmox = MagicMock()
+    proxmox.nodes.return_value.lxc.return_value.config.get.return_value = {
+        "features": "nesting=1"
+    }
+    proxmox.nodes.return_value.lxc.return_value.config.put.side_effect = [
+        PermissionError("403 changing feature flags only allowed for root@pam"),
+        "ok",  # nesting-only fallback
+    ]
+    ssh = MagicMock(
+        enabled=True,
+        timeout=30,
+        user="root",
+        private_key_path="/k",
+        host_overrides={},
+        pct_path="/usr/sbin/pct",
+    )
+    tools = ContainerTools(proxmox, ssh_config=ssh, proxmox_host="h")
+    with patch.object(
+        tools._pct,
+        "ensure_features",
+        return_value=MagicMock(
+            success=False, stdout="", stderr="denied", exit_code=1
+        ),
+    ):
+        with patch.object(
+            tools._pct,
+            "probe_lxc_pve_version",
+            return_value=("6.0.5-2", (6, 0, 5, 2), True),
+        ):
+            with patch.object(
+                tools._pct, "strip_docker_apparmor_workaround", return_value=[]
+            ):
+                text = tools.prepare_lxc_for_docker(
+                    "pve", "107", docker_mode="auto"
+                )[0].text
+    assert "docker_path: crun" in text
+    assert "keyctl_denied_used_crun_fallback" in text
+
+
+def test_update_lxc_features_structured_acl_error():
+    proxmox = MagicMock()
+    proxmox.nodes.return_value.lxc.return_value.config.get.return_value = {
+        "features": "nesting=1"
+    }
+    proxmox.nodes.return_value.lxc.return_value.config.put.side_effect = PermissionError(
+        "403 only allowed for root@pam"
+    )
+    tools = ContainerTools(proxmox)
+    with pytest.raises(ValueError) as ei:
+        tools.update_lxc_features("pve", "107", "nesting=1,keyctl=1")
+    assert "feature_acl_denied" in str(ei.value)
+
+
+def test_pct_set_lxc_rejects_empty_and_runs_allowlisted():
+    proxmox = MagicMock()
+    ssh = MagicMock(
+        enabled=True,
+        timeout=30,
+        user="root",
+        private_key_path="/k",
+        host_overrides={},
+        pct_path="/usr/sbin/pct",
+    )
+    tools = ContainerTools(proxmox, ssh_config=ssh, proxmox_host="h")
+    with pytest.raises(ValueError, match="at least one"):
+        tools.pct_set_lxc("pve", "107")
+    with patch.object(
+        tools._pct,
+        "pct_set",
+        return_value=MagicMock(
+            success=True, stdout="", stderr="", exit_code=0, command="pct set"
+        ),
+    ) as ps:
+        text = tools.pct_set_lxc("pve", "107", features="nesting=1")[0].text
+    ps.assert_called_once_with("pve", "107", features="nesting=1")
+    assert "pct_set_lxc" in text
+
+
+def test_configure_lxc_dns_rest():
+    proxmox = MagicMock()
+    proxmox.nodes.return_value.lxc.return_value.config.put.return_value = "ok"
+    proxmox.nodes.return_value.lxc.return_value.status.current.get.return_value = {
+        "status": "stopped"
+    }
+    tools = ContainerTools(proxmox)
+    text = tools.configure_lxc_dns("pve", "107", nameserver="8.8.8.8 9.9.9.9")[0].text
+    assert "REST nameserver" in text
+
+
+def test_prepare_crun_mode_install_and_smoke():
+    proxmox = MagicMock()
+    proxmox.nodes.return_value.lxc.return_value.config.get.return_value = {
+        "features": "nesting=1"
+    }
+    proxmox.nodes.return_value.lxc.return_value.status.current.get.return_value = {
+        "status": "running"
+    }
+    ssh = MagicMock(
+        enabled=True,
+        timeout=30,
+        user="root",
+        private_key_path="/k",
+        host_overrides={},
+        pct_path="/usr/sbin/pct",
+    )
+    tools = ContainerTools(proxmox, ssh_config=ssh, proxmox_host="h")
+
+    def _exec(_node, _vmid, command, timeout=None):
+        out = "crun\ndocker compose version 2.0"
+        if "hello-world" in command:
+            return MagicMock(success=True, stdout="Hello", stderr="", exit_code=0)
+        if "get.docker.com" in command or "docker --version" in command:
+            return MagicMock(success=True, stdout="Docker version 29", stderr="", exit_code=0)
+        if "crun" in command or "daemon.json" in command or "DefaultRuntime" in command:
+            return MagicMock(success=True, stdout=out, stderr="", exit_code=0)
+        return MagicMock(success=True, stdout=out, stderr="", exit_code=0)
+
+    with patch.object(
+        tools._pct,
+        "probe_lxc_pve_version",
+        return_value=("6.0.5-2", (6, 0, 5, 2), True),
+    ):
+        with patch.object(tools._pct, "strip_docker_apparmor_workaround", return_value=[]):
+            with patch.object(tools._pct, "execute", side_effect=_exec):
+                text = tools.prepare_lxc_for_docker(
+                    "pve",
+                    "107",
+                    docker_mode="crun",
+                    install_docker=True,
+                    smoke_test=True,
+                )[0].text
+    assert "docker_path: crun" in text
+    assert "smoke_test" in text.lower() or "hello-world" in text
+
+
+def test_create_lxc_docker_ready_retries_without_keyctl():
+    proxmox = MagicMock()
+    proxmox.nodes.return_value.storage.get.return_value = [
+        {"storage": "local-lvm", "type": "lvmthin", "content": "rootdir,images"}
+    ]
+    create = MagicMock(
+        side_effect=[
+            PermissionError("403 only allowed for root@pam"),
+            "UPID:pve:000:create",
+        ]
+    )
+    proxmox.nodes.return_value.lxc.create = create
+    tools = ContainerTools(proxmox)
+    with patch("proxmox_mcp.tools.container.assert_id_absent"):
+        with patch.object(
+            tools,
+            "_resolve_ostemplate",
+            return_value="local:vztmpl/ubuntu-24.04-standard_amd64.tar.zst",
+        ):
+            with patch.object(tools, "_hostname_collision_warning", return_value=None):
+                text = tools.create_lxc(
+                    "pve",
+                    "107",
+                    "feedforge",
+                    docker_ready=True,
+                    nameserver="8.8.8.8 9.9.9.9",
+                )[0].text
+    assert "needs_crun" in text
+    assert create.call_count == 2
+    assert create.call_args_list[1].kwargs["features"] == "nesting=1"
+    assert create.call_args_list[1].kwargs["nameserver"] == "8.8.8.8 9.9.9.9"
+
+
+def test_pct_set_helper_builds_command():
+    ssh = MagicMock(
+        enabled=True,
+        timeout=30,
+        user="root",
+        private_key_path="/k",
+        host_overrides={},
+        pct_path="/usr/sbin/pct",
+    )
+    pct = PctExecutor(ssh, "host")
+    with patch.object(
+        pct,
+        "run_host",
+        return_value=MagicMock(success=True, stdout="", stderr="", exit_code=0),
+    ) as rh:
+        pct.pct_set("pve", "107", nameserver="8.8.8.8", onboot=1)
+    cmd = rh.call_args[0][1]
+    assert "set" in cmd and "107" in cmd and "nameserver" in cmd
+
+
+def test_configure_lxc_dns_pct_fallback_and_gai():
+    proxmox = MagicMock()
+    proxmox.nodes.return_value.lxc.return_value.config.put.side_effect = PermissionError(
+        "403"
+    )
+    proxmox.nodes.return_value.lxc.return_value.status.current.get.return_value = {
+        "status": "running"
+    }
+    ssh = MagicMock(
+        enabled=True,
+        timeout=30,
+        user="root",
+        private_key_path="/k",
+        host_overrides={},
+        pct_path="/usr/sbin/pct",
+    )
+    tools = ContainerTools(proxmox, ssh_config=ssh, proxmox_host="h")
+    with patch.object(
+        tools._pct,
+        "pct_set",
+        return_value=MagicMock(success=True, stdout="", stderr="", exit_code=0),
+    ):
+        with patch.object(
+            tools._pct,
+            "execute",
+            return_value=MagicMock(
+                success=True, stdout="gai applied", stderr="", exit_code=0
+            ),
+        ):
+            text = tools.configure_lxc_dns(
+                "pve", "107", nameserver="1.1.1.1", searchdomain="lab", prefer_ipv4=True
+            )[0].text
+    assert "pct set nameserver" in text
+    assert "gai.conf" in text
+
+
+def test_prepare_keyctl_mode_raises_on_deny():
+    proxmox = MagicMock()
+    proxmox.nodes.return_value.lxc.return_value.config.get.return_value = {
+        "features": "nesting=1"
+    }
+    proxmox.nodes.return_value.lxc.return_value.config.put.side_effect = PermissionError(
+        "403 root@pam"
+    )
+    ssh = MagicMock(
+        enabled=True,
+        timeout=30,
+        user="root",
+        private_key_path="/k",
+        host_overrides={},
+        pct_path="/usr/sbin/pct",
+    )
+    tools = ContainerTools(proxmox, ssh_config=ssh, proxmox_host="h")
+    with patch.object(
+        tools._pct,
+        "ensure_features",
+        return_value=MagicMock(success=False, stdout="", stderr="no", exit_code=1),
+    ):
+        with pytest.raises(ValueError, match="feature_acl_denied"):
+            tools.prepare_lxc_for_docker("pve", "107", docker_mode="keyctl")
+
+
+def test_pct_set_lxc_all_keys():
+    proxmox = MagicMock()
+    ssh = MagicMock(
+        enabled=True,
+        timeout=30,
+        user="root",
+        private_key_path="/k",
+        host_overrides={},
+        pct_path="/usr/sbin/pct",
+    )
+    tools = ContainerTools(proxmox, ssh_config=ssh, proxmox_host="h")
+    with patch.object(
+        tools._pct,
+        "pct_set",
+        return_value=MagicMock(
+            success=True, stdout="ok", stderr="", exit_code=0, command="pct set"
+        ),
+    ) as ps:
+        tools.pct_set_lxc(
+            "pve",
+            "107",
+            features="nesting=1",
+            nameserver="8.8.8.8",
+            searchdomain="lan",
+            onboot=1,
+            description="docker",
+            tags="docker;lab",
+        )
+    assert ps.call_args.kwargs["onboot"] == 1
+    assert ps.call_args.kwargs["tags"] == "docker;lab"

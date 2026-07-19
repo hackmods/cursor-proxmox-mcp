@@ -13,10 +13,12 @@ alwaysApply: false
 - `get_vms` is **QEMU-only**. LXC → `get_containers` or `get_cluster_resources(type=vm)`.
 - Create returns UPID immediately — agents must `wait_for_task` before start (do not auto-wait inside create without a new decision).
 - `keyctl`/fuse beyond nesting are privilege-gated; do not silently strip flags.
+- On keyctl 403: return structured `feature_acl_denied` with `recommended_fallback: crun`; use `prepare_lxc_for_docker(docker_mode=auto|crun)` or `pct_set_lxc` — never claim Docker-ready with nesting-only + stock runc.
 
 ## When changing this area
 
-- Update D4, `agent-feedback-log.md`, `revisions.md`, SETUP SSH section, SECURITY.
+- Update D4/D24, `agent-feedback-log.md`, `revisions.md`, SETUP SSH section, SECURITY.
 - Prefer keys at create (`ssh_public_keys`), or `set_lxc_password(enable_password_ssh=true)` after start when host SSH/pct is on.
 - `update_lxc_config` does not set password/keys.
 - Create ≠ Docker/app deploy; keep success messaging honest.
+- Docker path: require `nesting=1,keyctl=1` when ACL allows; if keyctl denied, install Docker with modern crun as `default-runtime` and report that fallback.

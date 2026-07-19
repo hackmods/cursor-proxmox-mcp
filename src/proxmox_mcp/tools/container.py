@@ -10,17 +10,25 @@ Provides lifecycle management for LXC containers:
 """
 from typing import Any, List, Optional
 import base64
+import json
 import shlex
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
 from .helpers import (
+    DEFAULT_DOCKER_NAMESERVERS,
     DEFAULT_LXC_FEATURES,
+    PCT_SET_ALLOWED_KEYS,
     assert_id_absent,
+    build_crun_install_script,
     check_exec_allowlist,
     console_ticket_footer,
     configured_ipv4_summary,
+    feature_acl_denied_message,
     is_missing_resource_error,
+    is_permission_denied_error,
     lxc_not_found_message,
+    normalize_docker_mode,
+    parse_feature_flags,
     parse_lxc_networks,
     pick_storage,
     upid_response_footer,
@@ -48,6 +56,8 @@ TOOL_SPECS = [
     ToolSpec("set_lxc_password", D.SET_LXC_PASSWORD_DESC),
     ToolSpec("set_lxc_ssh_keys", D.SET_LXC_SSH_KEYS_DESC),
     ToolSpec("prepare_lxc_for_docker", D.PREPARE_LXC_FOR_DOCKER_DESC),
+    ToolSpec("configure_lxc_dns", D.CONFIGURE_LXC_DNS_DESC),
+    ToolSpec("pct_set_lxc", D.PCT_SET_LXC_DESC),
     ToolSpec("push_to_lxc", D.PUSH_TO_LXC_DESC),
     ToolSpec("pull_from_lxc", D.PULL_FROM_LXC_DESC),
     ToolSpec("deploy_static_nginx", D.DEPLOY_STATIC_NGINX_DESC),
@@ -198,6 +208,8 @@ class ContainerTools(ProxmoxTool):
         ostemplate_filter: Optional[str] = None,
         docker_ready: bool = False,
         wait: bool = False,
+        nameserver: Optional[str] = None,
+        searchdomain: Optional[str] = None,
     ) -> List[Content]:
         """Create an LXC container. If ostemplate is omitted, auto-picks from storage (optional filter).
 
@@ -257,10 +269,29 @@ class ContainerTools(ProxmoxTool):
             if ssh_public_keys is not None and str(ssh_public_keys).strip():
                 # Proxmox API key is hyphenated (create-time only)
                 lxc_config["ssh-public-keys"] = str(ssh_public_keys).strip()
+            if nameserver is not None and str(nameserver).strip():
+                lxc_config["nameserver"] = str(nameserver).strip()
+            if searchdomain is not None and str(searchdomain).strip():
+                lxc_config["searchdomain"] = str(searchdomain).strip()
 
             hostname_warn = self._hostname_collision_warning(hostname, exclude_vmid=None)
 
-            task_result = self.proxmox.nodes(node).lxc.create(**lxc_config)
+            needs_crun = False
+            try:
+                task_result = self.proxmox.nodes(node).lxc.create(**lxc_config)
+            except Exception as create_err:
+                # docker_ready + keyctl often 403 under privsep tokens — retry nesting-only.
+                if (
+                    docker_ready
+                    and "keyctl" in parse_feature_flags(str(lxc_config.get("features", "")))
+                    and is_permission_denied_error(create_err)
+                ):
+                    lxc_config["features"] = DEFAULT_LXC_FEATURES
+                    features = DEFAULT_LXC_FEATURES
+                    needs_crun = True
+                    task_result = self.proxmox.nodes(node).lxc.create(**lxc_config)
+                else:
+                    raise
 
             auth_lines = []
             if password is not None:
@@ -284,18 +315,33 @@ class ContainerTools(ProxmoxTool):
                 auth_lines.append("  • SSH public keys: none (pass ssh_public_keys for guest SSH)")
 
             ssh_pct = (
-                "configured — execute_lxc_command / set_lxc_password / prepare_lxc_for_docker / push_to_lxc available after start"
+                "configured — execute_lxc_command / set_lxc_password / prepare_lxc_for_docker / "
+                "configure_lxc_dns / pct_set_lxc / push_to_lxc available after start"
                 if self._pct
                 else "NOT configured — enable config ssh + reload MCP for pct "
                 "(Proxmox has no REST LXC shell; 501 /exec means stale MCP build)"
             )
 
             warn_block = f"\n⚠️ {hostname_warn}\n" if hostname_warn else "\n"
-            docker_line = (
-                "  • docker_ready: true (features nesting+keyctl; call prepare_lxc_for_docker after start)\n"
-                if docker_ready
-                else ""
-            )
+            if needs_crun:
+                docker_line = (
+                    "  • docker_ready: true — keyctl denied at create; features nesting=1 only "
+                    "(needs_crun=true). After start: prepare_lxc_for_docker(docker_mode=auto|crun, "
+                    "install_docker=true)\n"
+                )
+            elif docker_ready:
+                docker_line = (
+                    "  • docker_ready: true (features nesting+keyctl; call prepare_lxc_for_docker "
+                    "after start — docker_mode=auto falls back to crun if keyctl ACL denied)\n"
+                )
+            else:
+                docker_line = ""
+
+            ns_line = ""
+            if nameserver:
+                ns_line = f"  • Nameserver: {nameserver}\n"
+            if searchdomain:
+                ns_line += f"  • Searchdomain: {searchdomain}\n"
 
             if wait:
                 final = wait_for_upid(self.proxmox, node, task_result, timeout=600)
@@ -334,7 +380,7 @@ class ContainerTools(ProxmoxTool):
   • Features: {features}
   • Unprivileged: {unprivileged}
   • Network: {net0_value}
-{docker_line}{chr(10).join(auth_lines)}
+{docker_line}{ns_line}{chr(10).join(auth_lines)}
   • Host SSH/pct for MCP: {ssh_pct}
 {warn_block}{task_block}
 
@@ -342,9 +388,9 @@ class ContainerTools(ProxmoxTool):
   {next_step_1}
   2. start_lxc → get_lxc_network (configured/runtime IP)
   3. Guest access: prefer ssh_public_keys at create; or set_lxc_password / set_lxc_ssh_keys / execute_lxc_command (all need config ssh)
-  4. For Docker: prepare_lxc_for_docker → stop_lxc + start_lxc → smoke with docker run --rm nginx:alpine (nesting alone ≠ Docker)
+  4. For Docker: prepare_lxc_for_docker(docker_mode=auto) → stop/start if needed → verify with docker run (nesting-only + stock runc ≠ Docker-ready; use crun fallback)
   5. Static site without Docker: deploy_static_nginx
-  6. keyctl for Docker-in-LXC often needs elevated role / root@pam (update_lxc_features / prepare)"""
+  6. keyctl often needs elevated role / root@pam; else pct_set_lxc or prepare crun path"""
 
             return [Content(type="text", text=result_text)]
 
@@ -607,6 +653,7 @@ class ContainerTools(ProxmoxTool):
 
         Used for Docker-in-LXC after create. Note: Proxmox often restricts
         setting keyctl/fuse (anything beyond nesting) to root@pam.
+        Does not silently strip flags — returns structured feature_acl_denied on 403.
 
         Args:
             node: Host node name
@@ -622,7 +669,17 @@ class ContainerTools(ProxmoxTool):
                 raise e
 
             previous = config.get("features", "(none)")
-            task_result = self.proxmox.nodes(node).lxc(vmid).config.put(features=features)
+            try:
+                task_result = self.proxmox.nodes(node).lxc(vmid).config.put(features=features)
+            except Exception as feat_err:
+                gated = parse_feature_flags(features) & {"keyctl", "fuse"}
+                if gated and is_permission_denied_error(feat_err):
+                    raise ValueError(
+                        feature_acl_denied_message(
+                            vmid, features, cause=str(feat_err)
+                        )
+                    ) from feat_err
+                raise
 
             result_text = f"""✅ LXC {vmid} features updated
 
@@ -632,15 +689,21 @@ class ContainerTools(ProxmoxTool):
 
 🔧 Task/result: {task_result}
 
-💡 Note: Setting keyctl/fuse (beyond nesting) typically requires root@pam.
+💡 Note: Setting keyctl/fuse (beyond nesting) typically requires root@pam or pct_set_lxc.
 💡 Next: get_guest_pending (guest_type=lxc) — prefer stop_lxc + start_lxc (or reboot_lxc)
-   so feature / raw config changes apply. For Docker-in-LXC use prepare_lxc_for_docker."""
+   so feature / raw config changes apply. For Docker-in-LXC use prepare_lxc_for_docker
+   (docker_mode=auto uses crun when keyctl is denied)."""
 
             return [Content(type="text", text=result_text)]
 
         except ValueError as e:
             raise e
         except Exception as e:
+            gated = parse_feature_flags(features) & {"keyctl", "fuse"}
+            if gated and is_permission_denied_error(e):
+                raise ValueError(
+                    feature_acl_denied_message(vmid, features, cause=str(e))
+                ) from e
             self._handle_error(f"update LXC {vmid} features", e)
 
     def get_lxc_config(self, node: str, vmid: str) -> List[Content]:
@@ -933,10 +996,18 @@ class ContainerTools(ProxmoxTool):
         install_docker: bool = False,
         smoke_test: bool = False,
         timeout: Optional[int] = None,
+        docker_mode: str = "auto",
     ) -> List[Content]:
-        """Idempotent Proxmox-side prep for Docker-in-LXC (D24)."""
+        """Idempotent Proxmox-side prep for Docker-in-LXC (D24).
+
+        ``docker_mode``:
+        - ``auto``: try nesting+keyctl; on ACL deny fall back to nesting + crun path
+        - ``keyctl``: require keyctl (structured error on deny)
+        - ``crun``: nesting only + install crun as Docker default-runtime
+        """
         try:
             pct = self._require_pct()
+            mode = normalize_docker_mode(docker_mode)
             try:
                 config = self.proxmox.nodes(node).lxc(vmid).config.get()
             except Exception as e:
@@ -945,22 +1016,75 @@ class ContainerTools(ProxmoxTool):
                 raise e
 
             applied: List[str] = []
-            features = "nesting=1,keyctl=1" + (",fuse=1" if fuse else "")
+            warnings: List[str] = []
+            docker_path = "keyctl"
             prev_features = str(config.get("features", "") or "")
-            if features not in prev_features.replace(" ", "") and prev_features != features:
+
+            if mode == "crun":
+                want_features = "nesting=1" + (",fuse=1" if fuse else "")
+                docker_path = "crun"
+            else:
+                want_features = "nesting=1,keyctl=1" + (",fuse=1" if fuse else "")
+
+            features_applied = want_features
+            if want_features not in prev_features.replace(" ", "") and prev_features != want_features:
                 try:
-                    self.proxmox.nodes(node).lxc(vmid).config.put(features=features)
-                    applied.append(f"features → {features} (was {prev_features or '(none)'})")
+                    self.proxmox.nodes(node).lxc(vmid).config.put(features=want_features)
+                    applied.append(f"features → {want_features} (was {prev_features or '(none)'})")
                 except Exception as feat_err:
-                    # Fall back to pct set (may need root on host)
-                    fr = pct.ensure_features(node, vmid, features)
-                    if not fr.success:
-                        raise RuntimeError(
-                            f"Failed to set features={features}: {feat_err}; "
-                            f"pct set also failed: {fr.stderr or fr.stdout}. "
-                            "keyctl often needs elevated role / root@pam."
+                    fr = pct.ensure_features(node, vmid, want_features)
+                    if fr.success:
+                        applied.append(f"features → {want_features} via pct set")
+                    elif mode == "auto" and "keyctl" in parse_feature_flags(want_features):
+                        # Path B: nesting only + crun
+                        fallback = "nesting=1" + (",fuse=1" if fuse else "")
+                        try:
+                            self.proxmox.nodes(node).lxc(vmid).config.put(features=fallback)
+                            applied.append(
+                                f"features → {fallback} (keyctl denied; was {prev_features or '(none)'})"
+                            )
+                        except Exception:
+                            fr2 = pct.ensure_features(node, vmid, fallback)
+                            if not fr2.success:
+                                raise ValueError(
+                                    feature_acl_denied_message(
+                                        vmid,
+                                        want_features,
+                                        cause=(
+                                            f"{feat_err}; nesting fallback also failed: "
+                                            f"{fr2.stderr or fr2.stdout}"
+                                        ),
+                                    )
+                                ) from feat_err
+                            applied.append(f"features → {fallback} via pct set (keyctl denied)")
+                        features_applied = fallback
+                        docker_path = "crun"
+                        warnings.append("keyctl_denied_used_crun_fallback")
+                    else:
+                        raise ValueError(
+                            feature_acl_denied_message(
+                                vmid,
+                                want_features,
+                                cause=f"{feat_err}; pct: {fr.stderr or fr.stdout}",
+                            )
                         ) from feat_err
-                    applied.append(f"features → {features} via pct set")
+            else:
+                features_applied = prev_features or want_features
+                if mode == "crun":
+                    docker_path = "crun"
+                elif "keyctl" not in parse_feature_flags(features_applied):
+                    docker_path = "crun"
+                    if mode == "auto":
+                        warnings.append("nesting_only_no_keyctl_use_crun")
+
+            if mode == "keyctl" and "keyctl" not in parse_feature_flags(features_applied):
+                raise ValueError(
+                    feature_acl_denied_message(
+                        vmid,
+                        want_features,
+                        cause="keyctl not present after feature update (docker_mode=keyctl)",
+                    )
+                )
 
             raw_ver, _parsed, patched = pct.probe_lxc_pve_version(node)
             host_patch = (
@@ -1013,13 +1137,38 @@ class ContainerTools(ProxmoxTool):
                 applied.append("docker install attempted via get.docker.com / existing docker")
                 docker_note = f"\nDocker install stdout (tail):\n{(ir.stdout or '')[-500:]}"
 
+                if docker_path == "crun":
+                    crun_script = build_crun_install_script()
+                    cr = pct.execute(node, vmid, crun_script, timeout=timeout or 180)
+                    if not cr.success:
+                        raise RuntimeError(
+                            f"crun runtime setup failed (exit {cr.exit_code}): "
+                            f"{cr.stderr or cr.stdout}"
+                        )
+                    applied.append("crun installed as Docker default-runtime (Path B)")
+                    docker_note += f"\ncrun setup stdout (tail):\n{(cr.stdout or '')[-400:]}"
+
+                # Verify runtime before claiming success
+                vr = pct.execute(
+                    node,
+                    vmid,
+                    "docker info -f '{{.DefaultRuntime}}'; "
+                    "docker compose version 2>/dev/null || true",
+                    timeout=timeout or 60,
+                )
+                runtime_out = (vr.stdout or "").strip()
+                docker_note += f"\nDefaultRuntime / compose:\n{runtime_out[-300:]}"
+                if docker_path == "crun" and "crun" not in runtime_out.lower():
+                    warnings.append("crun_default_runtime_unverified")
+                applied.append(f"docker_path={docker_path}")
+
             smoke_note = ""
             if smoke_test:
                 if restart_required:
                     smoke_note = (
                         "\nsmoke_test skipped: restart_required — "
                         "stop_lxc + start_lxc first, then re-run with smoke_test=true "
-                        "or execute_lxc_command('docker run --rm nginx:alpine')"
+                        "or execute_lxc_command('docker run --rm hello-world')"
                     )
                 else:
                     status = self.proxmox.nodes(node).lxc(vmid).status.current.get()
@@ -1028,34 +1177,63 @@ class ContainerTools(ProxmoxTool):
                     sr = pct.execute(
                         node,
                         vmid,
-                        "docker run --rm nginx:alpine true",
+                        "docker run --rm hello-world",
                         timeout=timeout or 180,
                     )
                     if not sr.success:
-                        smoke_note = (
-                            f"\n⚠️ smoke_test FAILED (exit {sr.exit_code}): "
-                            f"{sr.stderr or sr.stdout}\n"
-                            "If ip_unprivileged_port_start: upgrade host lxc-pve or ensure "
-                            "dual AppArmor workaround + full stop/start."
+                        # Fallback image often used in docs
+                        sr2 = pct.execute(
+                            node,
+                            vmid,
+                            "docker run --rm nginx:alpine true",
+                            timeout=timeout or 180,
                         )
+                        if not sr2.success:
+                            smoke_note = (
+                                f"\n⚠️ smoke_test FAILED (exit {sr.exit_code}): "
+                                f"{sr.stderr or sr.stdout}\n"
+                                "If ip_unprivileged_port_start with stock runc: use "
+                                "prepare_lxc_for_docker(docker_mode=crun, install_docker=true) "
+                                "or ensure keyctl + host lxc-pve patch / AppArmor workaround."
+                            )
+                        else:
+                            smoke_note = "\n✅ smoke_test: docker run --rm nginx:alpine OK"
+                            applied.append("smoke_test passed")
                     else:
-                        smoke_note = "\n✅ smoke_test: docker run --rm nginx:alpine OK"
+                        smoke_note = "\n✅ smoke_test: docker run --rm hello-world OK"
                         applied.append("smoke_test passed")
 
             applied_txt = "\n".join(f"  • {a}" for a in applied) or "  • (no changes)"
+            warn_txt = (
+                "\nwarnings:\n" + "\n".join(f"  • {w}" for w in warnings) if warnings else ""
+            )
+            status_obj = {
+                "vmid": str(vmid),
+                "features": features_applied,
+                "docker_path": docker_path,
+                "docker_mode": mode,
+                "restart_required": restart_required,
+                "warnings": warnings,
+            }
             result = f"""prepare_lxc_for_docker CT {vmid}@{node}
+
+status:
+{json.dumps(status_obj, indent=2)}
 
 host_patch_status: {host_patch}
 restart_required: {restart_required}
+docker_path: {docker_path}
 applied:
 {applied_txt}
-{docker_note}{smoke_note}
+{warn_txt}{docker_note}{smoke_note}
 
 Known limitations (D24):
+  • Path A (preferred): nesting=1,keyctl=1 + stock runc when ACL allows
+  • Path B: nesting=1 only + modern crun (≥1.2x) as default-runtime (privsep tokens)
+  • Do not claim Docker-ready with nesting-only + stock runc
   • Docker --privileged / --sysctl / --security-opt do NOT fix nested AppArmor CVE issues
   • Do not downgrade containerd to "fix" run (re-opens CVE-2025-52881)
-  • Bare lxc.apparmor.profile: unconfined without the /dev/null bind breaks nesting/Docker
-  • Success criterion: docker run --rm nginx:alpine — not merely docker --version
+  • Success criterion: docker run --rm hello-world (or nginx:alpine) — not merely docker --version
 
 💡 Next: {"stop_lxc → start_lxc (full stop/start, not reboot alone) → " if restart_required else ""}"""
             result += (
@@ -1071,6 +1249,143 @@ Known limitations (D24):
             if is_missing_resource_error(e):
                 raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"prepare LXC {vmid} for docker", e)
+
+    def configure_lxc_dns(
+        self,
+        node: str,
+        vmid: str,
+        nameserver: str = DEFAULT_DOCKER_NAMESERVERS,
+        searchdomain: Optional[str] = None,
+        prefer_ipv4: bool = True,
+    ) -> List[Content]:
+        """Set CT nameserver (and optional searchdomain); optionally prefer IPv4 in guest."""
+        try:
+            nameserver = str(nameserver or "").strip() or DEFAULT_DOCKER_NAMESERVERS
+            applied: List[str] = []
+            try:
+                params: dict = {"nameserver": nameserver}
+                if searchdomain is not None and str(searchdomain).strip():
+                    params["searchdomain"] = str(searchdomain).strip()
+                self.proxmox.nodes(node).lxc(vmid).config.put(**params)
+                applied.append(f"REST nameserver → {nameserver}")
+                if "searchdomain" in params:
+                    applied.append(f"REST searchdomain → {params['searchdomain']}")
+            except Exception as rest_err:
+                pct = self._require_pct()
+                opts: dict = {"nameserver": nameserver}
+                if searchdomain is not None and str(searchdomain).strip():
+                    opts["searchdomain"] = str(searchdomain).strip()
+                fr = pct.pct_set(node, vmid, **opts)
+                if not fr.success:
+                    raise RuntimeError(
+                        f"configure_lxc_dns failed (REST: {rest_err}; "
+                        f"pct set: {fr.stderr or fr.stdout})"
+                    ) from rest_err
+                applied.append(f"pct set nameserver → {nameserver} (REST failed)")
+
+            guest_note = ""
+            if prefer_ipv4 and self._pct:
+                status = self.proxmox.nodes(node).lxc(vmid).status.current.get()
+                if status.get("status") == "running":
+                    gai = (
+                        "grep -q 'precedence ::ffff:0:0/96  100' /etc/gai.conf 2>/dev/null || "
+                        "echo 'precedence ::ffff:0:0/96  100' >> /etc/gai.conf; "
+                        "echo 'gai.conf IPv4 preference applied'"
+                    )
+                    gr = self._pct.execute(node, vmid, gai, timeout=30)
+                    if gr.success:
+                        applied.append("guest gai.conf IPv4 preference")
+                        guest_note = f"\n{(gr.stdout or '').strip()}"
+                    else:
+                        guest_note = (
+                            f"\n⚠️ gai.conf update failed: {gr.stderr or gr.stdout}"
+                        )
+                else:
+                    guest_note = (
+                        "\n💡 CT not running — nameserver set on host config; "
+                        "start_lxc then re-run with prefer_ipv4 for gai.conf"
+                    )
+
+            text = (
+                f"configure_lxc_dns CT {vmid}@{node}\n"
+                + "\n".join(f"  • {a}" for a in applied)
+                + guest_note
+                + "\n💡 Prefer CT nameserver over editing guest resolv.conf "
+                "(PVE rewrites resolv.conf on start)."
+            )
+            return [Content(type="text", text=text)]
+        except ValueError:
+            raise
+        except PctExecError as e:
+            raise RuntimeError(str(e)) from e
+        except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
+            self._handle_error(f"configure DNS on LXC {vmid}", e)
+
+    def pct_set_lxc(
+        self,
+        node: str,
+        vmid: str,
+        features: Optional[str] = None,
+        nameserver: Optional[str] = None,
+        searchdomain: Optional[str] = None,
+        onboot: Optional[int] = None,
+        description: Optional[str] = None,
+        tags: Optional[str] = None,
+    ) -> List[Content]:
+        """Allowlisted host ``pct set`` when REST token lacks ACL (requires SSH)."""
+        try:
+            pct = self._require_pct()
+            options: dict = {}
+            if features is not None:
+                options["features"] = features
+            if nameserver is not None:
+                options["nameserver"] = nameserver
+            if searchdomain is not None:
+                options["searchdomain"] = searchdomain
+            if onboot is not None:
+                options["onboot"] = int(onboot)
+            if description is not None:
+                options["description"] = description
+            if tags is not None:
+                options["tags"] = tags
+            if not options:
+                raise ValueError(
+                    "pct_set_lxc requires at least one of: features, nameserver, "
+                    "searchdomain, onboot, description, tags"
+                )
+            unknown = set(options) - PCT_SET_ALLOWED_KEYS
+            if unknown:
+                raise ValueError(
+                    f"pct_set_lxc rejected unknown keys {sorted(unknown)}; "
+                    f"allowed={sorted(PCT_SET_ALLOWED_KEYS)}"
+                )
+            result = pct.pct_set(node, vmid, **options)
+            if not result.success:
+                raise RuntimeError(
+                    f"pct set failed (exit {result.exit_code}): "
+                    f"{result.stderr or result.stdout}"
+                )
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"✅ pct_set_lxc CT {vmid}@{node}\n"
+                        f"  • Options: {options}\n"
+                        f"  • stdout: {(result.stdout or '').strip() or '(empty)'}\n"
+                        "💡 Prefer stop_lxc + start_lxc if features / AppArmor lines must apply."
+                    ),
+                )
+            ]
+        except ValueError:
+            raise
+        except PctExecError as e:
+            raise RuntimeError(str(e)) from e
+        except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
+            self._handle_error(f"pct set LXC {vmid}", e)
 
     def push_to_lxc(
         self,

@@ -274,6 +274,8 @@ def register_all(server: ProxmoxMCPServer) -> None:
         ostemplate_filter: Annotated[Optional[str], Field(description="Auto-pick filter e.g. ubuntu", default=None)] = None,
         docker_ready: Annotated[bool, Field(description="Set nesting+keyctl and tip prepare_lxc_for_docker", default=False)] = False,
         wait: Annotated[bool, Field(description="Poll create UPID until stopped (default false)", default=False)] = False,
+        nameserver: Annotated[Optional[str], Field(description="CT DNS nameservers (space-separated)", default=None)] = None,
+        searchdomain: Annotated[Optional[str], Field(description="CT DNS search domain", default=None)] = None,
     ):
         return server.container_tools.create_lxc(
             node=node,
@@ -295,6 +297,8 @@ def register_all(server: ProxmoxMCPServer) -> None:
             ostemplate_filter=ostemplate_filter,
             docker_ready=docker_ready,
             wait=wait,
+            nameserver=nameserver,
+            searchdomain=searchdomain,
         )
 
     @server.mcp.tool(description=D.GET_LXC_CONFIG_DESC)
@@ -313,6 +317,11 @@ def register_all(server: ProxmoxMCPServer) -> None:
         hostname: Annotated[Optional[str], Field(description="Hostname", default=None)] = None,
         net0: Annotated[Optional[str], Field(description="net0", default=None)] = None,
         features: Annotated[Optional[str], Field(description="Features", default=None)] = None,
+        nameserver: Annotated[Optional[str], Field(description="DNS nameservers", default=None)] = None,
+        searchdomain: Annotated[Optional[str], Field(description="DNS search domain", default=None)] = None,
+        onboot: Annotated[Optional[int], Field(description="Start on boot 0|1", default=None)] = None,
+        description: Annotated[Optional[str], Field(description="Description", default=None)] = None,
+        tags: Annotated[Optional[str], Field(description="Tags (; separated)", default=None)] = None,
     ):
         kwargs = {}
         if cores is not None:
@@ -325,6 +334,16 @@ def register_all(server: ProxmoxMCPServer) -> None:
             kwargs["net0"] = net0
         if features is not None:
             kwargs["features"] = features
+        if nameserver is not None:
+            kwargs["nameserver"] = nameserver
+        if searchdomain is not None:
+            kwargs["searchdomain"] = searchdomain
+        if onboot is not None:
+            kwargs["onboot"] = onboot
+        if description is not None:
+            kwargs["description"] = description
+        if tags is not None:
+            kwargs["tags"] = tags
         return server.container_tools.update_lxc_config(node, vmid, **kwargs)
 
     @server.mcp.tool(description=D.START_LXC_DESC)
@@ -435,8 +454,11 @@ def register_all(server: ProxmoxMCPServer) -> None:
             bool, Field(description="Apply dual AppArmor lines if host unpatched", default=True)
         ] = True,
         install_docker: Annotated[bool, Field(description="Install Docker CE via pct exec", default=False)] = False,
-        smoke_test: Annotated[bool, Field(description="Run docker run --rm nginx:alpine", default=False)] = False,
+        smoke_test: Annotated[bool, Field(description="Run docker run --rm hello-world", default=False)] = False,
         timeout: Annotated[Optional[int], Field(description="Seconds for long installs", default=None)] = None,
+        docker_mode: Annotated[
+            str, Field(description="auto|keyctl|crun (auto falls back to crun on keyctl deny)", default="auto")
+        ] = "auto",
     ):
         return server.container_tools.prepare_lxc_for_docker(
             node,
@@ -446,6 +468,43 @@ def register_all(server: ProxmoxMCPServer) -> None:
             install_docker=install_docker,
             smoke_test=smoke_test,
             timeout=timeout,
+            docker_mode=docker_mode,
+        )
+
+    @server.mcp.tool(description=D.CONFIGURE_LXC_DNS_DESC)
+    def configure_lxc_dns(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="CT ID")],
+        nameserver: Annotated[
+            str, Field(description="Space-separated nameservers", default="8.8.8.8 9.9.9.9")
+        ] = "8.8.8.8 9.9.9.9",
+        searchdomain: Annotated[Optional[str], Field(description="Search domain", default=None)] = None,
+        prefer_ipv4: Annotated[bool, Field(description="Set guest gai.conf IPv4 preference", default=True)] = True,
+    ):
+        return server.container_tools.configure_lxc_dns(
+            node, vmid, nameserver=nameserver, searchdomain=searchdomain, prefer_ipv4=prefer_ipv4
+        )
+
+    @server.mcp.tool(description=D.PCT_SET_LXC_DESC)
+    def pct_set_lxc(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="CT ID")],
+        features: Annotated[Optional[str], Field(description="features string", default=None)] = None,
+        nameserver: Annotated[Optional[str], Field(description="nameserver", default=None)] = None,
+        searchdomain: Annotated[Optional[str], Field(description="searchdomain", default=None)] = None,
+        onboot: Annotated[Optional[int], Field(description="onboot 0|1", default=None)] = None,
+        description: Annotated[Optional[str], Field(description="description", default=None)] = None,
+        tags: Annotated[Optional[str], Field(description="tags", default=None)] = None,
+    ):
+        return server.container_tools.pct_set_lxc(
+            node,
+            vmid,
+            features=features,
+            nameserver=nameserver,
+            searchdomain=searchdomain,
+            onboot=onboot,
+            description=description,
+            tags=tags,
         )
 
     @server.mcp.tool(description=D.PUSH_TO_LXC_DESC)

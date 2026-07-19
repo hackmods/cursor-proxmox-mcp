@@ -27,7 +27,7 @@ python scripts/generate-wiki-tools.py
 
 <!-- BEGIN GENERATED TOOLS -->
 
-_Generated from `tools/inventory.py` — **163** tools. Do not edit by hand; run `python scripts/generate-wiki-tools.py`._
+_Generated from `tools/inventory.py` — **165** tools. Do not edit by hand; run `python scripts/generate-wiki-tools.py`._
 
 ### Nodes
 
@@ -92,8 +92,9 @@ _Generated from `tools/inventory.py` — **163** tools. Do not edit by hand; run
 | Tool | Description |
 |------|-------------|
 | `clone_lxc` | Clone an LXC (async UPID — wait_for_task). Parameters: node*, vmid*, newid*, hostname?, full?=true, target?, storage? |
+| `configure_lxc_dns` | Set CT nameserver/searchdomain via REST (falls back to pct set). Optionally prefer IPv4 in guest gai.conf when running. Prefer CT nameserver over editing resolv.conf (PVE rewrites on start). Parameters: node*, vmid*; nameserver?=8.8.8.8 9.9.9.9, searchdomain?, prefer_ipv4?=true |
 | `convert_lxc_to_template` | Convert LXC to template. Parameters: node*, vmid* |
-| `create_lxc` | Create an LXC (async UPID — always wait_for_task before start unless wait=true). OS template only — not Docker/app deploy. Prefer ssh_public_keys for guest SSH (many templates block root password SSH). docker_ready=true sets nesting=1,keyctl=1 and tips prepare_lxc_for_docker (does not install Docker). Parameters: node*, vmid*, hostname*; ostemplate?, cpus?, memory?, disk_size?, storage?, features?, password?, ssh_public_keys?, unprivileged?, bridge?, ip?, gw?, net0?, ostemplate_filter?, docker_ready?=false, wait?=false |
+| `create_lxc` | Create an LXC (async UPID — always wait_for_task before start unless wait=true). OS template only — not Docker/app deploy. Prefer ssh_public_keys for guest SSH (many templates block root password SSH). docker_ready=true tries nesting=1,keyctl=1 (retries nesting-only + needs_crun warning on ACL deny) and tips prepare_lxc_for_docker (does not install Docker). Parameters: node*, vmid*, hostname*; ostemplate?, cpus?, memory?, disk_size?, storage?, features?, password?, ssh_public_keys?, unprivileged?, bridge?, ip?, gw?, net0?, ostemplate_filter?, docker_ready?=false, wait?=false, nameserver?, searchdomain? |
 | `create_spice_ticket_lxc` | Mint SPICE ticket for an LXC (connect externally). Parameters: node*, vmid* |
 | `create_termproxy_ticket_lxc` | Mint termproxy ticket for an LXC. Parameters: node*, vmid* |
 | `create_vnc_ticket_lxc` | Mint VNC ticket for an LXC. Parameters: node*, vmid*, websocket?=true |
@@ -105,7 +106,8 @@ _Generated from `tools/inventory.py` — **163** tools. Do not edit by hand; run
 | `get_lxc_network` | Get LXC network: configured netN (static/dhcp/MAC/bridge) plus optional runtime IPv4 via pct exec when SSH is configured. Parameters: node*, vmid*, resolve_runtime?=true |
 | `get_lxc_rrd_data` | Get RRD metrics for an LXC. Parameters: node*, vmid*, timeframe?=hour |
 | `get_lxc_status` | Get current runtime status for one LXC (includes configured_ip/networks from config). Parameters: node*, vmid* |
-| `prepare_lxc_for_docker` | Idempotent host-side prep for Docker-in-LXC (D24): nesting+keyctl features; probe lxc-pve ≥6.0.5-2; if unpatched apply dual AppArmor workaround (never bare unconfined); optional install_docker/smoke_test. Requires ssh. Success = docker run after stop/start — not docker --version. Parameters: node*, vmid*; fuse?=false, allow_apparmor_workaround?=true, install_docker?=false, smoke_test?=false, timeout? |
+| `pct_set_lxc` | Allowlisted host pct set for when REST token lacks ACL (requires ssh). Keys: features, nameserver, searchdomain, onboot, description, tags. Not free-form shell. Parameters: node*, vmid*; features?, nameserver?, searchdomain?, onboot?, description?, tags? |
+| `prepare_lxc_for_docker` | Idempotent Docker-in-LXC prep (D24): features + AppArmor; docker_mode=auto\|keyctl\|crun (auto falls back to nesting+crun when keyctl ACL denied); optional install_docker/smoke_test. Requires ssh. Success = docker run (hello-world) — not docker --version. Do not claim ready with nesting-only + stock runc. Parameters: node*, vmid*; fuse?=false, allow_apparmor_workaround?=true, install_docker?=false, smoke_test?=false, timeout?, docker_mode?=auto |
 | `pull_from_lxc` | Pull a file from a running LXC via pct pull. Writes local_path when set; otherwise returns base64. Requires ssh. Parameters: node*, vmid*, remote_path*; local_path?, timeout? |
 | `push_to_lxc` | Push a file into a running LXC via host SSH + pct push (SFTP to host temp then pct push). Provide local_path (Cursor-side) or content_base64. Max 32 MiB. Requires ssh. Parameters: node*, vmid*, remote_path*; local_path?, content_base64?, timeout? |
 | `reboot_lxc` | Reboot an LXC (applies pending config). Parameters: node*, vmid* |
@@ -117,8 +119,8 @@ _Generated from `tools/inventory.py` — **163** tools. Do not edit by hand; run
 | `start_lxc` | Start an LXC container. Parameters: node*, vmid* |
 | `stop_lxc` | Force-stop an LXC container. Parameters: node*, vmid* |
 | `suspend_lxc` | WARNING: LXC suspend uses CRIU checkpoint and is often unreliable/unsupported. Prefer shutdown. Parameters: node*, vmid* |
-| `update_lxc_config` | Update LXC config (cores/memory/hostname/net0/features). Does NOT set password or SSH keys — use set_lxc_password / set_lxc_ssh_keys (need host SSH/pct) or recreate with password/ssh_public_keys. |
-| `update_lxc_features` | Update LXC features (nesting/keyctl/fuse). keyctl/fuse beyond nesting usually need elevated role or root@pam — tool does not strip unsupported flags. After change: get_guest_pending + stop/start or reboot. Parameters: node*, vmid*, features* |
+| `update_lxc_config` | Update LXC config (cores/memory/hostname/net0/features/nameserver/searchdomain/onboot/description/tags). Does NOT set password or SSH keys — use set_lxc_password / set_lxc_ssh_keys (need host SSH/pct) or recreate with password/ssh_public_keys. |
+| `update_lxc_features` | Update LXC features (nesting/keyctl/fuse). Does not strip flags. On keyctl/fuse 403 returns structured feature_acl_denied (recommended_fallback=crun). Prefer prepare_lxc_for_docker(docker_mode=auto) or pct_set_lxc when token lacks ACL. After change: get_guest_pending + stop/start. Parameters: node*, vmid*, features* |
 
 ### Guest (unified)
 

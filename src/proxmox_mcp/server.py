@@ -85,7 +85,8 @@ class ProxmoxMCPServer:
         if not ssh_configured(self.config.ssh):
             self.logger.warning(
                 "LXC day-2 tools (execute_lxc_command, prepare_lxc_for_docker, "
-                "push_to_lxc, …) are registered but host SSH is disabled. %s",
+                "configure_lxc_dns, pct_set_lxc, push_to_lxc, …) are registered "
+                "but host SSH is disabled. %s",
                 require_host_ssh_message(context="Fix"),
             )
             return

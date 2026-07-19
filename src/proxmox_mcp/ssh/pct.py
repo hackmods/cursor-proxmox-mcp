@@ -216,15 +216,33 @@ class PctExecutor:
         parsed = parse_lxc_pve_version(raw)
         return raw or None, parsed, lxc_pve_is_patched(parsed)
 
+    def pct_set(
+        self,
+        node: str,
+        vmid: str,
+        **options: Any,
+    ) -> PctExecResult:
+        """``pct set VMID -key value ...`` for allowlisted CT options.
+
+        Allowed keys are enforced by callers (``PCT_SET_ALLOWED_KEYS``).
+        """
+        if not options:
+            raise PctExecError("pct_set requires at least one option")
+        parts = [
+            shlex.quote(self.pct_path),
+            "set",
+            shlex.quote(str(vmid)),
+        ]
+        for key, value in options.items():
+            parts.append(f"-{key}")
+            parts.append(shlex.quote(str(value)))
+        return self.run_host(node, " ".join(parts))
+
     def ensure_features(
         self, node: str, vmid: str, features: str
     ) -> PctExecResult:
         """``pct set VMID -features ...`` on the host."""
-        cmd = (
-            f"{shlex.quote(self.pct_path)} set {shlex.quote(str(vmid))} "
-            f"-features {shlex.quote(features)}"
-        )
-        return self.run_host(node, cmd)
+        return self.pct_set(node, vmid, features=features)
 
     def read_lxc_conf(self, node: str, vmid: str) -> str:
         path = f"/etc/pve/lxc/{vmid}.conf"
