@@ -113,9 +113,9 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 ## Suggested next work
 
 ```text
-1. Configure PyPI Trusted Publisher for cursor-proxmox-mcp → re-run publish.yml (see PUBLISHING.md)
-2. Official MCP registry: mcp-publisher publish after PyPI upload
-3. Glama submit + community drafts in docs/community/
+1. Tag v1.4.0 → release.yml (PyPI + GHCR + GitHub Release) — Trusted Publisher env `pypi` already present
+2. Official MCP registry: mcp-publisher / publish-mcp.yml after PyPI upload
+3. Post community drafts in docs/community/ (Cursor forum / Reddit)
 4. Only then: SDN write or ACME write if a real use case appears (Phase C)
 ```
 

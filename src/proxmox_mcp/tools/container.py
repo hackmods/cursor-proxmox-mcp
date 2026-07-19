@@ -1231,7 +1231,7 @@ Known limitations (D24):
 
                 lower = src_name.lower()
                 if lower.endswith((".tar.gz", ".tgz")):
-                    remote_archive = "/tmp/mcp-nginx-site.tgz"
+                    remote_archive = "/root/mcp-nginx-site.tgz"
                     pct.push_to_guest(node, vmid, data, remote_archive, timeout=t)
                     extract = pct.execute(
                         node,
@@ -1247,7 +1247,7 @@ Known limitations (D24):
                         )
                     content_note = f"extracted {src_name} → {dest}"
                 elif lower.endswith(".tar"):
-                    remote_archive = "/tmp/mcp-nginx-site.tar"
+                    remote_archive = "/root/mcp-nginx-site.tar"
                     pct.push_to_guest(node, vmid, data, remote_archive, timeout=t)
                     extract = pct.execute(
                         node,

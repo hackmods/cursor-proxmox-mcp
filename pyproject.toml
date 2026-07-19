@@ -110,5 +110,9 @@ ignore = [
     "W291", "W293",
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# Guest/host path fixtures in unit tests are not local insecure tempfile usage.
+"tests/**" = ["S108"]
+
 [tool.setuptools.packages.find]
 where = ["src"]

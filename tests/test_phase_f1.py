@@ -223,7 +223,6 @@ def test_deploy_static_nginx_tarball():
     tools._pct = pct
     # minimal gzip header + fake name so lower.endswith .tar.gz works via src_name
     data = b"not-a-real-tar"
-    b64 = base64.b64encode(data).decode("ascii")
     with patch.object(tools, "get_lxc_network", return_value=[]):
         # content_base64 alone uses payload.bin — force tar via local_path name
         import tempfile

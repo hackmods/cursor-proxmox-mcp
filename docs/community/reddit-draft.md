@@ -1,21 +1,15 @@
 # Reddit — draft post
 
-Suggested subs: `r/Proxmox`, `r/homelab`, `r/mcp` (and Cursor-related communities if appropriate). Keep one primary post; cross-post sparingly.
+**Subreddit ideas:** r/Proxmox, r/selfhosted, r/cursor (where allowed)
 
-**Title:** Open-source Cursor MCP for Proxmox VE (155 tools) — uvx install
+**Title:** Cursor MCP for Proxmox VE — 163 tools (VM/LXC day-2, HA, firewall, backups)
 
 **Body:**
 
-I maintain [cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp) — an MCP server so Cursor (and other MCP clients) can manage Proxmox VE: QEMU/LXC (plus unified guest tools), storage, snapshots/backups, HA, firewall, ACLs, replication, and more (~155 tools).
+Built [cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp) so Cursor agents can operate a Proxmox lab end-to-end without leaving chat.
 
-```bash
-uvx cursor-proxmox-mcp
-# or from a checkout:
-uvx --from /path/to/cursor-proxmox-mcp cursor-proxmox-mcp
-```
+- **163 tools** (v1.4.0): QEMU + LXC lifecycle, guest-agent network/file helpers, Docker-in-LXC prepare + `pct` push/pull, optional create `wait=`, snapshots/backups/jobs, migrate/HA, firewall + IPSets, users/tokens/ACL, replication, SDN/ACME read, pools, console tickets
+- Install with `uvx cursor-proxmox-mcp` once on PyPI, or `uvx --from` a checkout / GHCR image
+- First-run: [SETUP.md](https://github.com/hackmods/cursor-proxmox-mcp/blob/main/SETUP.md) (token + Privilege Separation notes + host SSH for LXC exec)
 
-Point `PROXMOX_MCP_CONFIG` at a JSON config with host + API token (privsep recommended). Full setup: https://github.com/hackmods/cursor-proxmox-mcp/blob/main/SETUP.md · Wiki: https://github.com/hackmods/cursor-proxmox-mcp/wiki
-
-Note: PyPI package name is **`cursor-proxmox-mcp`** (there is a differently named `proxmox-mcp-server` package that is not this project).
-
-Happy to take feedback from homelab / ops folks using agent tooling against their clusters.
+Happy to take feedback on ACL/token patterns and which heavy write APIs (SDN/ACME/Ceph) are worth exposing next.

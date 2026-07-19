@@ -238,7 +238,7 @@ class PctExecutor:
     def write_lxc_conf(self, node: str, vmid: str, content: str) -> None:
         """Atomically replace CT conf via host temp + mv (cluster filesystem)."""
         path = f"/etc/pve/lxc/{vmid}.conf"
-        tmp = f"/tmp/proxmox-mcp-{vmid}-{uuid.uuid4().hex}.conf"
+        tmp = f"/tmp/proxmox-mcp-{vmid}-{uuid.uuid4().hex}.conf"  # noqa: S108
         # Upload via SFTP then mv into place
         data = content.encode("utf-8")
         self._sftp_put_bytes(node, data, tmp)
@@ -362,7 +362,7 @@ class PctExecutor:
             raise PctExecError(
                 f"Payload {len(data)} bytes exceeds {MAX_PUSH_BYTES} byte limit"
             )
-        tmp = f"/tmp/proxmox-mcp-push-{vmid}-{uuid.uuid4().hex}"
+        tmp = f"/tmp/proxmox-mcp-push-{vmid}-{uuid.uuid4().hex}"  # noqa: S108
         self._sftp_put_bytes(node, data, tmp)
         try:
             cmd = (
@@ -386,7 +386,7 @@ class PctExecutor:
         timeout: Optional[int] = None,
     ) -> bytes:
         """``pct pull`` to host temp, download bytes, unlink temp."""
-        tmp = f"/tmp/proxmox-mcp-pull-{vmid}-{uuid.uuid4().hex}"
+        tmp = f"/tmp/proxmox-mcp-pull-{vmid}-{uuid.uuid4().hex}"  # noqa: S108
         try:
             cmd = (
                 f"{shlex.quote(self.pct_path)} pull {shlex.quote(str(vmid))} "

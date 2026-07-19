@@ -258,7 +258,7 @@ def test_probe_lxc_pve_version():
         "run_host",
         return_value=MagicMock(success=True, stdout="6.0.5-2\n", stderr="", exit_code=0),
     ):
-        raw, parsed, patched = pct.probe_lxc_pve_version("pve")
+        raw, _parsed, patched = pct.probe_lxc_pve_version("pve")
     assert raw == "6.0.5-2"
     assert patched is True
 
