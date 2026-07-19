@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-07-19
+
+### Added
+
+- Unit test for `wait_for_task` non-OK `exitstatus` (returns ❌ content; does not raise).
+
+### Notes
+
+- First **tagged** release since `v1.1.0`. Includes the previously untagged 1.1.1–1.1.3 line: LXC SSH/`pct` exec, guest auth helpers, host SSH setup docs, and the post-1.1 QOL sweep (honest UPID messaging, force-delete wait, VM↔LXC hints, guest-agent exit-code truthfulness). Still **155 tools**.
+
 ## [1.1.3] - 2026-07-19
 
 ### Fixed

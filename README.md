@@ -5,7 +5,7 @@
 [![PyPI](https://img.shields.io/pypi/v/cursor-proxmox-mcp)](https://pypi.org/project/cursor-proxmox-mcp/)
 [![GHCR](https://img.shields.io/badge/GHCR-cursor--proxmox--mcp-blue)](https://github.com/hackmods/cursor-proxmox-mcp/pkgs/container/cursor-proxmox-mcp)
 
-**Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 155 tools covering QEMU VMs, LXC, unified guest power, storage admin, cluster/tasks, snapshots, backups (incl. scheduled jobs), migration, HA, firewall (incl. IPSet CIDRs), access control, replication, SDN (read), ACME (read), pools, and console tickets. v1.1.3 post-1.1 QOL sweep: honest async UPID messaging, VM↔LXC hints, force-delete wait, and guest-agent exit-code truthfulness.
+**Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 155 tools covering QEMU VMs, LXC, unified guest power, storage admin, cluster/tasks, snapshots, backups (incl. scheduled jobs), migration, HA, firewall (incl. IPSet CIDRs), access control, replication, SDN (read), ACME (read), pools, and console tickets. v1.2.0 tags the post-1.1 line (LXC pct exec, guest auth, QOL sweep) plus `wait_for_task` failure-path coverage.
 
 **Repo:** [hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)
 

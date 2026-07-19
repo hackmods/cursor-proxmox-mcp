@@ -1,5 +1,13 @@
 # Changelog / research notes
 
+## 2026-07-19 — Release v1.2.0 (rev r6) — 155 tools
+
+**Why:** 1.1.1–1.1.3 landed on `main` but were never tagged; PyPI/GHCR still at v1.1.0. Ship a tagged 1.2.0 that includes that line plus a `wait_for_task` non-OK `exitstatus` unit test.
+
+**Shipped:** Version bump (`pyproject.toml`, `__init__.py`, `server.json`); CHANGELOG/README; `test_wait_for_task_non_ok_exitstatus`.
+
+**Out of scope (unchanged):** auto-wait inside `create_*`; QEMU IP on `get_vms`; baking Docker into create.
+
 ## 2026-07-19 — Post-1.1 QOL sweep (rev r5 / v1.1.3) — 155 tools
 
 **Why:** After LXC P0/P1 fixes (r2/r3), a full-tool audit found the same honesty/UX patterns across ~150 tools that were never lab-exercised: false SUCCESS on guest exec, force-delete races, missing `wait_for_task` copy, asymmetric VM/LXC hints, soft destructive responses, empty-list ACL silence.

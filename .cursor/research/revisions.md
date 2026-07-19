@@ -11,6 +11,7 @@ Pair with [changelog-notes.md](changelog-notes.md) (research “why”) and root
 | 2026-07-19 | r4 | Host SSH setup docs (keygen / authorized_keys / reload) | 155 | SETUP + wiki |
 | 2026-07-19 | r5 | Post-1.1 QOL sweep: exec exit truth, UPID footers, force-delete wait, hints | **155** | D22, D23; v1.1.3 |
 | 2026-07-19 | r4 | Docs: host SSH checklist (authorized_keys, overrides, reload) | 155 | SETUP + proxmox-config README; agent-feedback |
+| 2026-07-19 | r6 | Tag v1.2.0: wait_for_task non-OK exitstatus test; first tag since v1.1.0 | **155** | Release; deferred create auto-wait / QEMU IP / Docker bake |
 
 ## How to update
 

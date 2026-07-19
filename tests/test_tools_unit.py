@@ -65,6 +65,21 @@ def test_wait_for_task_success():
     assert "finished" in result[0].text.lower() or "OK" in result[0].text
 
 
+def test_wait_for_task_non_ok_exitstatus():
+    """Failed tasks return ❌ content (do not raise) so agents can read exitstatus."""
+    api = Mock()
+    api.nodes.return_value.tasks.return_value.status.get.side_effect = [
+        {"status": "running"},
+        {"status": "stopped", "exitstatus": "ERROR"},
+    ]
+    tools = TaskTools(api)
+    result = tools.wait_for_task("pve", "UPID:pve:1:2:3:qmcreate:100:", timeout=10, poll_interval=0.5)
+    text = result[0].text
+    assert "❌" in text
+    assert "ERROR" in text
+    assert "finished" in text.lower()
+
+
 def test_wait_for_task_timeout():
     api = Mock()
     api.nodes.return_value.tasks.return_value.status.get.return_value = {"status": "running"}
