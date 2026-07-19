@@ -8,11 +8,26 @@ https://github.com/hackmods/cursor-proxmox-mcp/wiki
 |------|-----------|
 | `Home.md` | Home |
 | `Setup.md` | Setup |
-| `Tools.md` | Tools |
+| `Tools.md` | Tools (full inventory; generated section) |
+| `Recipes.md` | Recipes |
 | `Troubleshooting.md` | Troubleshooting |
 | `_Sidebar.md` | Sidebar |
+| `_Footer.md` | Footer (every page) |
 
-Sync after editing:
+## After adding or renaming MCP tools
+
+1. Update `src/proxmox_mcp/tools/inventory.py` / `register.py` / `definitions.py` as usual.
+2. If the tool belongs to a new domain bucket, edit `DOMAIN_GROUPS` in `scripts/generate-wiki-tools.py`.
+3. Regenerate:
+
+```bash
+python scripts/generate-wiki-tools.py
+```
+
+4. CI (`tests/test_wiki_tools.py`) asserts every `ALL_TOOL_NAMES` entry appears in `Tools.md`.
+5. Sync the live wiki (below).
+
+## Sync after editing
 
 ```powershell
 .\scripts\sync-wiki.ps1
@@ -21,6 +36,8 @@ Sync after editing:
 ```bash
 ./scripts/sync-wiki.sh
 ```
+
+Copies all `*.md` except this `README.md` into the wiki git repo (including `_Sidebar.md` and `_Footer.md`).
 
 ### First-time GitHub wiki init
 

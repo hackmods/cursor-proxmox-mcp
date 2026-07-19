@@ -1,5 +1,13 @@
 # Changelog / research notes
 
+## 2026-07-19 — Wiki living guide (rev r7) — 155 tools
+
+**Why:** Wiki only summarized domains; agents/operators needed a durable guide with every tool listed and a site-wide git footer.
+
+**Shipped:** `scripts/generate-wiki-tools.py`; full `Tools.md` inventory; `Recipes.md`; `_Footer.md`; expanded Home/Setup/Troubleshooting; `tests/test_wiki_tools.py`; sync via `scripts/sync-wiki.*`.
+
+**Out of scope:** New MCP tools; auto-wait / QEMU IP / Docker-in-create.
+
 ## 2026-07-19 — Release v1.2.0 (rev r6) — 155 tools
 
 **Why:** 1.1.1–1.1.3 landed on `main` but were never tagged; PyPI/GHCR still at v1.1.0. Ship a tagged 1.2.0 that includes that line plus a `wait_for_task` non-OK `exitstatus` unit test.

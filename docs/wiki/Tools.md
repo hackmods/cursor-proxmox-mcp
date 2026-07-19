@@ -1,28 +1,257 @@
-# Tools overview
+# Tools reference
 
-Inventory is locked at **155** tools (`tools/inventory.py`). Domain summary:
+Complete inventory of MCP tools registered by **cursor-proxmox-mcp** (`tools/inventory.py` / `tools/register.py`). CI fails if this page drifts from the golden set.
 
-| Domain | Highlights |
-|--------|------------|
-| Nodes / cluster / tasks | status, networks, `wait_for_task`, version, resources, log |
-| QEMU | lifecycle, ISO/cloud-init/net, status, RRD, VNC/SPICE/termproxy |
-| LXC | lifecycle, features, suspend/resume (CRIU warn), status, **network**, RRD, console tickets, exec via SSH/`pct` |
-| Guest (unified) | `start/stop/shutdown/reboot/delete_guest`, `get_guest_status`, `get_guest_pending`, `move_guest_disk` — pass `guest_type=qemu\|lxc` |
-| Snapshots / backups | snapshot CRUD; one-shot vzdump; scheduled `*_backup_job` |
-| Storage | content, templates/ISOs, download-url, definition CRUD |
-| Migrate / HA | `migrate_guest`; HA groups + resources |
-| Firewall | cluster + guest rules; aliases; IP sets + **CIDR members**; macros |
-| Access | users, groups, roles, ACL, tokens, permissions |
-| Replication | list/status/run/create/**update**/delete |
-| SDN / ACME | read (+ `apply_sdn`); ACME directories/accounts/plugins read |
-| Pools | list/get/create/**update**/delete |
+**Count:** see generated section below (locked at **155** for v1.2.0).
 
-## Naming
+## Naming and agent tips
 
-- Parallel power tools: `*_vm` / `*_lxc` (stable for existing Cursor prompts).
-- Prefer **`*_guest` + `guest_type`** when the agent does not know QEMU vs LXC.
-- Cross-cutting tools (snapshots, migrate, guest firewall, pending, move disk) already use `guest_type`.
+- **QEMU vs LXC:** `get_vms` is QEMU-only; use `get_containers` for LXC, or `get_cluster_resources(type=vm)` for both.
+- **Unified guests:** Prefer `*_guest` + `guest_type=qemu|lxc` when the agent does not know the type. Parallel `*_vm` / `*_lxc` names remain for existing prompts.
+- **Async UPIDs:** `create_*`, clone, migrate, backup, download, and many power/delete ops return a Proxmox task UPID immediately. Always call `wait_for_task` before assuming success — create ≠ ready.
+- **LXC exec / runtime IP:** `execute_lxc_command` and runtime addresses on `get_lxc_network` need opt-in **host** SSH + `pct` (see [Setup](Setup)). Guest `ssh_public_keys` is separate.
+- **Console tickets:** VNC/SPICE/termproxy tools mint tickets only — an external viewer is required.
+- **Destructive tools:** Descriptions mark IRREVERSIBLE/WARNING; responses echo the same.
 
-## Coverage matrix
+Coverage matrix (API roadmap): [`docs/api-coverage.md`](https://github.com/hackmods/cursor-proxmox-mcp/blob/main/docs/api-coverage.md) · [`.cursor/research/proxmox-api-coverage.md`](https://github.com/hackmods/cursor-proxmox-mcp/blob/main/.cursor/research/proxmox-api-coverage.md).
 
-Living matrix: [`.cursor/research/proxmox-api-coverage.md`](https://github.com/hackmods/cursor-proxmox-mcp/blob/main/.cursor/research/proxmox-api-coverage.md) and [`docs/api-coverage.md`](https://github.com/hackmods/cursor-proxmox-mcp/blob/main/docs/api-coverage.md).
+Playbooks: [Recipes](Recipes).
+
+## Full inventory
+
+Regenerate after tool changes:
+
+```bash
+python scripts/generate-wiki-tools.py
+```
+
+<!-- BEGIN GENERATED TOOLS -->
+
+_Generated from `tools/inventory.py` — **155** tools. Do not edit by hand; run `python scripts/generate-wiki-tools.py`._
+
+### Nodes
+
+| Tool | Description |
+|------|-------------|
+| `get_node_report` | Get diagnostic report for a node. Parameters: node* |
+| `get_node_status` | Get detailed status information for a specific Proxmox node. |
+| `get_node_subscription` | Get node subscription status (read-only). Parameters: node* |
+| `get_node_time` | Get node timezone and time. Parameters: node* |
+| `get_nodes` | List all nodes in the Proxmox cluster with their status, CPU, memory, and role information. |
+| `list_node_certificates` | List SSL certificates on a node. Parameters: node* |
+| `list_node_networks` | List network interfaces/bridges on a node (vmbr0, bonds, etc.). |
+| `list_node_services` | List Proxmox-managed services on a node. Parameters: node* |
+| `wake_node` | Send Wake-on-LAN to a node. Parameters: node* |
+
+### Cluster / tasks
+
+| Tool | Description |
+|------|-------------|
+| `get_cluster_log` | Get recent cluster log. Parameters: max_entries?=50 |
+| `get_cluster_options` | Get cluster-wide options. |
+| `get_cluster_resources` | List cluster resources. Parameters: type? (vm\|storage\|node\|sdn) |
+| `get_cluster_status` | Get overall Proxmox cluster health and quorum status. |
+| `get_next_vmid` | Get the next free VM/CT ID from the cluster (best-effort — race possible before create). |
+| `get_task_status` | Get status for a task UPID. Parameters: node*, upid* |
+| `get_version` | Get Proxmox VE version/API info. |
+| `list_tasks` | List recent tasks on a node. Parameters: node* |
+| `wait_for_task` | Poll a task UPID until it stops (or timeout). Required after create_vm/create_lxc before start — create returns UPID immediately; failures (missing template, etc.) appear here. Parameters: node*, upid*, timeout?=300, poll_interval?=2.0 |
+
+### QEMU
+
+| Tool | Description |
+|------|-------------|
+| `clone_vm` | Clone a VM to a new ID (async UPID — wait_for_task). Parameters: node*, vmid*, newid*, name?, full?=true, target?, storage? |
+| `convert_vm_to_template` | Convert VM to template. Parameters: node*, vmid* |
+| `create_spice_ticket_vm` | Mint SPICE ticket for a VM. Parameters: node*, vmid* |
+| `create_termproxy_ticket_vm` | Mint termproxy ticket for a VM. Parameters: node*, vmid* |
+| `create_vm` | Create a QEMU VM (async UPID — always wait_for_task before start). Parameters: node*, vmid*, name*, cpus*, memory* (MB), disk_size* (GB); storage?, ostype?, bridge?, net0?, iso?, boot?, ciuser?, cipassword?, sshkeys?, ipconfig0? |
+| `create_vnc_ticket_vm` | Mint VNC ticket for a VM (connect externally). Parameters: node*, vmid*, websocket?=true |
+| `delete_vm` | IRREVERSIBLE: permanently delete a QEMU VM and its disks (not LXC). Parameters: node*, vmid*, force?=false |
+| `execute_vm_command` | Execute commands in a VM via QEMU guest agent. |
+| `get_vm_config` | Get full QEMU VM configuration. |
+| `get_vm_rrd_data` | Get RRD metrics for a VM. Parameters: node*, vmid*, timeframe?=hour |
+| `get_vm_status` | Get current runtime status for one VM. Parameters: node*, vmid* |
+| `get_vms` | List all QEMU virtual machines across the cluster (not LXC — use get_containers, or get_cluster_resources(type=vm) for both). Status and resource usage included. |
+| `reboot_vm` | Graceful ACPI reboot (distinct from reset). Parameters: node*, vmid* |
+| `reset_vm` | Hard-reset a QEMU VM. Parameters: node*, vmid* |
+| `resize_vm_disk` | Grow a VM disk. Parameters: node*, vmid*, disk* (e.g. scsi0), size* (e.g. +10G) |
+| `resume_vm` | Resume a suspended VM. Parameters: node*, vmid* |
+| `shutdown_vm` | Gracefully shut down a QEMU VM. Parameters: node*, vmid* |
+| `start_vm` | Start a QEMU VM (not LXC — use start_lxc / start_guest). Parameters: node*, vmid* |
+| `stop_vm` | Force-stop a QEMU VM. Parameters: node*, vmid* |
+| `suspend_vm` | Suspend a VM. Parameters: node*, vmid* |
+| `update_vm_config` | Update QEMU VM config. Parameters: node*, vmid*; cores?, memory?, name?, net0?, onboot?, agent?, iso?, boot?, ciuser?, cipassword?, sshkeys?, ipconfig0?, ide2? |
+
+### LXC
+
+| Tool | Description |
+|------|-------------|
+| `clone_lxc` | Clone an LXC (async UPID — wait_for_task). Parameters: node*, vmid*, newid*, hostname?, full?=true, target?, storage? |
+| `convert_lxc_to_template` | Convert LXC to template. Parameters: node*, vmid* |
+| `create_lxc` | Create an LXC (async UPID — always wait_for_task before start). OS template only — not Docker/app deploy. Prefer ssh_public_keys for guest SSH (many templates block root password SSH). Parameters: node*, vmid*, hostname*; ostemplate?, cpus?, memory?, disk_size?, storage?, features?, password?, ssh_public_keys?, unprivileged?, bridge?, ip?, gw?, net0?, ostemplate_filter? |
+| `create_spice_ticket_lxc` | Mint SPICE ticket for an LXC (connect externally). Parameters: node*, vmid* |
+| `create_termproxy_ticket_lxc` | Mint termproxy ticket for an LXC. Parameters: node*, vmid* |
+| `create_vnc_ticket_lxc` | Mint VNC ticket for an LXC. Parameters: node*, vmid*, websocket?=true |
+| `delete_lxc` | IRREVERSIBLE: permanently delete an LXC and its rootfs. Parameters: node*, vmid*, force?=false |
+| `execute_lxc_command` | Execute a command inside a running LXC via host SSH + pct exec (no Proxmox REST /exec — HTTP 501 means stale MCP build). Requires opt-in ssh config + paramiko. Parameters: node*, vmid*, command* |
+| `get_containers` | List all LXC containers across the cluster (includes configured IP from netN when set). For QEMU use get_vms. |
+| `get_lxc_config` | Get full LXC configuration. Parameters: node*, vmid* |
+| `get_lxc_network` | Get LXC network: configured netN (static/dhcp/MAC/bridge) plus optional runtime IPv4 via pct exec when SSH is configured. Parameters: node*, vmid*, resolve_runtime?=true |
+| `get_lxc_rrd_data` | Get RRD metrics for an LXC. Parameters: node*, vmid*, timeframe?=hour |
+| `get_lxc_status` | Get current runtime status for one LXC (includes configured_ip/networks from config). Parameters: node*, vmid* |
+| `reboot_lxc` | Reboot an LXC (applies pending config). Parameters: node*, vmid* |
+| `resize_lxc_disk` | Grow an LXC volume. Parameters: node*, vmid*, disk* (e.g. rootfs), size* (e.g. +5G) |
+| `resume_lxc` | WARNING: resume after LXC suspend (CRIU) is best-effort. Parameters: node*, vmid* |
+| `set_lxc_password` | Set/reset LXC root password via pct exec (no REST after-create password API). Optionally enables root password SSH in sshd. Requires config ssh. Parameters: node*, vmid*, password*, enable_password_ssh?=true |
+| `set_lxc_ssh_keys` | Install root authorized_keys via pct exec (prefer ssh_public_keys on create_lxc). Parameters: node*, vmid*, ssh_public_keys*, mode?=replace\|append |
+| `shutdown_lxc` | Gracefully shut down an LXC. Parameters: node*, vmid* |
+| `start_lxc` | Start an LXC container. Parameters: node*, vmid* |
+| `stop_lxc` | Force-stop an LXC container. Parameters: node*, vmid* |
+| `suspend_lxc` | WARNING: LXC suspend uses CRIU checkpoint and is often unreliable/unsupported. Prefer shutdown. Parameters: node*, vmid* |
+| `update_lxc_config` | Update LXC config (cores/memory/hostname/net0/features). Does NOT set password or SSH keys — use set_lxc_password / set_lxc_ssh_keys (need host SSH/pct) or recreate with password/ssh_public_keys. |
+| `update_lxc_features` | Update LXC features (nesting/keyctl/fuse). keyctl/fuse beyond nesting usually need elevated role or root@pam — tool does not strip unsupported flags. Parameters: node*, vmid*, features* |
+
+### Guest (unified)
+
+| Tool | Description |
+|------|-------------|
+| `delete_guest` | IRREVERSIBLE: permanently delete a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu\|lxc, force?=false |
+| `get_guest_pending` | Get pending (not-yet-applied) config for a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu\|lxc |
+| `get_guest_status` | Get runtime status for a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu\|lxc |
+| `move_guest_disk` | Move a guest disk/volume to another storage. Parameters: node*, vmid*, disk*, storage*, guest_type?=qemu\|lxc, delete?=true |
+| `reboot_guest` | Reboot a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu\|lxc |
+| `shutdown_guest` | Gracefully shut down a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu\|lxc |
+| `start_guest` | Start a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu\|lxc |
+| `stop_guest` | Force-stop a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu\|lxc |
+
+### Snapshots / backups
+
+| Tool | Description |
+|------|-------------|
+| `create_backup` | Create a vzdump backup (async UPID — wait_for_task). Parameters: node*, vmid*, storage?, mode?=snapshot, compress?=zstd, notes? |
+| `create_backup_job` | Create a scheduled backup job. Parameters: schedule*, storage*; vmid? (comma-separated), mode?=snapshot, compress?=zstd, enabled?=true, comment?, mailto?, mailnotification?, all?=false |
+| `create_snapshot` | Create a snapshot. Parameters: node*, vmid*, snapname*, guest_type?, description?, vmstate?=false |
+| `delete_backup` | IRREVERSIBLE: delete a backup volume. Parameters: node*, storage*, volume* |
+| `delete_backup_job` | IRREVERSIBLE: delete a scheduled backup job. Parameters: id* |
+| `delete_snapshot` | IRREVERSIBLE: delete a snapshot. Parameters: node*, vmid*, snapname*, guest_type? |
+| `list_backup_jobs` | List scheduled cluster backup jobs (/cluster/backup). |
+| `list_backups` | List backups on storage. Parameters: node*, storage*, vmid? |
+| `list_snapshots` | List snapshots for a guest. Parameters: node*, vmid*, guest_type?=qemu\|lxc |
+| `restore_backup` | WARNING: restore may overwrite guest disks when force is set (async UPID — wait_for_task). Parameters: node*, archive*, vmid*, storage?, force?=false, guest_type?=qemu |
+| `rollback_snapshot` | WARNING: rollback discards state after the snapshot. Parameters: node*, vmid*, snapname*, guest_type? |
+
+### Storage
+
+| Tool | Description |
+|------|-------------|
+| `create_storage` | Create cluster storage definition. Parameters: storage*, type*, content?, path?, server?, export?, vgname?, pool?, monhost?, username?, password?, nodes?, disable? |
+| `delete_storage` | IRREVERSIBLE: delete storage definition (not underlying data by default). Parameters: storage* |
+| `delete_storage_content` | IRREVERSIBLE: delete a storage volume. Parameters: node*, storage*, volume* |
+| `download_url_to_storage` | Download URL into storage (async UPID — wait_for_task). http/https only; host fetches URL. Parameters: node*, storage*, url*, filename?, content?=iso, verify_certificate?=true, checksum?, checksum_algorithm? |
+| `get_storage` | List storage pools across the cluster with usage. |
+| `get_storage_content` | List storage content (iso/vztmpl/backup/images). Parameters: node*, storage*, content? |
+| `list_isos` | List ISO images. Parameters: node*, storage?, filter? |
+| `list_os_templates` | List LXC OS templates (vztmpl) across storages. Parameters: node*, storage?, filter? (e.g. ubuntu) |
+| `update_storage` | Update storage definition. Parameters: storage*, content?, nodes?, disable? |
+
+### Migrate / HA
+
+| Tool | Description |
+|------|-------------|
+| `create_ha_group` | Create HA group (often needs elevated privileges). Parameters: group*, nodes*, comment? |
+| `create_ha_resource` | Create HA resource (often needs elevated privileges). Parameters: sid* (e.g. vm:100), group?, state?=started, comment? |
+| `delete_ha_group` | IRREVERSIBLE: delete HA group. Parameters: group* |
+| `delete_ha_resource` | IRREVERSIBLE: delete HA resource. Parameters: sid* |
+| `get_ha_status` | Get current HA manager status. |
+| `list_ha_groups` | List HA groups. |
+| `list_ha_resources` | List HA resources. |
+| `migrate_guest` | Migrate a VM or LXC to another node (async UPID — wait_for_task). Parameters: node*, vmid*, target*, guest_type?=qemu, online?=true, with_local_disks?=false |
+| `update_ha_resource` | Update HA resource. Parameters: sid*, group?, state?, comment? |
+
+### Firewall
+
+| Tool | Description |
+|------|-------------|
+| `add_firewall_ipset_cidr` | Add a CIDR/IP to a firewall IP set. Parameters: name*, cidr*, comment?, nomatch?=false |
+| `create_cluster_firewall_rule` | Create cluster firewall rule. Parameters: action*, type*, enable?, source?, dest?, proto?, dport?, sport?, comment?, pos? |
+| `create_firewall_alias` | Create firewall alias. Parameters: name*, cidr*, comment? |
+| `create_firewall_ipset` | Create firewall IP set. Parameters: name*, comment? |
+| `create_guest_firewall_rule` | Create guest firewall rule. Parameters: node*, vmid*, action*, type*, guest_type?, enable?, source?, dest?, proto?, dport?, comment? |
+| `delete_cluster_firewall_rule` | IRREVERSIBLE: delete cluster firewall rule. Parameters: pos* |
+| `delete_firewall_alias` | IRREVERSIBLE: delete firewall alias. Parameters: name* |
+| `delete_firewall_ipset` | IRREVERSIBLE: delete firewall IP set. Parameters: name* |
+| `delete_firewall_ipset_cidr` | IRREVERSIBLE: remove a CIDR from a firewall IP set. Parameters: name*, cidr* |
+| `delete_guest_firewall_rule` | IRREVERSIBLE: delete guest firewall rule. Parameters: node*, vmid*, pos*, guest_type? |
+| `get_cluster_firewall_options` | Get cluster firewall options. |
+| `get_guest_firewall_options` | Get guest firewall options. Parameters: node*, vmid*, guest_type? |
+| `list_cluster_firewall_rules` | List cluster firewall rules. |
+| `list_firewall_aliases` | List cluster firewall aliases. |
+| `list_firewall_ipset_cidrs` | List CIDR members of a firewall IP set. Parameters: name* |
+| `list_firewall_ipsets` | List cluster firewall IP sets. |
+| `list_firewall_macros` | List available firewall macros. |
+| `list_guest_firewall_rules` | List guest firewall rules. Parameters: node*, vmid*, guest_type? |
+| `set_cluster_firewall_options` | WARNING: changes cluster-wide firewall policy. Parameters: enable?, policy_in?, policy_out? |
+| `set_guest_firewall_options` | Set guest firewall options. Parameters: node*, vmid*, guest_type?, enable?, dhcp?, ipfilter? |
+
+### Access
+
+| Tool | Description |
+|------|-------------|
+| `create_group` | Create a group. Parameters: groupid*, comment? |
+| `create_token` | Create API token (secret shown once — store immediately). Parameters: userid*, tokenid*, comment?, privsep?=true. privsep=true (default): token needs its own ACL (user@realm!tokenid); effective perms = user ∩ token. privsep=false: token inherits all user permissions (lab shortcut; larger blast radius). |
+| `create_user` | Create a user. Parameters: userid*, password?, comment?, email?, enable?=true |
+| `delete_group` | IRREVERSIBLE: delete a group. Parameters: groupid* |
+| `delete_token` | IRREVERSIBLE: delete API token. Parameters: userid*, tokenid* |
+| `delete_user` | IRREVERSIBLE: delete a user. Parameters: userid* |
+| `get_permissions` | Get effective permissions for the current auth identity (useful to verify token ACLs / Privilege Separation). |
+| `get_token_permissions` | Get effective permissions for an API token (privsep). Parameters: userid* (user@realm), tokenid*. Empty result often means Privilege Separation with no ACL on user@realm!tokenid. |
+| `get_user` | Get a user. Parameters: userid* |
+| `list_acl` | List ACL entries. |
+| `list_groups` | List groups. |
+| `list_roles` | List roles. |
+| `list_tokens` | List API tokens for a user. Parameters: userid* |
+| `list_users` | List Proxmox users. |
+| `update_acl` | WARNING: modifies access control; delete=true removes ACL entries. Parameters: path*, roles*, users?, groups?, propagate?=true, delete?=false |
+
+### Replication
+
+| Tool | Description |
+|------|-------------|
+| `create_replication_job` | Create replication job. Parameters: id* (e.g. 100-0), target*, schedule?, comment?, enabled?=true |
+| `delete_replication_job` | IRREVERSIBLE: delete replication job. Parameters: id* |
+| `get_replication_status` | Get replication job status. Parameters: node*, jobid* |
+| `list_replication_jobs` | List cluster storage replication jobs. |
+| `run_replication_job` | Schedule a replication job to run now. Parameters: node*, jobid* |
+| `update_replication_job` | Update replication job. Parameters: id*; schedule?, comment?, enabled? |
+
+### SDN
+
+| Tool | Description |
+|------|-------------|
+| `apply_sdn` | Apply pending SDN configuration cluster-wide (often needs Sys.Modify / elevated privileges). |
+| `list_sdn_controllers` | List SDN controllers. |
+| `list_sdn_dns` | List SDN DNS entries. |
+| `list_sdn_ipams` | List SDN IPAMs. |
+| `list_sdn_vnets` | List SDN virtual networks. |
+| `list_sdn_zones` | List SDN zones. |
+
+### ACME
+
+| Tool | Description |
+|------|-------------|
+| `get_acme_directories` | List known ACME directories (Let's Encrypt etc.). |
+| `list_acme_accounts` | List ACME accounts. |
+| `list_acme_plugins` | List ACME challenge plugins. |
+
+### Pools
+
+| Tool | Description |
+|------|-------------|
+| `create_pool` | Create a resource pool. Parameters: poolid*, comment? |
+| `delete_pool` | IRREVERSIBLE: delete a resource pool. Parameters: poolid* |
+| `get_pool` | Get a resource pool and its members. Parameters: poolid* |
+| `list_pools` | List resource pools. |
+| `update_pool` | Update pool membership. Parameters: poolid*; comment?, vms? (comma IDs), storage? (comma names), delete?=false (true=remove members) |
+
+<!-- END GENERATED TOOLS -->
