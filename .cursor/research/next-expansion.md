@@ -113,10 +113,11 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 ## Suggested next work
 
 ```text
-1. Tag v1.4.0 → release.yml (PyPI + GHCR + GitHub Release) — Trusted Publisher env `pypi` already present
-2. Official MCP registry: mcp-publisher / publish-mcp.yml after PyPI upload
-3. Post community drafts in docs/community/ (Cursor forum / Reddit)
-4. Only then: SDN write or ACME write if a real use case appears (Phase C)
+1. ~~Tag v1.4.0 → release.yml (GHCR + GitHub Release)~~ done; PyPI via publish.yml (release.yml Trusted Publisher still missing — add it)
+2. ~~Official MCP registry~~ done for v1.4.0 (retry after PyPI)
+3. Post community drafts in docs/community/ (Cursor forum / Reddit) — manual
+4. Add PyPI Trusted Publisher entry for workflow `release.yml` + env `pypi` (so tag push does not need manual publish.yml)
+5. Only then: SDN write or ACME write if a real use case appears (Phase C)
 ```
 
 When shipping any new tool: update this file’s status, coverage matrix, changelog-notes, README, and `expected_tools.py` in the same change (api-coverage + keep-docs-aligned rules).
