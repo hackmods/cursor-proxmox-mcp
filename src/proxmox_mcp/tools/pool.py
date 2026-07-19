@@ -2,6 +2,7 @@
 from typing import List, Optional
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
+from .helpers import destructive_warning, privsep_empty_hint
 
 
 class PoolTools(ProxmoxTool):
@@ -10,6 +11,8 @@ class PoolTools(ProxmoxTool):
     def list_pools(self) -> List[Content]:
         try:
             pools = self.proxmox.pools.get()
+            if not pools:
+                return [Content(type="text", text=privsep_empty_hint("pools"))]
             return self._format_response(pools)
         except Exception as e:
             self._handle_error("list pools", e)
@@ -57,7 +60,10 @@ class PoolTools(ProxmoxTool):
             return [
                 Content(
                     type="text",
-                    text=f"Pool '{poolid}' {action}\nParams: {params}\nResult: {result}",
+                    text=(
+                        f"Pool '{poolid}' {action}\nParams: {params}\nResult: {result}\n"
+                        f"💡 Next: get_pool to verify membership."
+                    ),
                 )
             ]
         except ValueError:
@@ -68,6 +74,14 @@ class PoolTools(ProxmoxTool):
     def delete_pool(self, poolid: str) -> List[Content]:
         try:
             result = self.proxmox.pools(poolid).delete()
-            return [Content(type="text", text=f"Pool '{poolid}' deleted\nResult: {result}")]
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"{destructive_warning('deleted')}\n"
+                        f"Pool '{poolid}' deleted\nResult: {result}"
+                    ),
+                )
+            ]
         except Exception as e:
             self._handle_error(f"delete pool {poolid}", e)

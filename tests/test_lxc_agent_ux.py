@@ -64,7 +64,7 @@ def test_execute_lxc_requires_ssh():
 
 def test_execute_lxc_via_pct():
     api = make_fake_proxmox(lxc={"121": {"name": "ct", "status": "running"}})
-    ssh = SSHConfig(enabled=True, user="root", private_key_path="/tmp/key")
+    ssh = SSHConfig(enabled=True, user="root", private_key_path="/var/keys/test.key")
     tools = ContainerTools(api, ssh_config=ssh, proxmox_host="10.0.0.1")
     fake_result = MagicMock(
         success=True, command="hostname", exit_code=0, stdout="ct\n", stderr=""
@@ -202,7 +202,7 @@ def test_set_lxc_password_requires_ssh():
 
 def test_set_lxc_password_via_pct():
     api = make_fake_proxmox(lxc={"122": {"hostname": "ct", "status": "running"}})
-    ssh = SSHConfig(enabled=True, user="root", private_key_path="/tmp/key")
+    ssh = SSHConfig(enabled=True, user="root", private_key_path="/var/keys/test.key")
     tools = ContainerTools(api, ssh_config=ssh, proxmox_host="10.0.0.1")
     fake = MagicMock(success=True, exit_code=0, stdout="", stderr="", command="x")
     with patch.object(tools._pct, "execute", return_value=fake) as mock_exec:
@@ -216,7 +216,7 @@ def test_set_lxc_password_via_pct():
 
 def test_set_lxc_ssh_keys_via_pct():
     api = make_fake_proxmox(lxc={"122": {"hostname": "ct", "status": "running"}})
-    ssh = SSHConfig(enabled=True, user="root", private_key_path="/tmp/key")
+    ssh = SSHConfig(enabled=True, user="root", private_key_path="/var/keys/test.key")
     tools = ContainerTools(api, ssh_config=ssh, proxmox_host="10.0.0.1")
     fake = MagicMock(success=True, exit_code=0, stdout="", stderr="", command="x")
     key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITest"

@@ -3,6 +3,7 @@ from typing import List
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
 from .guest import guest_resource, normalize_guest_type
+from .helpers import guest_not_found_message, is_missing_resource_error, upid_response_footer
 
 
 class MigrateTools(ProxmoxTool):
@@ -34,9 +35,13 @@ class MigrateTools(ProxmoxTool):
                     type="text",
                     text=(
                         f"Migration of {gtype} {vmid} from {node} → {target} initiated\n"
-                        f"Task ID: {result}"
+                        f"{upid_response_footer(result, node=node)}"
                     ),
                 )
             ]
+        except ValueError:
+            raise
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(guest_not_found_message(vmid, node, normalize_guest_type(guest_type)))
             self._handle_error(f"migrate {guest_type} {vmid} to {target}", e)

@@ -17,9 +17,14 @@ from .helpers import (
     DEFAULT_LXC_FEATURES,
     assert_id_absent,
     check_exec_allowlist,
+    console_ticket_footer,
     configured_ipv4_summary,
+    is_missing_resource_error,
+    lxc_not_found_message,
     parse_lxc_networks,
     pick_storage,
+    upid_response_footer,
+    wait_for_upid,
 )
 from .spec import ToolSpec
 from . import definitions as D
@@ -344,13 +349,16 @@ class ContainerTools(ProxmoxTool):
                 result_text = f"🟢 LXC {vmid} is already running"
             else:
                 task_result = self.proxmox.nodes(node).lxc(vmid).status.start.post()
-                result_text = f"🚀 LXC {vmid} start initiated successfully\nTask ID: {task_result}"
+                result_text = (
+                    f"🚀 LXC {vmid} start initiated\n"
+                    f"{upid_response_footer(task_result, node=node)}"
+                )
 
             return [Content(type="text", text=result_text)]
 
         except Exception as e:
-            if "does not exist" in str(e).lower() or "not found" in str(e).lower():
-                raise ValueError(f"LXC {vmid} not found on node {node}")
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"start LXC {vmid}", e)
 
     def stop_lxc(self, node: str, vmid: str) -> List[Content]:
@@ -363,13 +371,16 @@ class ContainerTools(ProxmoxTool):
                 result_text = f"🔴 LXC {vmid} is already stopped"
             else:
                 task_result = self.proxmox.nodes(node).lxc(vmid).status.stop.post()
-                result_text = f"🛑 LXC {vmid} stop initiated successfully\nTask ID: {task_result}"
+                result_text = (
+                    f"🛑 LXC {vmid} stop initiated\n"
+                    f"{upid_response_footer(task_result, node=node)}"
+                )
 
             return [Content(type="text", text=result_text)]
 
         except Exception as e:
-            if "does not exist" in str(e).lower() or "not found" in str(e).lower():
-                raise ValueError(f"LXC {vmid} not found on node {node}")
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"stop LXC {vmid}", e)
 
     def shutdown_lxc(self, node: str, vmid: str) -> List[Content]:
@@ -382,13 +393,16 @@ class ContainerTools(ProxmoxTool):
                 result_text = f"🔴 LXC {vmid} is already stopped"
             else:
                 task_result = self.proxmox.nodes(node).lxc(vmid).status.shutdown.post()
-                result_text = f"💤 LXC {vmid} graceful shutdown initiated\nTask ID: {task_result}"
+                result_text = (
+                    f"💤 LXC {vmid} graceful shutdown initiated\n"
+                    f"{upid_response_footer(task_result, node=node)}"
+                )
 
             return [Content(type="text", text=result_text)]
 
         except Exception as e:
-            if "does not exist" in str(e).lower() or "not found" in str(e).lower():
-                raise ValueError(f"LXC {vmid} not found on node {node}")
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"shutdown LXC {vmid}", e)
 
     def reboot_lxc(self, node: str, vmid: str) -> List[Content]:
@@ -404,13 +418,16 @@ class ContainerTools(ProxmoxTool):
                 )
             else:
                 task_result = self.proxmox.nodes(node).lxc(vmid).status.reboot.post()
-                result_text = f"🔄 LXC {vmid} reboot initiated successfully\nTask ID: {task_result}"
+                result_text = (
+                    f"🔄 LXC {vmid} reboot initiated\n"
+                    f"{upid_response_footer(task_result, node=node)}"
+                )
 
             return [Content(type="text", text=result_text)]
 
         except Exception as e:
-            if "does not exist" in str(e).lower() or "not found" in str(e).lower():
-                raise ValueError(f"LXC {vmid} not found on node {node}")
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"reboot LXC {vmid}", e)
 
     def suspend_lxc(self, node: str, vmid: str) -> List[Content]:
@@ -422,12 +439,14 @@ class ContainerTools(ProxmoxTool):
                     type="text",
                     text=(
                         f"⚠️ LXC {vmid} suspend initiated (CRIU — best-effort)\n"
-                        f"Task ID: {task_result}\n"
+                        f"{upid_response_footer(task_result, node=node)}\n"
                         f"Prefer shutdown_lxc for reliable power-off."
                     ),
                 )
             ]
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"suspend LXC {vmid}", e)
 
     def resume_lxc(self, node: str, vmid: str) -> List[Content]:
@@ -439,11 +458,13 @@ class ContainerTools(ProxmoxTool):
                     type="text",
                     text=(
                         f"⚠️ LXC {vmid} resume initiated (CRIU — best-effort)\n"
-                        f"Task ID: {task_result}"
+                        f"{upid_response_footer(task_result, node=node)}"
                     ),
                 )
             ]
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"resume LXC {vmid}", e)
 
     def delete_lxc(self, node: str, vmid: str, force: bool = False) -> List[Content]:
@@ -460,8 +481,8 @@ class ContainerTools(ProxmoxTool):
                 current_status = ct_status.get("status")
                 ct_name = ct_status.get("name") or ct_status.get("hostname") or f"CT-{vmid}"
             except Exception as e:
-                if "does not exist" in str(e).lower() or "not found" in str(e).lower():
-                    raise ValueError(f"LXC {vmid} not found on node {node}")
+                if is_missing_resource_error(e):
+                    raise ValueError(lxc_not_found_message(vmid, node))
                 raise e
 
             if current_status == "running":
@@ -470,24 +491,26 @@ class ContainerTools(ProxmoxTool):
                         f"LXC {vmid} ({ct_name}) is currently running. "
                         f"Please stop it first or use force=True to stop and delete."
                     )
-                self.proxmox.nodes(node).lxc(vmid).status.stop.post()
-                result_text = f"🛑 Stopping LXC {vmid} ({ct_name}) before deletion...\n"
+                stop_upid = self.proxmox.nodes(node).lxc(vmid).status.stop.post()
+                wait_for_upid(self.proxmox, node, stop_upid, timeout=120)
+                result_text = (
+                    f"🛑 Stopped LXC {vmid} ({ct_name}) before deletion "
+                    f"(stop UPID: {stop_upid})\n"
+                )
             else:
                 result_text = f"🗑️ Deleting LXC {vmid} ({ct_name})...\n"
 
             task_result = self.proxmox.nodes(node).lxc(vmid).delete()
 
-            result_text += f"""🗑️ LXC {vmid} ({ct_name}) deletion initiated successfully!
+            result_text += f"""🗑️ LXC {vmid} ({ct_name}) deletion initiated!
 
-⚠️ WARNING: This operation will permanently remove:
+⚠️ IRREVERSIBLE: This operation will permanently remove:
   • Container configuration
   • Root filesystem
   • All snapshots
   • Cannot be undone!
 
-🔧 Task ID: {task_result}
-
-✅ LXC {vmid} ({ct_name}) is being deleted from node {node}"""
+{upid_response_footer(task_result, node=node)}"""
 
             return [Content(type="text", text=result_text)]
 
@@ -511,8 +534,8 @@ class ContainerTools(ProxmoxTool):
             try:
                 config = self.proxmox.nodes(node).lxc(vmid).config.get()
             except Exception as e:
-                if "does not exist" in str(e).lower() or "not found" in str(e).lower():
-                    raise ValueError(f"LXC {vmid} not found on node {node}")
+                if is_missing_resource_error(e):
+                    raise ValueError(lxc_not_found_message(vmid, node))
                 raise e
 
             previous = config.get("features", "(none)")
@@ -542,6 +565,8 @@ class ContainerTools(ProxmoxTool):
             config = self.proxmox.nodes(node).lxc(vmid).config.get()
             return self._format_response(config)
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"get LXC {vmid} config", e)
 
     def update_lxc_config(self, node: str, vmid: str, **kwargs) -> List[Content]:
@@ -564,6 +589,8 @@ class ContainerTools(ProxmoxTool):
         except ValueError:
             raise
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"update LXC {vmid} config", e)
 
     def clone_lxc(
@@ -589,10 +616,15 @@ class ContainerTools(ProxmoxTool):
             return [
                 Content(
                     type="text",
-                    text=f"Clone LXC {vmid} → {newid} initiated\nTask ID: {result}",
+                    text=(
+                        f"Clone LXC {vmid} → {newid} initiated\n"
+                        f"{upid_response_footer(result, node=node)}"
+                    ),
                 )
             ]
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"clone LXC {vmid}", e)
 
     def resize_lxc_disk(
@@ -604,10 +636,15 @@ class ContainerTools(ProxmoxTool):
             return [
                 Content(
                     type="text",
-                    text=f"Resize {disk} on LXC {vmid} to {size}\nResult: {result}",
+                    text=(
+                        f"Resize {disk} on LXC {vmid} to {size} initiated\n"
+                        f"{upid_response_footer(result, node=node)}"
+                    ),
                 )
             ]
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"resize disk on LXC {vmid}", e)
 
     def convert_lxc_to_template(self, node: str, vmid: str) -> List[Content]:
@@ -617,10 +654,15 @@ class ContainerTools(ProxmoxTool):
             return [
                 Content(
                     type="text",
-                    text=f"LXC {vmid} convert-to-template initiated\nResult: {result}",
+                    text=(
+                        f"LXC {vmid} convert-to-template initiated\n"
+                        f"{upid_response_footer(result, node=node)}"
+                    ),
                 )
             ]
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"convert LXC {vmid} to template", e)
 
     def execute_lxc_command(self, node: str, vmid: str, command: str) -> List[Content]:
@@ -652,6 +694,8 @@ class ContainerTools(ProxmoxTool):
         except PctExecError as e:
             raise RuntimeError(str(e)) from e
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"execute command on LXC {vmid}", e)
 
     def set_lxc_password(
@@ -791,27 +835,57 @@ class ContainerTools(ProxmoxTool):
     def create_vnc_ticket(self, node: str, vmid: str, websocket: bool = True) -> List[Content]:
         """Mint a VNC proxy ticket for an LXC (no websocket proxy)."""
         try:
+            import json
+
             result = self.proxmox.nodes(node).lxc(vmid).vncproxy.post(
                 websocket=1 if websocket else 0
             )
-            return self._format_response(result)
+            body = json.dumps(result, indent=2)
+            return [
+                Content(
+                    type="text",
+                    text=f"{body}\n\n{console_ticket_footer('VNC')}",
+                )
+            ]
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"create VNC ticket for LXC {vmid}", e)
 
     def create_termproxy_ticket(self, node: str, vmid: str) -> List[Content]:
         """Mint a termproxy ticket for an LXC console."""
         try:
+            import json
+
             result = self.proxmox.nodes(node).lxc(vmid).termproxy.post()
-            return self._format_response(result)
+            body = json.dumps(result, indent=2)
+            return [
+                Content(
+                    type="text",
+                    text=f"{body}\n\n{console_ticket_footer('termproxy')}",
+                )
+            ]
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"create termproxy ticket for LXC {vmid}", e)
 
     def create_spice_ticket(self, node: str, vmid: str) -> List[Content]:
         """Mint a SPICE proxy ticket for an LXC."""
         try:
+            import json
+
             result = self.proxmox.nodes(node).lxc(vmid).spiceproxy.post()
-            return self._format_response(result)
+            body = json.dumps(result, indent=2)
+            return [
+                Content(
+                    type="text",
+                    text=f"{body}\n\n{console_ticket_footer('SPICE')}",
+                )
+            ]
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"create SPICE ticket for LXC {vmid}", e)
 
     def get_lxc_status(self, node: str, vmid: str) -> List[Content]:
@@ -825,6 +899,8 @@ class ContainerTools(ProxmoxTool):
             payload["networks"] = networks
             return self._format_response(payload)
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"get status for LXC {vmid}", e)
 
     def get_lxc_network(
@@ -879,6 +955,8 @@ class ContainerTools(ProxmoxTool):
 
             return self._format_response(payload)
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"get network for LXC {vmid}", e)
 
     def get_lxc_rrd_data(
@@ -889,4 +967,6 @@ class ContainerTools(ProxmoxTool):
             data = self.proxmox.nodes(node).lxc(vmid).rrddata.get(timeframe=timeframe)
             return self._format_response(data)
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"get RRD data for LXC {vmid}", e)

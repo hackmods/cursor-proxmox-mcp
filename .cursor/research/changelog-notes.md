@@ -1,5 +1,17 @@
 # Changelog / research notes
 
+## 2026-07-19 — Post-1.1 QOL sweep (rev r5 / v1.1.3) — 155 tools
+
+**Why:** After LXC P0/P1 fixes (r2/r3), a full-tool audit found the same honesty/UX patterns across ~150 tools that were never lab-exercised: false SUCCESS on guest exec, force-delete races, missing `wait_for_task` copy, asymmetric VM/LXC hints, soft destructive responses, empty-list ACL silence.
+
+**Shipped:**
+- P0: `execute_vm_command` honors guest-agent exit code
+- Force-delete: stop → `wait_for_upid` → delete
+- Shared helpers: `upid_response_footer`, `lxc_not_found_message`, `destructive_warning`, `privsep_empty_hint`, `validate_download_url`
+- D22 / D23; additive `download_url_to_storage` verify/checksum params
+
+**Out of scope:** auto-wait inside create; QEMU IP on `get_vms`; Phase C SDN/HA CRUD expansion.
+
 ## 2026-07-19 — Host SSH setup docs (rev r4) — 155 tools
 
 **Why:** Lab operator enabled `ssh` + `host_overrides` in config but still could not use host `pct exec` — missing public key on the node and no MCP reload after config change. Docs described the schema, not the end-to-end trust loop.

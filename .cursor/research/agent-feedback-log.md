@@ -93,6 +93,29 @@ Use this to avoid re-learning the same failures across sessions.
 
 ---
 
+## 2026-07-19 — Post-1.1 codebase QOL sweep (proactive audit)
+
+**Session context:** After r2/r3 LXC fixes, review remaining 155 tools for the same issue classes (no full live lab coverage).
+
+### Patterns found / fixed (rev r5 / v1.1.3)
+
+| Pattern | Examples | Fix |
+|---------|----------|-----|
+| False SUCCESS | `execute_vm_command` always `success: True` | Honor exitcode |
+| Force-delete race | stop then immediate delete | `wait_for_upid` after stop |
+| Missing wait copy | clone/migrate/backup/download/... | `upid_response_footer` |
+| One-sided family hints | `*_lxc` 404 without QEMU hint | `lxc_not_found_message` |
+| Soft destructive text | delete_backup / delete_user | Echo ⚠️ IRREVERSIBLE |
+| Empty ACL silence | list_users / get_vms empty | privsep / get_containers hints |
+
+### Out of scope
+
+- Auto-wait inside create_*
+- QEMU guest-agent network IP on get_vms
+- Baking Docker into create_lxc
+
+---
+
 ## 2026-07-19 — Host SSH setup gap (config alone not enough)
 
 **Session context:** Operator set `ssh.enabled`, `private_key_path`, and `host_overrides.pve` in `config.json`, but host SSH for `pct exec` still was not usable.

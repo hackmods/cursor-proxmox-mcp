@@ -353,6 +353,6 @@ async def test_execute_vm_command_with_error(server, mock_proxmox):
 
     assert len(response) == 1
     assert response[0].type == "text"
-    assert "SUCCESS" in response[0].text  # API call succeeded
+    assert "FAILED" in response[0].text  # guest exitcode != 0
     assert "command not found" in response[0].text
     assert "invalid-command" in response[0].text

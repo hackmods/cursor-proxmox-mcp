@@ -73,7 +73,8 @@ class PctExecutor:
         )
 
         client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        # Lab nodes often use self-signed/unknown host keys; operator opts into ssh config.
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())  # noqa: S507
         try:
             connect_kwargs: Dict[str, Any] = {
                 "hostname": host,

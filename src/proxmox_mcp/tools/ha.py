@@ -2,6 +2,7 @@
 from typing import List, Optional
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
+from .helpers import destructive_warning, privilege_required_note, privsep_empty_hint
 
 
 class HATools(ProxmoxTool):
@@ -17,6 +18,8 @@ class HATools(ProxmoxTool):
     def list_ha_groups(self) -> List[Content]:
         try:
             groups = self.proxmox.cluster.ha.groups.get()
+            if not groups:
+                return [Content(type="text", text=privsep_empty_hint("HA groups"))]
             return self._format_response(groups)
         except Exception as e:
             self._handle_error("list HA groups", e)
@@ -29,20 +32,38 @@ class HATools(ProxmoxTool):
             if comment:
                 params["comment"] = comment
             result = self.proxmox.cluster.ha.groups.post(**params)
-            return [Content(type="text", text=f"HA group '{group}' created\nResult: {result}")]
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"HA group '{group}' created\nResult: {result}\n"
+                        f"{privilege_required_note('HA group mutations')}"
+                    ),
+                )
+            ]
         except Exception as e:
             self._handle_error(f"create HA group {group}", e)
 
     def delete_ha_group(self, group: str) -> List[Content]:
         try:
             result = self.proxmox.cluster.ha.groups(group).delete()
-            return [Content(type="text", text=f"HA group '{group}' deleted\nResult: {result}")]
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"{destructive_warning('deleted')}\n"
+                        f"HA group '{group}' deleted\nResult: {result}"
+                    ),
+                )
+            ]
         except Exception as e:
             self._handle_error(f"delete HA group {group}", e)
 
     def list_ha_resources(self) -> List[Content]:
         try:
             resources = self.proxmox.cluster.ha.resources.get()
+            if not resources:
+                return [Content(type="text", text=privsep_empty_hint("HA resources"))]
             return self._format_response(resources)
         except Exception as e:
             self._handle_error("list HA resources", e)
@@ -61,7 +82,15 @@ class HATools(ProxmoxTool):
             if comment:
                 params["comment"] = comment
             result = self.proxmox.cluster.ha.resources.post(**params)
-            return [Content(type="text", text=f"HA resource '{sid}' created\nResult: {result}")]
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"HA resource '{sid}' created\nResult: {result}\n"
+                        f"{privilege_required_note('HA resource mutations')}"
+                    ),
+                )
+            ]
         except Exception as e:
             self._handle_error(f"create HA resource {sid}", e)
 
@@ -81,13 +110,31 @@ class HATools(ProxmoxTool):
             if comment is not None:
                 params["comment"] = comment
             result = self.proxmox.cluster.ha.resources(sid).put(**params)
-            return [Content(type="text", text=f"HA resource '{sid}' updated\nResult: {result}")]
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"HA resource '{sid}' updated\nResult: {result}\n"
+                        f"💡 Note: HA manager applies state asynchronously; "
+                        f"check get_ha_status if the guest does not move.\n"
+                        f"{privilege_required_note('HA resource mutations')}"
+                    ),
+                )
+            ]
         except Exception as e:
             self._handle_error(f"update HA resource {sid}", e)
 
     def delete_ha_resource(self, sid: str) -> List[Content]:
         try:
             result = self.proxmox.cluster.ha.resources(sid).delete()
-            return [Content(type="text", text=f"HA resource '{sid}' deleted\nResult: {result}")]
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"{destructive_warning('deleted')}\n"
+                        f"HA resource '{sid}' deleted\nResult: {result}"
+                    ),
+                )
+            ]
         except Exception as e:
             self._handle_error(f"delete HA resource {sid}", e)

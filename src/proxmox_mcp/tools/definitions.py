@@ -36,7 +36,8 @@ REBOOT_VM_DESC = """Graceful ACPI reboot (distinct from reset). Parameters: node
 SUSPEND_VM_DESC = """Suspend a VM. Parameters: node*, vmid*"""
 RESUME_VM_DESC = """Resume a suspended VM. Parameters: node*, vmid*"""
 DELETE_VM_DESC = """IRREVERSIBLE: permanently delete a QEMU VM and its disks (not LXC). Parameters: node*, vmid*, force?=false"""
-CLONE_VM_DESC = """Clone a VM to a new ID. Parameters: node*, vmid*, newid*, name?, full?=true, target?, storage?"""
+CLONE_VM_DESC = """Clone a VM to a new ID (async UPID — wait_for_task). Parameters: node*, vmid*, newid*, name?, full?=true, target?, storage?"""
+
 RESIZE_VM_DISK_DESC = """Grow a VM disk. Parameters: node*, vmid*, disk* (e.g. scsi0), size* (e.g. +10G)"""
 CONVERT_VM_TEMPLATE_DESC = """Convert VM to template. Parameters: node*, vmid*"""
 
@@ -51,7 +52,8 @@ SHUTDOWN_LXC_DESC = """Gracefully shut down an LXC. Parameters: node*, vmid*"""
 REBOOT_LXC_DESC = """Reboot an LXC (applies pending config). Parameters: node*, vmid*"""
 DELETE_LXC_DESC = """IRREVERSIBLE: permanently delete an LXC and its rootfs. Parameters: node*, vmid*, force?=false"""
 UPDATE_LXC_FEATURES_DESC = """Update LXC features (nesting/keyctl/fuse). keyctl/fuse beyond nesting usually need elevated role or root@pam — tool does not strip unsupported flags. Parameters: node*, vmid*, features*"""
-CLONE_LXC_DESC = """Clone an LXC. Parameters: node*, vmid*, newid*, hostname?, full?=true, target?, storage?"""
+CLONE_LXC_DESC = """Clone an LXC (async UPID — wait_for_task). Parameters: node*, vmid*, newid*, hostname?, full?=true, target?, storage?"""
+
 RESIZE_LXC_DISK_DESC = """Grow an LXC volume. Parameters: node*, vmid*, disk* (e.g. rootfs), size* (e.g. +5G)"""
 CONVERT_LXC_TEMPLATE_DESC = """Convert LXC to template. Parameters: node*, vmid*"""
 EXECUTE_LXC_COMMAND_DESC = """Execute a command inside a running LXC via host SSH + pct exec (no Proxmox REST /exec — HTTP 501 means stale MCP build). Requires opt-in ssh config + paramiko. Parameters: node*, vmid*, command*"""
@@ -80,9 +82,11 @@ DELETE_SNAPSHOT_DESC = """IRREVERSIBLE: delete a snapshot. Parameters: node*, vm
 ROLLBACK_SNAPSHOT_DESC = """WARNING: rollback discards state after the snapshot. Parameters: node*, vmid*, snapname*, guest_type?"""
 
 # Backup
-CREATE_BACKUP_DESC = """Create a vzdump backup. Parameters: node*, vmid*, storage?, mode?=snapshot, compress?=zstd, notes?"""
+CREATE_BACKUP_DESC = """Create a vzdump backup (async UPID — wait_for_task). Parameters: node*, vmid*, storage?, mode?=snapshot, compress?=zstd, notes?"""
+
 LIST_BACKUPS_DESC = """List backups on storage. Parameters: node*, storage*, vmid?"""
-RESTORE_BACKUP_DESC = """WARNING: restore may overwrite guest disks when force is set. Parameters: node*, archive*, vmid*, storage?, force?=false, guest_type?=qemu"""
+RESTORE_BACKUP_DESC = """WARNING: restore may overwrite guest disks when force is set (async UPID — wait_for_task). Parameters: node*, archive*, vmid*, storage?, force?=false, guest_type?=qemu"""
+
 DELETE_BACKUP_DESC = """IRREVERSIBLE: delete a backup volume. Parameters: node*, storage*, volume*"""
 LIST_BACKUP_JOBS_DESC = """List scheduled cluster backup jobs (/cluster/backup)."""
 CREATE_BACKUP_JOB_DESC = """Create a scheduled backup job. Parameters: schedule*, storage*; vmid? (comma-separated), mode?=snapshot, compress?=zstd, enabled?=true, comment?, mailto?, mailnotification?, all?=false"""
@@ -92,7 +96,8 @@ DELETE_BACKUP_JOB_DESC = """IRREVERSIBLE: delete a scheduled backup job. Paramet
 GET_TASK_STATUS_DESC = """Get status for a task UPID. Parameters: node*, upid*"""
 LIST_TASKS_DESC = """List recent tasks on a node. Parameters: node*"""
 WAIT_FOR_TASK_DESC = """Poll a task UPID until it stops (or timeout). Required after create_vm/create_lxc before start — create returns UPID immediately; failures (missing template, etc.) appear here. Parameters: node*, upid*, timeout?=300, poll_interval?=2.0"""
-GET_NEXT_VMID_DESC = """Get the next free VM/CT ID from the cluster."""
+GET_NEXT_VMID_DESC = """Get the next free VM/CT ID from the cluster (best-effort — race possible before create)."""
+
 GET_CLUSTER_STATUS_DESC = """Get overall Proxmox cluster health and quorum status."""
 
 # Storage
@@ -101,21 +106,25 @@ GET_STORAGE_CONTENT_DESC = """List storage content (iso/vztmpl/backup/images). P
 LIST_OS_TEMPLATES_DESC = """List LXC OS templates (vztmpl) across storages. Parameters: node*, storage?, filter? (e.g. ubuntu)"""
 LIST_ISOS_DESC = """List ISO images. Parameters: node*, storage?, filter?"""
 DELETE_STORAGE_CONTENT_DESC = """IRREVERSIBLE: delete a storage volume. Parameters: node*, storage*, volume*"""
-DOWNLOAD_URL_TO_STORAGE_DESC = """Download URL into storage. Parameters: node*, storage*, url*, filename?, content?=iso"""
+DOWNLOAD_URL_TO_STORAGE_DESC = """Download URL into storage (async UPID — wait_for_task). http/https only; host fetches URL. Parameters: node*, storage*, url*, filename?, content?=iso, verify_certificate?=true, checksum?, checksum_algorithm?"""
+
 CREATE_STORAGE_DESC = """Create cluster storage definition. Parameters: storage*, type*, content?, path?, server?, export?, vgname?, pool?, monhost?, username?, password?, nodes?, disable?"""
 UPDATE_STORAGE_DESC = """Update storage definition. Parameters: storage*, content?, nodes?, disable?"""
 DELETE_STORAGE_DESC = """IRREVERSIBLE: delete storage definition (not underlying data by default). Parameters: storage*"""
 
 # Migrate
-MIGRATE_GUEST_DESC = """Migrate a VM or LXC to another node. Parameters: node*, vmid*, target*, guest_type?=qemu, online?=true, with_local_disks?=false"""
+MIGRATE_GUEST_DESC = """Migrate a VM or LXC to another node (async UPID — wait_for_task). Parameters: node*, vmid*, target*, guest_type?=qemu, online?=true, with_local_disks?=false"""
+
 
 # HA
 GET_HA_STATUS_DESC = """Get current HA manager status."""
 LIST_HA_GROUPS_DESC = """List HA groups."""
-CREATE_HA_GROUP_DESC = """Create HA group. Parameters: group*, nodes*, comment?"""
+CREATE_HA_GROUP_DESC = """Create HA group (often needs elevated privileges). Parameters: group*, nodes*, comment?"""
+
 DELETE_HA_GROUP_DESC = """IRREVERSIBLE: delete HA group. Parameters: group*"""
 LIST_HA_RESOURCES_DESC = """List HA resources."""
-CREATE_HA_RESOURCE_DESC = """Create HA resource. Parameters: sid* (e.g. vm:100), group?, state?=started, comment?"""
+CREATE_HA_RESOURCE_DESC = """Create HA resource (often needs elevated privileges). Parameters: sid* (e.g. vm:100), group?, state?=started, comment?"""
+
 UPDATE_HA_RESOURCE_DESC = """Update HA resource. Parameters: sid*, group?, state?, comment?"""
 DELETE_HA_RESOURCE_DESC = """IRREVERSIBLE: delete HA resource. Parameters: sid*"""
 
@@ -167,7 +176,8 @@ LIST_SDN_VNETS_DESC = """List SDN virtual networks."""
 LIST_SDN_CONTROLLERS_DESC = """List SDN controllers."""
 LIST_SDN_IPAMS_DESC = """List SDN IPAMs."""
 LIST_SDN_DNS_DESC = """List SDN DNS entries."""
-APPLY_SDN_DESC = """Apply pending SDN configuration cluster-wide."""
+APPLY_SDN_DESC = """Apply pending SDN configuration cluster-wide (often needs Sys.Modify / elevated privileges)."""
+
 
 # Pools
 LIST_POOLS_DESC = """List resource pools."""

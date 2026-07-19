@@ -15,6 +15,12 @@ detailed storage information might be temporarily unavailable.
 from typing import List, Optional
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
+from .helpers import (
+    destructive_warning,
+    privsep_empty_hint,
+    upid_response_footer,
+    validate_download_url,
+)
 
 
 class StorageTools(ProxmoxTool):
@@ -64,6 +70,8 @@ class StorageTools(ProxmoxTool):
             if content:
                 params["content"] = content
             items = self.proxmox.nodes(node).storage(storage).content.get(**params)
+            if not items:
+                return [Content(type="text", text=privsep_empty_hint(f"content on {storage}"))]
             return self._format_response(items)
         except Exception as e:
             self._handle_error(f"get storage content on {storage}", e)
@@ -141,7 +149,10 @@ class StorageTools(ProxmoxTool):
             return [
                 Content(
                     type="text",
-                    text=f"⚠️ Deleted storage volume {volume} from {storage}\nResult: {result}",
+                    text=(
+                        f"{destructive_warning('deleted')}\n"
+                        f"⚠️ Deleted storage volume {volume} from {storage}\nResult: {result}"
+                    ),
                 )
             ]
         except Exception as e:
@@ -154,19 +165,42 @@ class StorageTools(ProxmoxTool):
         url: str,
         filename: Optional[str] = None,
         content: str = "iso",
+        verify_certificate: bool = True,
+        checksum: Optional[str] = None,
+        checksum_algorithm: Optional[str] = None,
     ) -> List[Content]:
-        """Download a file from URL into storage (ISO/vztmpl)."""
+        """Download a file from URL into storage (ISO/vztmpl).
+
+        URL is fetched by the Proxmox host (not this MCP process). Only http/https
+        schemes are accepted here as a soft SSRF guard.
+        """
         try:
-            params = {"url": url, "content": content}
+            cleaned_url = validate_download_url(url)
+            params = {
+                "url": cleaned_url,
+                "content": content,
+                "verify-certificates": 1 if verify_certificate else 0,
+            }
             if filename:
                 params["filename"] = filename
+            if checksum:
+                params["checksum"] = checksum
+            if checksum_algorithm:
+                params["checksum-algorithm"] = checksum_algorithm
             result = self.proxmox.nodes(node).storage(storage)("download-url").post(**params)
             return [
                 Content(
                     type="text",
-                    text=f"Download to {storage} initiated\nURL: {url}\nTask ID: {result}",
+                    text=(
+                        f"Download to {storage} initiated\nURL: {cleaned_url}\n"
+                        f"{upid_response_footer(result, node=node)}\n"
+                        f"💡 Note: the Proxmox host fetches this URL — avoid internal-only "
+                        f"targets unless intentional."
+                    ),
                 )
             ]
+        except ValueError:
+            raise
         except Exception as e:
             self._handle_error(f"download URL to {storage}", e)
 
@@ -244,7 +278,10 @@ class StorageTools(ProxmoxTool):
             return [
                 Content(
                     type="text",
-                    text=f"⚠️ Storage definition '{storage}' deleted\nResult: {result}",
+                    text=(
+                        f"{destructive_warning('deleted')}\n"
+                        f"⚠️ Storage definition '{storage}' deleted\nResult: {result}"
+                    ),
                 )
             ]
         except Exception as e:

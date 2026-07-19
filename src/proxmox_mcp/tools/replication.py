@@ -2,6 +2,7 @@
 from typing import List, Optional
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
+from .helpers import destructive_warning, privsep_empty_hint, upid_response_footer
 
 
 class ReplicationTools(ProxmoxTool):
@@ -10,6 +11,8 @@ class ReplicationTools(ProxmoxTool):
     def list_replication_jobs(self) -> List[Content]:
         try:
             jobs = self.proxmox.cluster.replication.get()
+            if not jobs:
+                return [Content(type="text", text=privsep_empty_hint("replication jobs"))]
             return self._format_response(jobs)
         except Exception as e:
             self._handle_error("list replication jobs", e)
@@ -27,7 +30,10 @@ class ReplicationTools(ProxmoxTool):
             return [
                 Content(
                     type="text",
-                    text=f"Replication job '{jobid}' scheduled now on {node}\nResult: {result}",
+                    text=(
+                        f"Replication job '{jobid}' scheduled now on {node}\n"
+                        f"{upid_response_footer(result, node=node)}"
+                    ),
                 )
             ]
         except Exception as e:
@@ -75,7 +81,10 @@ class ReplicationTools(ProxmoxTool):
             return [
                 Content(
                     type="text",
-                    text=f"Replication job '{id}' updated\nParams: {params}\nResult: {result}",
+                    text=(
+                        f"Replication job '{id}' updated\nParams: {params}\nResult: {result}\n"
+                        f"💡 Next: get_replication_status to confirm schedule/state."
+                    ),
                 )
             ]
         except ValueError:
@@ -86,6 +95,14 @@ class ReplicationTools(ProxmoxTool):
     def delete_replication_job(self, id: str) -> List[Content]:
         try:
             result = self.proxmox.cluster.replication(id).delete()
-            return [Content(type="text", text=f"Replication job '{id}' deleted\nResult: {result}")]
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"{destructive_warning('deleted')}\n"
+                        f"Replication job '{id}' deleted\nResult: {result}"
+                    ),
+                )
+            ]
         except Exception as e:
             self._handle_error(f"delete replication job {id}", e)

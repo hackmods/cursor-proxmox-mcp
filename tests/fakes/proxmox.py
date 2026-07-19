@@ -131,16 +131,35 @@ def make_fake_proxmox(
             meta = qemu.get(str(vmid))
             if meta is None and str(vmid) not in qemu:
 
-                def missing_config() -> None:
-                    raise Exception(f"Configuration file 'nodes/{name}/qemu-server/{vmid}.conf' does not exist")
+                def missing(*_a, **_k) -> None:
+                    raise Exception(
+                        f"Configuration file 'nodes/{name}/qemu-server/{vmid}.conf' does not exist"
+                    )
 
-                q.config.get.side_effect = missing_config
-            else:
-                q.config.get.return_value = {
-                    "cores": 2,
-                    "name": (meta or {}).get("name", f"vm-{vmid}"),
-                    **(meta or {}),
-                }
+                q.config.get.side_effect = missing
+                q.status.current.get.side_effect = missing
+                q.status.start.post.side_effect = missing
+                q.status.stop.post.side_effect = missing
+                q.status.shutdown.post.side_effect = missing
+                q.status.reset.post.side_effect = missing
+                q.status.reboot.post.side_effect = missing
+                q.status.suspend.post.side_effect = missing
+                q.status.resume.post.side_effect = missing
+                q.clone.post.side_effect = missing
+                q.resize.put.side_effect = missing
+                q.template.post.side_effect = missing
+                q.vncproxy.post.side_effect = missing
+                q.spiceproxy.post.side_effect = missing
+                q.termproxy.post.side_effect = missing
+                q.rrddata.get.side_effect = missing
+                q.delete.side_effect = missing
+                return q
+
+            q.config.get.return_value = {
+                "cores": 2,
+                "name": (meta or {}).get("name", f"vm-{vmid}"),
+                **(meta or {}),
+            }
             status = (meta or {}).get("status", "stopped")
             q.status.current.get.return_value = {
                 "status": status,
@@ -216,16 +235,32 @@ def make_fake_proxmox(
             meta = lxc.get(str(vmid))
             if meta is None and str(vmid) not in lxc:
 
-                def missing_config() -> None:
+                def missing(*_a, **_k) -> None:
                     raise Exception("Configuration file does not exist")
 
-                c.config.get.side_effect = missing_config
-            else:
-                c.config.get.return_value = {
-                    "hostname": (meta or {}).get("hostname", f"ct-{vmid}"),
-                    "cores": 1,
-                    **(meta or {}),
-                }
+                c.config.get.side_effect = missing
+                c.status.current.get.side_effect = missing
+                c.status.start.post.side_effect = missing
+                c.status.stop.post.side_effect = missing
+                c.status.shutdown.post.side_effect = missing
+                c.status.reboot.post.side_effect = missing
+                c.status.suspend.post.side_effect = missing
+                c.status.resume.post.side_effect = missing
+                c.clone.post.side_effect = missing
+                c.resize.put.side_effect = missing
+                c.template.post.side_effect = missing
+                c.vncproxy.post.side_effect = missing
+                c.spiceproxy.post.side_effect = missing
+                c.termproxy.post.side_effect = missing
+                c.rrddata.get.side_effect = missing
+                c.delete.side_effect = missing
+                return c
+
+            c.config.get.return_value = {
+                "hostname": (meta or {}).get("hostname", f"ct-{vmid}"),
+                "cores": 1,
+                **(meta or {}),
+            }
             status = (meta or {}).get("status", "stopped")
             c.status.current.get.return_value = {
                 "status": status,

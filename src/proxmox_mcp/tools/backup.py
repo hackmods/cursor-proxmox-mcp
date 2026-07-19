@@ -2,6 +2,8 @@
 from typing import List, Optional
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
+from .guest import normalize_guest_type
+from .helpers import destructive_warning, privsep_empty_hint, upid_response_footer
 
 
 class BackupTools(ProxmoxTool):
@@ -27,7 +29,15 @@ class BackupTools(ProxmoxTool):
             if notes:
                 params["notes-template"] = notes
             result = self.proxmox.nodes(node).vzdump.create(**params)
-            return [Content(type="text", text=f"Backup of {vmid} initiated\nTask ID: {result}")]
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"Backup of {vmid} initiated\n"
+                        f"{upid_response_footer(result, node=node)}"
+                    ),
+                )
+            ]
         except Exception as e:
             self._handle_error(f"create backup for {vmid}", e)
 
@@ -44,6 +54,8 @@ class BackupTools(ProxmoxTool):
                     if str(item.get("vmid", "")) == str(vmid)
                     or str(vmid) in str(item.get("volid", ""))
                 ]
+            if not content:
+                return [Content(type="text", text=privsep_empty_hint("backups"))]
             return self._format_response(content)
         except Exception as e:
             self._handle_error(f"list backups on {storage}", e)
@@ -58,27 +70,38 @@ class BackupTools(ProxmoxTool):
         guest_type: str = "qemu",
     ) -> List[Content]:
         try:
+            gtype = normalize_guest_type(guest_type)
             params = {"archive": archive, "force": 1 if force else 0}
             if storage:
                 params["storage"] = storage
-            gtype = guest_type.strip().lower()
-            if gtype in ("lxc", "ct", "container"):
+            if gtype == "lxc":
                 result = self.proxmox.nodes(node).lxc.create(vmid=vmid, **params)
             else:
                 result = self.proxmox.nodes(node).qemu.create(vmid=vmid, **params)
-            return [
-                Content(
-                    type="text",
-                    text=f"Restore of archive to {guest_type} {vmid} initiated\nTask ID: {result}",
-                )
+            lines = [
+                f"Restore of archive to {gtype} {vmid} initiated",
             ]
+            if force:
+                lines.append(
+                    "⚠️ WARNING: force=True — existing guest disks/config may be overwritten."
+                )
+            lines.append(upid_response_footer(result, node=node))
+            return [Content(type="text", text="\n".join(lines))]
         except Exception as e:
             self._handle_error(f"restore backup to {vmid}", e)
 
     def delete_backup(self, node: str, storage: str, volume: str) -> List[Content]:
         try:
             result = self.proxmox.nodes(node).storage(storage).content(volume).delete()
-            return [Content(type="text", text=f"Deleted backup volume {volume}\nResult: {result}")]
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"{destructive_warning('deleted')}\n"
+                        f"Deleted backup volume {volume}\nResult: {result}"
+                    ),
+                )
+            ]
         except Exception as e:
             self._handle_error(f"delete backup {volume}", e)
 
@@ -86,6 +109,8 @@ class BackupTools(ProxmoxTool):
         """List scheduled cluster backup jobs."""
         try:
             jobs = self.proxmox.cluster.backup.get()
+            if not jobs:
+                return [Content(type="text", text=privsep_empty_hint("backup jobs"))]
             return self._format_response(jobs)
         except Exception as e:
             self._handle_error("list backup jobs", e)
@@ -137,7 +162,10 @@ class BackupTools(ProxmoxTool):
             return [
                 Content(
                     type="text",
-                    text=f"Backup job '{id}' deleted\nResult: {result}",
+                    text=(
+                        f"{destructive_warning('deleted')}\n"
+                        f"Backup job '{id}' deleted\nResult: {result}"
+                    ),
                 )
             ]
         except Exception as e:

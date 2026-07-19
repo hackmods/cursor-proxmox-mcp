@@ -3,8 +3,17 @@ import pytest
 
 from proxmox_mcp.tools.helpers import (
     assert_id_absent,
+    console_ticket_footer,
+    destructive_warning,
+    guest_not_found_message,
     is_missing_resource_error,
+    lxc_not_found_message,
     pick_storage,
+    privilege_required_note,
+    privsep_empty_hint,
+    qemu_not_found_message,
+    upid_response_footer,
+    validate_download_url,
 )
 from tests.fakes.proxmox import make_fake_proxmox
 
@@ -43,3 +52,34 @@ def test_parse_net_static_summary():
 
     nets = parse_lxc_networks({"net0": "name=eth0,bridge=vmbr0,ip=1.2.3.4/24"})
     assert configured_ipv4_summary(nets) == "1.2.3.4/24"
+
+
+def test_qemu_and_lxc_not_found_hints():
+    q = qemu_not_found_message("100", "pve")
+    assert "get_containers" in q
+    lxc_msg = lxc_not_found_message("101", "pve")
+    assert "get_vms" in lxc_msg
+    g = guest_not_found_message("102", "pve", "qemu")
+    assert "guest_type" in g
+
+
+def test_upid_response_footer():
+    text = upid_response_footer("UPID:pve:1", node="pve")
+    assert "Task ID: UPID:pve:1" in text
+    assert "wait_for_task" in text
+    assert "Node: pve" in text
+
+
+def test_destructive_and_privsep_helpers():
+    assert "IRREVERSIBLE" in destructive_warning("deleted")
+    assert "get_token_permissions" in privsep_empty_hint("users")
+    assert "Ticket only" in console_ticket_footer("SPICE")
+    assert "elevated privileges" in privilege_required_note("HA")
+
+
+def test_validate_download_url():
+    assert validate_download_url("https://example.com/a.iso") == "https://example.com/a.iso"
+    with pytest.raises(ValueError, match="http"):
+        validate_download_url("file:///etc/passwd")
+    with pytest.raises(ValueError, match="required"):
+        validate_download_url("")

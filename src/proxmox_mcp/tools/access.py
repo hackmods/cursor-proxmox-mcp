@@ -2,6 +2,7 @@
 from typing import List, Optional
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
+from .helpers import destructive_warning, privsep_empty_hint
 
 
 class AccessTools(ProxmoxTool):
@@ -10,6 +11,8 @@ class AccessTools(ProxmoxTool):
     def list_users(self) -> List[Content]:
         try:
             users = self.proxmox.access.users.get()
+            if not users:
+                return [Content(type="text", text=privsep_empty_hint("users"))]
             return self._format_response(users)
         except Exception as e:
             self._handle_error("list users", e)
@@ -45,13 +48,23 @@ class AccessTools(ProxmoxTool):
     def delete_user(self, userid: str) -> List[Content]:
         try:
             result = self.proxmox.access.users(userid).delete()
-            return [Content(type="text", text=f"User '{userid}' deleted\nResult: {result}")]
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"{destructive_warning('deleted')}\n"
+                        f"User '{userid}' deleted\nResult: {result}"
+                    ),
+                )
+            ]
         except Exception as e:
             self._handle_error(f"delete user {userid}", e)
 
     def list_groups(self) -> List[Content]:
         try:
             groups = self.proxmox.access.groups.get()
+            if not groups:
+                return [Content(type="text", text=privsep_empty_hint("groups"))]
             return self._format_response(groups)
         except Exception as e:
             self._handle_error("list groups", e)
@@ -69,7 +82,15 @@ class AccessTools(ProxmoxTool):
     def delete_group(self, groupid: str) -> List[Content]:
         try:
             result = self.proxmox.access.groups(groupid).delete()
-            return [Content(type="text", text=f"Group '{groupid}' deleted\nResult: {result}")]
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"{destructive_warning('deleted')}\n"
+                        f"Group '{groupid}' deleted\nResult: {result}"
+                    ),
+                )
+            ]
         except Exception as e:
             self._handle_error(f"delete group {groupid}", e)
 
@@ -83,6 +104,8 @@ class AccessTools(ProxmoxTool):
     def list_acl(self) -> List[Content]:
         try:
             acl = self.proxmox.access.acl.get()
+            if not acl:
+                return [Content(type="text", text=privsep_empty_hint("ACL entries"))]
             return self._format_response(acl)
         except Exception as e:
             self._handle_error("list ACL", e)
@@ -110,7 +133,13 @@ class AccessTools(ProxmoxTool):
                 params["delete"] = 1
             result = self.proxmox.access.acl.put(**params)
             action = "removed" if delete else "updated"
-            return [Content(type="text", text=f"ACL {action} for path '{path}'\nResult: {result}")]
+            warn = f"{destructive_warning('removed')}\n" if delete else ""
+            return [
+                Content(
+                    type="text",
+                    text=f"{warn}ACL {action} for path '{path}'\nResult: {result}",
+                )
+            ]
         except Exception as e:
             self._handle_error(f"update ACL for {path}", e)
 
@@ -133,7 +162,6 @@ class AccessTools(ProxmoxTool):
             if comment is not None:
                 params["comment"] = comment
             result = self.proxmox.access.users(userid).token(tokenid).post(**params)
-            # Token secret is returned once — include in response for the caller; never log it
             self.logger.info(
                 "API token created for user %s id %s (secret returned to caller once; not logged)",
                 userid,
@@ -156,7 +184,15 @@ class AccessTools(ProxmoxTool):
     def delete_token(self, userid: str, tokenid: str) -> List[Content]:
         try:
             result = self.proxmox.access.users(userid).token(tokenid).delete()
-            return [Content(type="text", text=f"Token '{userid}!{tokenid}' deleted\nResult: {result}")]
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"{destructive_warning('deleted')}\n"
+                        f"Token '{userid}!{tokenid}' deleted\nResult: {result}"
+                    ),
+                )
+            ]
         except Exception as e:
             self._handle_error(f"delete token {userid}!{tokenid}", e)
 

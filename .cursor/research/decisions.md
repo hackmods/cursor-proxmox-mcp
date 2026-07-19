@@ -100,3 +100,11 @@ Each tools domain exports `TOOL_SPECS` (name + description ref). Registration wr
 ## D20 — Avoid colliding PyPI names
 
 `proxmox-mcp-server` on PyPI belongs to [GethosTheWalrus/proxmox-mcp](https://github.com/GethosTheWalrus/proxmox-mcp). Publishing under that name would fail or, worse, confuse installers. Canonical distribution name is `cursor-proxmox-mcp` (matches the GitHub repo). Document the collision in README / SECURITY / PUBLISHING.
+
+## D22 — UPID response footer standard
+
+Tools that return a Proxmox task UPID must append `upid_response_footer` (Task ID + `wait_for_task` hint). Never claim the work is finished when only a UPID was returned. Prefer “initiated” / “task started” language over “successfully completed.”
+
+## D23 — Destructive response echo
+
+Destructive tools already warn in descriptions (D2). Responses must also echo `⚠️ IRREVERSIBLE` so agents that skip descriptions still see the warning.

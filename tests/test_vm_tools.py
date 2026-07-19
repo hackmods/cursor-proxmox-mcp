@@ -31,7 +31,8 @@ def test_get_vms(vm_tools_stopped):
 
 def test_create_vm_success(vm_tools):
     out = vm_tools.create_vm("pve", "200", "new", 1, 1024, 8)
-    assert "created" in out[0].text.lower() or "successfully" in out[0].text.lower()
+    text = out[0].text.lower()
+    assert "create task started" in text or "wait_for_task" in text
 
 
 def test_create_vm_duplicate(vm_tools_stopped):
@@ -51,7 +52,10 @@ def test_delete_vm_running_requires_force(vm_tools_running):
 
 def test_delete_vm_force(vm_tools_running):
     out = vm_tools_running.delete_vm("pve", "100", force=True)
-    assert out
+    text = out[0].text
+    assert "wait_for_task" in text
+    assert "stop UPID" in text or "Stopped" in text
+    assert "IRREVERSIBLE" in text
 
 
 @pytest.mark.asyncio

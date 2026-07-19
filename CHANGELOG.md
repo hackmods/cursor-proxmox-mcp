@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-07-19
+
+### Fixed
+
+- **`execute_vm_command`**: `success` now reflects guest-agent exit code (was always `true`).
+- **Force delete** (`delete_vm` / `delete_lxc` / `delete_guest`): wait for stop UPID before delete to avoid race.
+- Symmetric VM↔LXC not-found hints on `*_lxc` tools and cross-cutting guest tools.
+- `create_vm` headline no longer claims “created successfully” for an async UPID.
+- `restore_backup` uses `normalize_guest_type` and echoes force/overwrite warnings.
+
+### Changed
+
+- Async tools append a standard `wait_for_task` footer (clone, migrate, backup, restore, download-url, resize/template, replication run, deletes, power ops).
+- Destructive responses echo ⚠️ IRREVERSIBLE (D23).
+- Empty inventory / ACL lists hint at privsep / `get_token_permissions`.
+- Console ticket responses note external viewer required (D6).
+- HA / SDN apply / ACME empty lists note elevated privilege requirements.
+- `download_url_to_storage`: optional `verify_certificate`, `checksum`, `checksum_algorithm`; reject non-http(s) URLs.
+- `get_next_vmid` notes best-effort race before create.
+
 ## [1.1.2] - 2026-07-19
 
 ### Fixed

@@ -166,7 +166,15 @@ class FirewallTools(ProxmoxTool):
             if ipfilter is not None:
                 params["ipfilter"] = 1 if ipfilter else 0
             result = guest_resource(self.proxmox, node, vmid, gtype).firewall.options.put(**params)
-            return [Content(type="text", text=f"Guest firewall options updated\nResult: {result}")]
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"Guest firewall options updated\nResult: {result}\n"
+                        f"💡 Note: some guests may need a network restart/reboot for options to take effect."
+                    ),
+                )
+            ]
         except Exception as e:
             self._handle_error(f"set firewall options for {guest_type} {vmid}", e)
 

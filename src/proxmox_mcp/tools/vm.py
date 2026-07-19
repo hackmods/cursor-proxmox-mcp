@@ -21,7 +21,15 @@ from typing import List, Optional
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
 from .console.manager import VMConsoleManager
-from .helpers import assert_id_absent, pick_storage, qemu_not_found_message
+from .helpers import (
+    assert_id_absent,
+    console_ticket_footer,
+    is_missing_resource_error,
+    pick_storage,
+    qemu_not_found_message,
+    upid_response_footer,
+    wait_for_upid,
+)
 from .spec import ToolSpec
 from . import definitions as D
 
@@ -226,7 +234,7 @@ class VMTools(ProxmoxTool):
 
             task_result = self.proxmox.nodes(node).qemu.create(**vm_config)
 
-            result_text = f"""🎉 VM {vmid} created successfully!
+            result_text = f"""🎉 VM {vmid} create task started!
 
 📋 VM Configuration:
   • Name: {name}
@@ -241,9 +249,9 @@ class VMTools(ProxmoxTool):
   • Cloud-init: {'yes' if want_cloudinit else 'drive/defaults only'}
   • Boot: {vm_config.get('boot')}
 
-🔧 Task ID: {task_result}
+{upid_response_footer(task_result, node=node)}
 
-💡 Next: wait_for_task(node, upid) until stopped (create is async — VM not usable yet). Then start_vm (or install from ISO console)."""
+💡 Then: start_vm (or install from ISO console)."""
 
             return [Content(type="text", text=result_text)]
 
@@ -276,7 +284,10 @@ class VMTools(ProxmoxTool):
             else:
                 # Start the VM
                 task_result = self.proxmox.nodes(node).qemu(vmid).status.start.post()
-                result_text = f"🚀 VM {vmid} start initiated successfully\nTask ID: {task_result}"
+                result_text = (
+                    f"🚀 VM {vmid} start initiated\n"
+                    f"{upid_response_footer(task_result, node=node)}"
+                )
 
             return [Content(type="text", text=result_text)]
 
@@ -309,7 +320,10 @@ class VMTools(ProxmoxTool):
             else:
                 # Stop the VM
                 task_result = self.proxmox.nodes(node).qemu(vmid).status.stop.post()
-                result_text = f"🛑 VM {vmid} stop initiated successfully\nTask ID: {task_result}"
+                result_text = (
+                    f"🛑 VM {vmid} stop initiated\n"
+                    f"{upid_response_footer(task_result, node=node)}"
+                )
 
             return [Content(type="text", text=result_text)]
 
@@ -342,7 +356,10 @@ class VMTools(ProxmoxTool):
             else:
                 # Shutdown the VM gracefully
                 task_result = self.proxmox.nodes(node).qemu(vmid).status.shutdown.post()
-                result_text = f"💤 VM {vmid} graceful shutdown initiated\nTask ID: {task_result}"
+                result_text = (
+                    f"💤 VM {vmid} graceful shutdown initiated\n"
+                    f"{upid_response_footer(task_result, node=node)}"
+                )
 
             return [Content(type="text", text=result_text)]
 
@@ -375,7 +392,10 @@ class VMTools(ProxmoxTool):
             else:
                 # Reset the VM
                 task_result = self.proxmox.nodes(node).qemu(vmid).status.reset.post()
-                result_text = f"🔄 VM {vmid} reset initiated successfully\nTask ID: {task_result}"
+                result_text = (
+                    f"🔄 VM {vmid} reset initiated\n"
+                    f"{upid_response_footer(task_result, node=node)}"
+                )
 
             return [Content(type="text", text=result_text)]
 
@@ -453,36 +473,37 @@ class VMTools(ProxmoxTool):
                 current_status = vm_status.get("status")
                 vm_name = vm_status.get("name", f"VM-{vmid}")
             except Exception as e:
-                if "does not exist" in str(e).lower() or "not found" in str(e).lower():
+                if is_missing_resource_error(e):
                     raise ValueError(qemu_not_found_message(vmid, node))
                 raise e
 
+            stop_upid = None
             # Check if VM is running
             if current_status == "running":
                 if not force:
                     raise ValueError(f"VM {vmid} ({vm_name}) is currently running. "
                                    f"Please stop it first or use force=True to stop and delete.")
-                else:
-                    # Force stop the VM first
-                    self.proxmox.nodes(node).qemu(vmid).status.stop.post()
-                    result_text = f"🛑 Stopping VM {vmid} ({vm_name}) before deletion...\n"
+                stop_upid = self.proxmox.nodes(node).qemu(vmid).status.stop.post()
+                wait_for_upid(self.proxmox, node, stop_upid, timeout=120)
+                result_text = (
+                    f"🛑 Stopped VM {vmid} ({vm_name}) before deletion "
+                    f"(stop UPID: {stop_upid})\n"
+                )
             else:
                 result_text = f"🗑️ Deleting VM {vmid} ({vm_name})...\n"
 
             # Delete the VM
             task_result = self.proxmox.nodes(node).qemu(vmid).delete()
 
-            result_text += f"""🗑️ VM {vmid} ({vm_name}) deletion initiated successfully!
+            result_text += f"""🗑️ VM {vmid} ({vm_name}) deletion initiated!
 
-⚠️ WARNING: This operation will permanently remove:
+⚠️ IRREVERSIBLE: This operation will permanently remove:
   • VM configuration
   • All virtual disks
   • All snapshots
   • Cannot be undone!
 
-🔧 Task ID: {task_result}
-
-✅ VM {vmid} ({vm_name}) is being deleted from node {node}"""
+{upid_response_footer(task_result, node=node)}"""
 
             return [Content(type="text", text=result_text)]
 
@@ -497,6 +518,8 @@ class VMTools(ProxmoxTool):
             config = self.proxmox.nodes(node).qemu(vmid).config.get()
             return self._format_response(config)
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"get VM {vmid} config", e)
 
     def update_vm_config(self, node: str, vmid: str, **kwargs) -> List[Content]:
@@ -519,6 +542,8 @@ class VMTools(ProxmoxTool):
         except ValueError:
             raise
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"update VM {vmid} config", e)
 
     def reboot_vm(self, node: str, vmid: str) -> List[Content]:
@@ -536,11 +561,14 @@ class VMTools(ProxmoxTool):
             return [
                 Content(
                     type="text",
-                    text=f"🔄 VM {vmid} reboot initiated\nTask ID: {task_result}",
+                    text=(
+                        f"🔄 VM {vmid} reboot initiated\n"
+                        f"{upid_response_footer(task_result, node=node)}"
+                    ),
                 )
             ]
         except Exception as e:
-            if "does not exist" in str(e).lower() or "not found" in str(e).lower():
+            if is_missing_resource_error(e):
                 raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"reboot VM {vmid}", e)
 
@@ -551,10 +579,15 @@ class VMTools(ProxmoxTool):
             return [
                 Content(
                     type="text",
-                    text=f"VM {vmid} suspend initiated\nTask ID: {task_result}",
+                    text=(
+                        f"VM {vmid} suspend initiated\n"
+                        f"{upid_response_footer(task_result, node=node)}"
+                    ),
                 )
             ]
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"suspend VM {vmid}", e)
 
     def resume_vm(self, node: str, vmid: str) -> List[Content]:
@@ -564,10 +597,15 @@ class VMTools(ProxmoxTool):
             return [
                 Content(
                     type="text",
-                    text=f"VM {vmid} resume initiated\nTask ID: {task_result}",
+                    text=(
+                        f"VM {vmid} resume initiated\n"
+                        f"{upid_response_footer(task_result, node=node)}"
+                    ),
                 )
             ]
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"resume VM {vmid}", e)
 
     def clone_vm(
@@ -593,10 +631,15 @@ class VMTools(ProxmoxTool):
             return [
                 Content(
                     type="text",
-                    text=f"Clone VM {vmid} → {newid} initiated\nTask ID: {result}",
+                    text=(
+                        f"Clone VM {vmid} → {newid} initiated\n"
+                        f"{upid_response_footer(result, node=node)}"
+                    ),
                 )
             ]
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"clone VM {vmid}", e)
 
     def resize_vm_disk(
@@ -608,10 +651,15 @@ class VMTools(ProxmoxTool):
             return [
                 Content(
                     type="text",
-                    text=f"Resize {disk} on VM {vmid} to {size}\nResult: {result}",
+                    text=(
+                        f"Resize {disk} on VM {vmid} to {size} initiated\n"
+                        f"{upid_response_footer(result, node=node)}"
+                    ),
                 )
             ]
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"resize disk on VM {vmid}", e)
 
     def convert_vm_to_template(self, node: str, vmid: str) -> List[Content]:
@@ -621,36 +669,71 @@ class VMTools(ProxmoxTool):
             return [
                 Content(
                     type="text",
-                    text=f"VM {vmid} convert-to-template initiated\nResult: {result}",
+                    text=(
+                        f"VM {vmid} convert-to-template initiated\n"
+                        f"{upid_response_footer(result, node=node)}"
+                    ),
                 )
             ]
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"convert VM {vmid} to template", e)
 
     def create_vnc_ticket(self, node: str, vmid: str, websocket: bool = True) -> List[Content]:
         """Mint a VNC proxy ticket (no websocket proxy — connect externally)."""
         try:
+            import json
+
             result = self.proxmox.nodes(node).qemu(vmid).vncproxy.post(
                 websocket=1 if websocket else 0
             )
-            return self._format_response(result)
+            body = json.dumps(result, indent=2)
+            return [
+                Content(
+                    type="text",
+                    text=f"{body}\n\n{console_ticket_footer('VNC')}",
+                )
+            ]
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"create VNC ticket for VM {vmid}", e)
 
     def create_spice_ticket(self, node: str, vmid: str) -> List[Content]:
         """Mint a SPICE proxy ticket for a VM."""
         try:
+            import json
+
             result = self.proxmox.nodes(node).qemu(vmid).spiceproxy.post()
-            return self._format_response(result)
+            body = json.dumps(result, indent=2)
+            return [
+                Content(
+                    type="text",
+                    text=f"{body}\n\n{console_ticket_footer('SPICE')}",
+                )
+            ]
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"create SPICE ticket for VM {vmid}", e)
 
     def create_termproxy_ticket(self, node: str, vmid: str) -> List[Content]:
         """Mint a serial/termproxy ticket for a VM console."""
         try:
+            import json
+
             result = self.proxmox.nodes(node).qemu(vmid).termproxy.post()
-            return self._format_response(result)
+            body = json.dumps(result, indent=2)
+            return [
+                Content(
+                    type="text",
+                    text=f"{body}\n\n{console_ticket_footer('termproxy')}",
+                )
+            ]
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"create termproxy ticket for VM {vmid}", e)
 
     def get_vm_status(self, node: str, vmid: str) -> List[Content]:
@@ -659,6 +742,8 @@ class VMTools(ProxmoxTool):
             status = self.proxmox.nodes(node).qemu(vmid).status.current.get()
             return self._format_response(status)
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"get status for VM {vmid}", e)
 
     def get_vm_rrd_data(
@@ -669,4 +754,6 @@ class VMTools(ProxmoxTool):
             data = self.proxmox.nodes(node).qemu(vmid).rrddata.get(timeframe=timeframe)
             return self._format_response(data)
         except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"get RRD data for VM {vmid}", e)

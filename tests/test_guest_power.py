@@ -1,6 +1,8 @@
 """Unit tests for GuestPowerTools and Phase E LXC/ops helpers."""
 from __future__ import annotations
 
+import pytest
+
 from tests.fakes.proxmox import make_fake_proxmox
 from proxmox_mcp.tools.guest_power import GuestPowerTools
 from proxmox_mcp.tools.container import ContainerTools
@@ -55,11 +57,8 @@ def test_reboot_guest_when_stopped():
 def test_delete_guest_requires_force_when_running():
     api = make_fake_proxmox(qemu={"100": {"name": "vm", "status": "running"}})
     tools = GuestPowerTools(api)
-    try:
+    with pytest.raises(ValueError, match="force=True"):
         tools.delete_guest("pve", "100", "qemu", force=False)
-        assert False, "expected ValueError"
-    except ValueError as e:
-        assert "force=True" in str(e)
 
 
 def test_delete_guest_force():

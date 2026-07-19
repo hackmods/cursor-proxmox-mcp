@@ -615,11 +615,30 @@ def register_all(server: ProxmoxMCPServer) -> None:
     def download_url_to_storage(
         node: Annotated[str, Field(description="Node")],
         storage: Annotated[str, Field(description="Storage")],
-        url: Annotated[str, Field(description="Download URL")],
+        url: Annotated[str, Field(description="Download URL (http/https)")],
         filename: Annotated[Optional[str], Field(description="Filename", default=None)] = None,
         content: Annotated[str, Field(description="iso or vztmpl", default="iso")] = "iso",
+        verify_certificate: Annotated[
+            bool, Field(description="Verify TLS certificates on download", default=True)
+        ] = True,
+        checksum: Annotated[
+            Optional[str], Field(description="Expected checksum", default=None)
+        ] = None,
+        checksum_algorithm: Annotated[
+            Optional[str],
+            Field(description="Checksum algorithm (md5|sha1|sha224|sha256|sha384|sha512)", default=None),
+        ] = None,
     ):
-        return server.storage_tools.download_url_to_storage(node, storage, url, filename, content)
+        return server.storage_tools.download_url_to_storage(
+            node,
+            storage,
+            url,
+            filename,
+            content,
+            verify_certificate,
+            checksum,
+            checksum_algorithm,
+        )
 
     @server.mcp.tool(description=D.CREATE_STORAGE_DESC)
     def create_storage(

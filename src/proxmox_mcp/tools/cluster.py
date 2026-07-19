@@ -80,7 +80,16 @@ class ClusterTools(ProxmoxTool):
         """Return the next free VM/CT ID from the cluster."""
         try:
             nextid = self.proxmox.cluster.nextid.get()
-            return [Content(type="text", text=f"Next free VMID: {nextid}")]
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"Next free VMID: {nextid}\n"
+                        f"💡 Best-effort — another create can take this ID before yours; "
+                        f"create_vm / create_lxc will fail if it is already used."
+                    ),
+                )
+            ]
         except Exception as e:
             self._handle_error("get next VMID", e)
 

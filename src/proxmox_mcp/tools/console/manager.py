@@ -68,12 +68,16 @@ class VMConsoleManager:
             output = console.get("out-data", "") if isinstance(console, dict) else str(console)
             error = console.get("err-data", "") if isinstance(console, dict) else ""
             exit_code = console.get("exitcode", 0) if isinstance(console, dict) else 0
+            try:
+                exit_code_int = int(exit_code)
+            except (TypeError, ValueError):
+                exit_code_int = 1 if exit_code else 0
 
             return {
-                "success": True,
+                "success": exit_code_int == 0,
                 "output": output,
                 "error": error,
-                "exit_code": exit_code,
+                "exit_code": exit_code_int,
             }
 
         except ValueError:

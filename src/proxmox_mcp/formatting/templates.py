@@ -104,6 +104,16 @@ class ProxmoxTemplates:
         """
         result = [f"{ProxmoxTheme.RESOURCES['vm']} Virtual Machines"]
 
+        if not vms:
+            result.append("")
+            result.append("No QEMU VMs found.")
+            result.append(
+                "💡 Next: try get_containers (LXC) or get_cluster_resources(type=vm). "
+                "Empty lists with Privilege Separation=Yes often mean missing token ACL — "
+                "check get_token_permissions / get_permissions."
+            )
+            return "\n".join(result)
+
         for vm in vms:
             memory = vm.get("memory", {})
             memory_used = memory.get("used", 0)
@@ -161,7 +171,12 @@ class ProxmoxTemplates:
             Formatted container list string
         """
         if not containers:
-            return f"{ProxmoxTheme.RESOURCES['container']} No containers found"
+            return (
+                f"{ProxmoxTheme.RESOURCES['container']} No containers found\n"
+                f"💡 Next: try get_vms (QEMU) or get_cluster_resources(type=vm). "
+                f"Empty lists with Privilege Separation=Yes often mean missing token ACL — "
+                f"check get_token_permissions / get_permissions."
+            )
 
         result = [f"{ProxmoxTheme.RESOURCES['container']} Containers"]
 

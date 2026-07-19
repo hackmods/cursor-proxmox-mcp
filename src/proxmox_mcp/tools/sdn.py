@@ -2,6 +2,7 @@
 from typing import List
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
+from .helpers import privilege_required_note, privsep_empty_hint
 
 
 class SDNTools(ProxmoxTool):
@@ -10,6 +11,8 @@ class SDNTools(ProxmoxTool):
     def list_sdn_zones(self) -> List[Content]:
         try:
             zones = self.proxmox.cluster.sdn.zones.get()
+            if not zones:
+                return [Content(type="text", text=privsep_empty_hint("SDN zones"))]
             return self._format_response(zones)
         except Exception as e:
             self._handle_error("list SDN zones", e)
@@ -17,6 +20,8 @@ class SDNTools(ProxmoxTool):
     def list_sdn_vnets(self) -> List[Content]:
         try:
             vnets = self.proxmox.cluster.sdn.vnets.get()
+            if not vnets:
+                return [Content(type="text", text=privsep_empty_hint("SDN vnets"))]
             return self._format_response(vnets)
         except Exception as e:
             self._handle_error("list SDN vnets", e)
@@ -46,6 +51,14 @@ class SDNTools(ProxmoxTool):
         """Apply pending SDN configuration cluster-wide."""
         try:
             result = self.proxmox.cluster.sdn.put()
-            return [Content(type="text", text=f"SDN apply initiated\nResult: {result}")]
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"SDN apply initiated\nResult: {result}\n"
+                        f"{privilege_required_note('SDN apply')}"
+                    ),
+                )
+            ]
         except Exception as e:
             self._handle_error("apply SDN", e)

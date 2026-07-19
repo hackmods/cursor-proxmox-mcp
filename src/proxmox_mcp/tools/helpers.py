@@ -16,6 +16,28 @@ QEMU_NOT_FOUND_HINT = (
     "start_guest(guest_type=lxc) — get_vms is QEMU-only."
 )
 
+# Appended when *_lxc tools miss a guest that may be a QEMU VM
+LXC_NOT_FOUND_HINT = (
+    "💡 Next: if this ID is a QEMU VM, use get_vms / start_vm / "
+    "start_guest(guest_type=qemu) — get_containers is LXC-only."
+)
+
+# Appended when guest_type-routed tools miss a guest
+GUEST_NOT_FOUND_HINT = (
+    "💡 Next: confirm guest_type (qemu|lxc) and node; "
+    "use get_cluster_resources(type=vm) if unsure."
+)
+
+WAIT_FOR_TASK_HINT = (
+    "💡 Next: wait_for_task(node, upid) until stopped — "
+    "this call returned a task UPID, not a finished result."
+)
+
+PRIVSEP_EMPTY_HINT = (
+    "💡 If this looks wrong: with Privilege Separation=Yes, empty lists often mean "
+    "missing token ACL — check get_token_permissions / get_permissions."
+)
+
 
 def is_missing_resource_error(error: BaseException) -> bool:
     """True if proxmoxer/API error indicates the resource does not exist."""
@@ -26,6 +48,97 @@ def is_missing_resource_error(error: BaseException) -> bool:
 def qemu_not_found_message(vmid: str, node: str) -> str:
     """Clear error when a QEMU-only tool is used against a missing/wrong guest."""
     return f"VM {vmid} not found on node {node}\n{QEMU_NOT_FOUND_HINT}"
+
+
+def lxc_not_found_message(vmid: str, node: str) -> str:
+    """Clear error when an LXC-only tool is used against a missing/wrong guest."""
+    return f"LXC {vmid} not found on node {node}\n{LXC_NOT_FOUND_HINT}"
+
+
+def guest_not_found_message(vmid: str, node: str, guest_type: str) -> str:
+    """Clear error when a guest_type-routed tool misses a guest."""
+    label = "VM" if guest_type == "qemu" else "LXC"
+    return f"{label} {vmid} not found on node {node} (guest_type={guest_type})\n{GUEST_NOT_FOUND_HINT}"
+
+
+def upid_response_footer(upid: Any, *, node: Optional[str] = None) -> str:
+    """Standard footer for tools that return a Proxmox task UPID (D22)."""
+    lines = [f"Task ID: {upid}"]
+    if node:
+        lines.append(f"Node: {node}")
+    lines.append(WAIT_FOR_TASK_HINT)
+    return "\n".join(lines)
+
+
+def destructive_warning(action: str = "deleted") -> str:
+    """⚠️ IRREVERSIBLE line for destructive tool responses (D23 / D2)."""
+    return f"⚠️ IRREVERSIBLE: resource {action}"
+
+
+def privsep_empty_hint(resource: str = "results") -> str:
+    """Hint when a list tool returns empty (may be ACL/privsep)."""
+    return f"No {resource} found.\n{PRIVSEP_EMPTY_HINT}"
+
+
+def console_ticket_footer(kind: str = "VNC") -> str:
+    """Note that console tools only mint tickets (D6)."""
+    return (
+        f"💡 Ticket only — connect externally with a {kind} client "
+        "(noVNC / virt-viewer / termproxy). This MCP does not proxy the console."
+    )
+
+
+def privilege_required_note(context: str = "this operation") -> str:
+    """Note that elevated Proxmox privileges are typically required."""
+    return (
+        f"💡 Note: {context} often requires elevated privileges "
+        "(e.g. Sys.Modify / root@pam). A 403 usually means token ACL, not a missing tool."
+    )
+
+
+def validate_download_url(url: str) -> str:
+    """Allow only http/https URLs for download_url_to_storage (SSRF soft guard)."""
+    cleaned = (url or "").strip()
+    if not cleaned:
+        raise ValueError("url is required")
+    lower = cleaned.lower()
+    if not (lower.startswith("http://") or lower.startswith("https://")):
+        raise ValueError(
+            "url must start with http:// or https:// "
+            "(file:// and other schemes are rejected)"
+        )
+    return cleaned
+
+
+def wait_for_upid(
+    proxmox: Any,
+    node: str,
+    upid: Any,
+    *,
+    timeout: float = 120.0,
+    poll_interval: float = 1.0,
+) -> dict:
+    """Block until a task UPID stops (used by force-delete stop-then-delete).
+
+    Returns the final status dict. Raises TimeoutError or RuntimeError on failure.
+    """
+    import time
+
+    deadline = time.time() + timeout
+    last: Optional[dict] = None
+    while time.time() < deadline:
+        last = proxmox.nodes(node).tasks(upid).status.get()
+        if (last or {}).get("status") == "stopped":
+            exitstatus = str((last or {}).get("exitstatus", "unknown"))
+            if exitstatus.upper() not in ("OK", "WARNING"):
+                raise RuntimeError(
+                    f"Task {upid} failed with exitstatus={exitstatus}: {last}"
+                )
+            return last or {}
+        time.sleep(poll_interval)
+    raise TimeoutError(
+        f"Task {upid} still running after {timeout}s. Last status: {last}"
+    )
 
 
 def check_exec_allowlist(command: str) -> None:
