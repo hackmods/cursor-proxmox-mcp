@@ -84,11 +84,14 @@ def register_all(server: ProxmoxMCPServer) -> None:
         sshkeys: Annotated[Optional[str], Field(description="Cloud-init SSH public keys", default=None)] = None,
         ipconfig0: Annotated[Optional[str], Field(description="Cloud-init ipconfig0", default=None)] = None,
         wait: Annotated[bool, Field(description="Poll create UPID until stopped (default false)", default=False)] = False,
+        onboot: Annotated[Optional[bool], Field(description="Start on boot", default=None)] = None,
+        description: Annotated[Optional[str], Field(description="Description", default=None)] = None,
+        tags: Annotated[Optional[str], Field(description="Tags (; separated)", default=None)] = None,
     ):
         return server.vm_tools.create_vm(
             node, vmid, name, cpus, memory, disk_size, storage, ostype,
             bridge, net0, iso, boot, ciuser, cipassword, sshkeys, ipconfig0,
-            wait=wait,
+            wait=wait, onboot=onboot, description=description, tags=tags,
         )
 
     @server.mcp.tool(description=D.GET_VM_CONFIG_DESC)
@@ -115,6 +118,8 @@ def register_all(server: ProxmoxMCPServer) -> None:
         sshkeys: Annotated[Optional[str], Field(description="SSH keys", default=None)] = None,
         ipconfig0: Annotated[Optional[str], Field(description="ipconfig0", default=None)] = None,
         ide2: Annotated[Optional[str], Field(description="Raw ide2 string", default=None)] = None,
+        description: Annotated[Optional[str], Field(description="Description", default=None)] = None,
+        tags: Annotated[Optional[str], Field(description="Tags", default=None)] = None,
     ):
         kwargs = {}
         if cores is not None:
@@ -139,6 +144,10 @@ def register_all(server: ProxmoxMCPServer) -> None:
             kwargs["sshkeys"] = sshkeys
         if ipconfig0 is not None:
             kwargs["ipconfig0"] = ipconfig0
+        if description is not None:
+            kwargs["description"] = description
+        if tags is not None:
+            kwargs["tags"] = tags
         if ide2 is not None:
             kwargs["ide2"] = ide2
         elif iso is not None:
@@ -146,6 +155,18 @@ def register_all(server: ProxmoxMCPServer) -> None:
             if boot is None:
                 kwargs["boot"] = "order=ide2;scsi0"
         return server.vm_tools.update_vm_config(node, vmid, **kwargs)
+
+    @server.mcp.tool(description=D.QM_SET_VM_DESC)
+    def qm_set_vm(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="VM ID")],
+        onboot: Annotated[Optional[int], Field(description="onboot 0|1", default=None)] = None,
+        description: Annotated[Optional[str], Field(description="description", default=None)] = None,
+        tags: Annotated[Optional[str], Field(description="tags", default=None)] = None,
+    ):
+        return server.vm_tools.qm_set_vm(
+            node, vmid, onboot=onboot, description=description, tags=tags
+        )
 
     @server.mcp.tool(description=D.EXECUTE_VM_COMMAND_DESC)
     async def execute_vm_command(
@@ -505,6 +526,69 @@ def register_all(server: ProxmoxMCPServer) -> None:
             onboot=onboot,
             description=description,
             tags=tags,
+        )
+
+    @server.mcp.tool(description=D.CONFIGURE_LXC_SSH_DESC)
+    def configure_lxc_ssh(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="CT ID")],
+        ssh_public_keys: Annotated[Optional[str], Field(description="OpenSSH public keys", default=None)] = None,
+        password: Annotated[Optional[str], Field(description="Root password", default=None)] = None,
+        enable_password_ssh: Annotated[bool, Field(description="Enable password SSH", default=True)] = True,
+        install_openssh: Annotated[bool, Field(description="Install/enable openssh-server", default=True)] = True,
+    ):
+        return server.container_tools.configure_lxc_ssh(
+            node,
+            vmid,
+            ssh_public_keys=ssh_public_keys,
+            password=password,
+            enable_password_ssh=enable_password_ssh,
+            install_openssh=install_openssh,
+        )
+
+    @server.mcp.tool(description=D.GET_DOCKER_LXC_STATUS_DESC)
+    def get_docker_lxc_status(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="CT ID")],
+    ):
+        return server.container_tools.get_docker_lxc_status(node, vmid)
+
+    @server.mcp.tool(description=D.BOOTSTRAP_DOCKER_LXC_DESC)
+    def bootstrap_docker_lxc(
+        node: Annotated[str, Field(description="Node")],
+        hostname: Annotated[str, Field(description="Hostname")],
+        vmid: Annotated[Optional[str], Field(description="CT ID (auto nextid if omitted)", default=None)] = None,
+        cpus: Annotated[int, Field(description="Cores", ge=1, le=32, default=2)] = 2,
+        memory: Annotated[int, Field(description="Memory MB", ge=512, le=131072, default=2048)] = 2048,
+        disk_size: Annotated[int, Field(description="Disk GB", ge=8, le=1000, default=16)] = 16,
+        storage: Annotated[Optional[str], Field(description="Storage", default=None)] = None,
+        bridge: Annotated[Optional[str], Field(description="Bridge", default=None)] = None,
+        ip: Annotated[Optional[str], Field(description="dhcp or CIDR", default=None)] = None,
+        gw: Annotated[Optional[str], Field(description="Gateway", default=None)] = None,
+        nameservers: Annotated[str, Field(description="DNS nameservers", default="8.8.8.8 9.9.9.9")] = "8.8.8.8 9.9.9.9",
+        ostemplate_filter: Annotated[str, Field(description="Template filter", default="ubuntu")] = "ubuntu",
+        ssh_public_keys: Annotated[Optional[str], Field(description="SSH public keys", default=None)] = None,
+        password: Annotated[Optional[str], Field(description="Root password", default=None)] = None,
+        docker_mode: Annotated[str, Field(description="auto|keyctl|crun", default="auto")] = "auto",
+        timeout: Annotated[Optional[int], Field(description="Long op timeout", default=None)] = None,
+    ):
+        return server.container_tools.bootstrap_docker_lxc(
+            node=node,
+            hostname=hostname,
+            vmid=vmid,
+            cpus=cpus,
+            memory=memory,
+            disk_size=disk_size,
+            storage=storage,
+            bridge=bridge,
+            ip=ip,
+            gw=gw,
+            nameservers=nameservers,
+            ostemplate_filter=ostemplate_filter,
+            ssh_public_keys=ssh_public_keys,
+            password=password,
+            docker_mode=docker_mode,
+            timeout=timeout,
         )
 
     @server.mcp.tool(description=D.PUSH_TO_LXC_DESC)

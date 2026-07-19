@@ -16,6 +16,10 @@ PCT_SET_ALLOWED_KEYS = frozenset(
     {"features", "nameserver", "searchdomain", "onboot", "description", "tags"}
 )
 
+# Host ``qm set`` keys for ``qm_set_vm`` (no free-form shell).
+QM_SET_ALLOWED_KEYS = frozenset({"onboot", "description", "tags"})
+
+
 # Pinned crun release for Docker-in-LXC Path B (Ubuntu jammy apt crun 0.17 is too old).
 CRUN_VERSION = "1.21"
 CRUN_BIN_PATH = "/usr/local/bin/crun"
@@ -134,6 +138,44 @@ def is_permission_denied_error(error: BaseException) -> bool:
     )
 
 
+def acl_denied_message(
+    code: str,
+    *,
+    operation: str,
+    path: Optional[str] = None,
+    denied: Optional[List[str]] = None,
+    recommended_next: Optional[str] = None,
+    mcp_fallback: Optional[str] = None,
+    cause: str = "",
+    **extra: Any,
+) -> str:
+    """Structured agent-facing error for privilege / token ACL denials."""
+    import json
+
+    payload: Dict[str, Any] = {
+        "error": code,
+        "operation": operation,
+        "recommended_next": recommended_next
+        or (
+            "Call get_token_permissions(userid, tokenid) and grant ACL on "
+            "user@realm!tokenid (SETUP.md Privilege Separation). "
+            "A 403 usually means token ACL, not a missing MCP tool."
+        ),
+    }
+    if path is not None:
+        payload["path"] = path
+    if denied is not None:
+        payload["denied"] = denied
+    if mcp_fallback is not None:
+        payload["mcp_fallback"] = mcp_fallback
+    if cause:
+        payload["cause"] = sanitize_error_snippet(cause)
+    payload.update(extra)
+    return f"{code} - permission denied for {operation}.\n" + json.dumps(
+        payload, indent=2
+    )
+
+
 def feature_acl_denied_message(
     vmid: str,
     requested: str,
@@ -141,31 +183,30 @@ def feature_acl_denied_message(
     cause: str = "",
 ) -> str:
     """Structured agent-facing error when keyctl/fuse cannot be set (D24 Path B)."""
-    import json
-
     flags = parse_feature_flags(requested)
     gated = sorted(flags & {"keyctl", "fuse"})
     allowed = sorted(flags - {"keyctl", "fuse"}) or ["nesting"]
-    payload = {
-        "error": "feature_acl_denied",
-        "vmid": str(vmid),
-        "requested": requested,
-        "denied": gated or sorted(flags),
-        "allowed": allowed,
-        "docker_implication": "stock_runc_will_fail",
-        "recommended_fallback": "crun",
-        "host_fix": f"pct set {vmid} -features nesting=1,keyctl=1",
-        "mcp_fallback": (
-            "pct_set_lxc(features='nesting=1,keyctl=1') if host SSH is root-capable; "
-            "else prepare_lxc_for_docker(docker_mode='auto'|'crun') for nesting+crun"
+    return acl_denied_message(
+        "feature_acl_denied",
+        operation=f"set LXC {vmid} features",
+        path=f"/nodes/*/lxc/{vmid}",
+        denied=gated or sorted(flags),
+        recommended_next=(
+            "Prefer prepare_lxc_for_docker(docker_mode=auto|crun) for nesting+crun; "
+            "or grant elevated ACL / root@pam for keyctl. "
+            "Also check get_token_permissions (SETUP.md privsep)."
         ),
-    }
-    if cause:
-        payload["cause"] = sanitize_error_snippet(cause)
-    return (
-        "feature_acl_denied — cannot set privilege-gated LXC features "
-        f"(denied={gated or sorted(flags)}).\n"
-        + json.dumps(payload, indent=2)
+        mcp_fallback=(
+            "pct_set_lxc(features='nesting=1,keyctl=1') if host SSH is root-capable; "
+            "else prepare_lxc_for_docker(docker_mode='auto'|'crun')"
+        ),
+        cause=cause,
+        vmid=str(vmid),
+        requested=requested,
+        allowed=allowed,
+        docker_implication="stock_runc_will_fail",
+        recommended_fallback="crun",
+        host_fix=f"pct set {vmid} -features nesting=1,keyctl=1",
     )
 
 

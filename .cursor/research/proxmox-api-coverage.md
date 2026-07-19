@@ -50,6 +50,10 @@ See [next-expansion.md](next-expansion.md). Summary:
 | `prepare_lxc_for_docker` | done |
 | `configure_lxc_dns` | done |
 | `pct_set_lxc` | done (allowlisted host pct set) |
+| `configure_lxc_ssh` | done |
+| `get_docker_lxc_status` | done |
+| `bootstrap_docker_lxc` | done |
+| `qm_set_vm` | done (allowlisted host qm set) |
 | `push_to_lxc` / `pull_from_lxc` | done |
 | paramiko core + SSH/exec QOL | done |
 | `create_lxc(docker_ready=…)` tip/features only | done |

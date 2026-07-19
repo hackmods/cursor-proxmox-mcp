@@ -27,7 +27,7 @@ class FirewallTools(ProxmoxTool):
             result = self.proxmox.cluster.firewall.options.put(**params)
             return [Content(type="text", text=f"Cluster firewall options updated\nResult: {result}")]
         except Exception as e:
-            self._handle_error("set cluster firewall options", e)
+            self._handle_mutation_error("set cluster firewall options", e, code="firewall_acl_denied", path="/cluster/firewall")
 
     def list_cluster_firewall_rules(self) -> List[Content]:
         try:
@@ -72,14 +72,14 @@ class FirewallTools(ProxmoxTool):
             result = self.proxmox.cluster.firewall.rules.post(**params)
             return [Content(type="text", text=f"Cluster firewall rule created\nResult: {result}")]
         except Exception as e:
-            self._handle_error("create cluster firewall rule", e)
+            self._handle_mutation_error("create cluster firewall rule", e, code="firewall_acl_denied", path="/cluster/firewall")
 
     def delete_cluster_firewall_rule(self, pos: int) -> List[Content]:
         try:
             result = self.proxmox.cluster.firewall.rules(pos).delete()
             return [Content(type="text", text=f"Cluster firewall rule at pos {pos} deleted\nResult: {result}")]
         except Exception as e:
-            self._handle_error(f"delete cluster firewall rule {pos}", e)
+            self._handle_mutation_error(f"delete cluster firewall rule {pos}", e, code="firewall_acl_denied", path="/cluster/firewall")
 
     def list_guest_firewall_rules(
         self, node: str, vmid: str, guest_type: str = "qemu"
@@ -125,7 +125,7 @@ class FirewallTools(ProxmoxTool):
             result = guest_resource(self.proxmox, node, vmid, gtype).firewall.rules.post(**params)
             return [Content(type="text", text=f"Guest firewall rule created\nResult: {result}")]
         except Exception as e:
-            self._handle_error(f"create firewall rule for {guest_type} {vmid}", e)
+            self._handle_mutation_error(f"create firewall rule for {guest_type} {vmid}", e, code="firewall_acl_denied")
 
     def delete_guest_firewall_rule(
         self, node: str, vmid: str, pos: int, guest_type: str = "qemu"
@@ -135,7 +135,7 @@ class FirewallTools(ProxmoxTool):
             result = guest_resource(self.proxmox, node, vmid, gtype).firewall.rules(pos).delete()
             return [Content(type="text", text=f"Guest firewall rule at pos {pos} deleted\nResult: {result}")]
         except Exception as e:
-            self._handle_error(f"delete firewall rule {pos}", e)
+            self._handle_mutation_error(f"delete firewall rule {pos}", e, code="firewall_acl_denied")
 
     def get_guest_firewall_options(
         self, node: str, vmid: str, guest_type: str = "qemu"
@@ -176,7 +176,7 @@ class FirewallTools(ProxmoxTool):
                 )
             ]
         except Exception as e:
-            self._handle_error(f"set firewall options for {guest_type} {vmid}", e)
+            self._handle_mutation_error(f"set firewall options for {guest_type} {vmid}", e, code="firewall_acl_denied")
 
     def list_firewall_aliases(self) -> List[Content]:
         try:
@@ -195,14 +195,14 @@ class FirewallTools(ProxmoxTool):
             result = self.proxmox.cluster.firewall.aliases.post(**params)
             return [Content(type="text", text=f"Firewall alias '{name}' created\nResult: {result}")]
         except Exception as e:
-            self._handle_error(f"create firewall alias {name}", e)
+            self._handle_mutation_error(f"create firewall alias {name}", e, code="firewall_acl_denied", path="/cluster/firewall")
 
     def delete_firewall_alias(self, name: str) -> List[Content]:
         try:
             result = self.proxmox.cluster.firewall.aliases(name).delete()
             return [Content(type="text", text=f"Firewall alias '{name}' deleted\nResult: {result}")]
         except Exception as e:
-            self._handle_error(f"delete firewall alias {name}", e)
+            self._handle_mutation_error(f"delete firewall alias {name}", e, code="firewall_acl_denied", path="/cluster/firewall")
 
     def list_firewall_ipsets(self) -> List[Content]:
         try:
@@ -221,14 +221,14 @@ class FirewallTools(ProxmoxTool):
             result = self.proxmox.cluster.firewall.ipset.post(**params)
             return [Content(type="text", text=f"Firewall IP set '{name}' created\nResult: {result}")]
         except Exception as e:
-            self._handle_error(f"create firewall IP set {name}", e)
+            self._handle_mutation_error(f"create firewall IP set {name}", e, code="firewall_acl_denied", path="/cluster/firewall")
 
     def delete_firewall_ipset(self, name: str) -> List[Content]:
         try:
             result = self.proxmox.cluster.firewall.ipset(name).delete()
             return [Content(type="text", text=f"Firewall IP set '{name}' deleted\nResult: {result}")]
         except Exception as e:
-            self._handle_error(f"delete firewall IP set {name}", e)
+            self._handle_mutation_error(f"delete firewall IP set {name}", e, code="firewall_acl_denied", path="/cluster/firewall")
 
     def list_firewall_ipset_cidrs(self, name: str) -> List[Content]:
         try:
@@ -258,7 +258,7 @@ class FirewallTools(ProxmoxTool):
                 )
             ]
         except Exception as e:
-            self._handle_error(f"add CIDR to IP set {name}", e)
+            self._handle_mutation_error(f"add CIDR to IP set {name}", e, code="firewall_acl_denied", path="/cluster/firewall")
 
     def delete_firewall_ipset_cidr(self, name: str, cidr: str) -> List[Content]:
         try:
@@ -271,7 +271,7 @@ class FirewallTools(ProxmoxTool):
                 )
             ]
         except Exception as e:
-            self._handle_error(f"delete CIDR from IP set {name}", e)
+            self._handle_mutation_error(f"delete CIDR from IP set {name}", e, code="firewall_acl_denied", path="/cluster/firewall")
 
     def list_firewall_macros(self) -> List[Content]:
         try:

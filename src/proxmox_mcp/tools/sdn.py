@@ -61,4 +61,6 @@ class SDNTools(ProxmoxTool):
                 )
             ]
         except Exception as e:
-            self._handle_error("apply SDN", e)
+            self._handle_mutation_error(
+                "apply SDN", e, code="sdn_acl_denied", path="/cluster/sdn"
+            )

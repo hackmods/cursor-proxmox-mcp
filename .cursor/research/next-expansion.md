@@ -1,6 +1,6 @@
 # Next expansion phases
 
-Living Cursor note for what to build after the current **165-tool** baseline.
+Living Cursor note for what to build after the current **169-tool** baseline.
 Update this file when priorities change; keep [proxmox-api-coverage.md](proxmox-api-coverage.md), [README.md](../../README.md), and [docs/api-coverage.md](../../docs/api-coverage.md) in sync.
 
 **Baseline (done):** Formal Cursor ↔ Proxmox MCP — guest lifecycle, storage, HA, firewall, access, replication, SDN read, ACME read, pools, console tickets, inventory-locked CI.
@@ -113,11 +113,10 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 ## Suggested next work
 
 ```text
-1. ~~Tag v1.4.0 → release.yml (GHCR + GitHub Release + PyPI)~~ done; Trusted Publishers for release.yml + publish.yml registered
-2. ~~Official MCP registry~~ done for v1.4.0
-3. ~~Community draft tooling~~ `.\scripts\post-community.ps1` / `./scripts/post-community.sh` (see docs/community/README.md)
-4. Post drafts when ready: `.\scripts\post-community.ps1 -Channel cursor-forum -Open` (manual paste)
-5. Phase C (SDN/ACME/Ceph/…) stays deferred (D26) until a real use case
+1. ~~Post-r11 slices 1–5~~ shipped r12 (169 tools): ACL UX, bootstrap_docker_lxc, helpers, qm_set_vm, VM tags
+2. Post community drafts when ready
+3. Phase C (SDN/ACME/Ceph/…) stays deferred (D26) until a real use case
+4. Optional later: bootstrap_cloudinit_vm (after lab demand)
 ```
 
 When shipping any new tool: update this file’s status, coverage matrix, changelog-notes, README, and `expected_tools.py` in the same change (api-coverage + keep-docs-aligned rules).

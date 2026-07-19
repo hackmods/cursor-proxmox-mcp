@@ -238,6 +238,26 @@ class PctExecutor:
             parts.append(shlex.quote(str(value)))
         return self.run_host(node, " ".join(parts))
 
+    def qm_set(
+        self,
+        node: str,
+        vmid: str,
+        **options: Any,
+    ) -> PctExecResult:
+        """``qm set VMID -key value ...`` for allowlisted QEMU options."""
+        if not options:
+            raise PctExecError("qm_set requires at least one option")
+        qm_path = "/usr/sbin/qm"
+        parts = [
+            shlex.quote(qm_path),
+            "set",
+            shlex.quote(str(vmid)),
+        ]
+        for key, value in options.items():
+            parts.append(f"-{key}")
+            parts.append(shlex.quote(str(value)))
+        return self.run_host(node, " ".join(parts))
+
     def ensure_features(
         self, node: str, vmid: str, features: str
     ) -> PctExecResult:

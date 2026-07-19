@@ -43,7 +43,7 @@ class AccessTools(ProxmoxTool):
             result = self.proxmox.access.users.post(**params)
             return [Content(type="text", text=f"User '{userid}' created\nResult: {result}")]
         except Exception as e:
-            self._handle_error(f"create user {userid}", e)
+            self._handle_mutation_error(f"create user {userid}", e, code="access_acl_denied", path="/access")
 
     def delete_user(self, userid: str) -> List[Content]:
         try:
@@ -58,7 +58,7 @@ class AccessTools(ProxmoxTool):
                 )
             ]
         except Exception as e:
-            self._handle_error(f"delete user {userid}", e)
+            self._handle_mutation_error(f"delete user {userid}", e, code="access_acl_denied", path="/access")
 
     def list_groups(self) -> List[Content]:
         try:
@@ -77,7 +77,7 @@ class AccessTools(ProxmoxTool):
             result = self.proxmox.access.groups.post(**params)
             return [Content(type="text", text=f"Group '{groupid}' created\nResult: {result}")]
         except Exception as e:
-            self._handle_error(f"create group {groupid}", e)
+            self._handle_mutation_error(f"create group {groupid}", e, code="access_acl_denied", path="/access")
 
     def delete_group(self, groupid: str) -> List[Content]:
         try:
@@ -92,7 +92,7 @@ class AccessTools(ProxmoxTool):
                 )
             ]
         except Exception as e:
-            self._handle_error(f"delete group {groupid}", e)
+            self._handle_mutation_error(f"delete group {groupid}", e, code="access_acl_denied", path="/access")
 
     def list_roles(self) -> List[Content]:
         try:
@@ -141,7 +141,7 @@ class AccessTools(ProxmoxTool):
                 )
             ]
         except Exception as e:
-            self._handle_error(f"update ACL for {path}", e)
+            self._handle_mutation_error(f"update ACL for {path}", e, code="access_acl_denied", path=path)
 
     def list_tokens(self, userid: str) -> List[Content]:
         try:
@@ -179,7 +179,7 @@ class AccessTools(ProxmoxTool):
                 )
             ]
         except Exception as e:
-            self._handle_error(f"create token {userid}!{tokenid}", e)
+            self._handle_mutation_error(f"create token {userid}!{tokenid}", e, code="access_acl_denied", path="/access")
 
     def delete_token(self, userid: str, tokenid: str) -> List[Content]:
         try:
@@ -194,7 +194,7 @@ class AccessTools(ProxmoxTool):
                 )
             ]
         except Exception as e:
-            self._handle_error(f"delete token {userid}!{tokenid}", e)
+            self._handle_mutation_error(f"delete token {userid}!{tokenid}", e, code="access_acl_denied", path="/access")
 
     def get_permissions(self) -> List[Content]:
         try:

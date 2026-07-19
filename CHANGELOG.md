@@ -9,12 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Docker LXC Path B (rev r11):** `prepare_lxc_for_docker(docker_mode=auto|keyctl|crun)` with modern crun fallback when keyctl ACL denied; structured `feature_acl_denied`; `configure_lxc_dns`; allowlisted `pct_set_lxc`; `create_lxc` `nameserver`/`searchdomain` (**165 tools**).
+- **Post-r11 (rev r12):** structured ACL denials (HA/firewall/access/SDN/VM); `configure_lxc_ssh`, `get_docker_lxc_status`, `bootstrap_docker_lxc`; `qm_set_vm`; VM `onboot`/`description`/`tags` on create/update (**169 tools**).
+- **Docker LXC Path B (rev r11):** `prepare_lxc_for_docker(docker_mode=auto|keyctl|crun)` with modern crun fallback; `configure_lxc_dns`; `pct_set_lxc`; create `nameserver`/`searchdomain`.
 
 ### Notes
 
-- Community announce tooling: `scripts/post-community.ps1` / `.sh` + `docs/community/` draft format (`-Check` / `-Open` / `-CreateDiscussion`).
-- Phase C remains deferred (D26). PyPI Trusted Publishers for both `release.yml` and `publish.yml` (+ env `pypi`) are registered.
+- Community announce tooling: `scripts/post-community.ps1` / `.sh` + `docs/community/` draft format.
+- Phase C remains deferred (D26).
 
 ## [1.4.0] - 2026-07-19
 

@@ -17,12 +17,13 @@ LXC container lifecycle lives in container.ContainerTools.
 The tools implement fallback mechanisms for scenarios where
 detailed VM information might be temporarily unavailable.
 """
-from typing import List, Optional
+from typing import Any, List, Optional
 import base64
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
 from .console.manager import VMConsoleManager
 from .helpers import (
+    QM_SET_ALLOWED_KEYS,
     agent_runtime_ipv4_summary,
     assert_id_absent,
     console_ticket_footer,
@@ -36,6 +37,7 @@ from .helpers import (
 )
 from .spec import ToolSpec
 from . import definitions as D
+from ..ssh import PctExecError, PctExecutor, require_host_ssh_message, ssh_configured
 
 MAX_VM_PUSH_BYTES = 32 * 1024 * 1024
 
@@ -48,6 +50,7 @@ TOOL_SPECS = [
     ToolSpec("get_vm_network", D.GET_VM_NETWORK_DESC),
     ToolSpec("push_to_vm", D.PUSH_TO_VM_DESC),
     ToolSpec("pull_from_vm", D.PULL_FROM_VM_DESC),
+    ToolSpec("qm_set_vm", D.QM_SET_VM_DESC),
     ToolSpec("start_vm", D.START_VM_DESC),
     ToolSpec("stop_vm", D.STOP_VM_DESC),
     ToolSpec("shutdown_vm", D.SHUTDOWN_VM_DESC),
@@ -67,29 +70,27 @@ TOOL_SPECS = [
 ]
 
 class VMTools(ProxmoxTool):
-    """Tools for managing Proxmox QEMU VMs.
-    
-    Provides functionality for:
-    - Retrieving cluster-wide VM information
-    - Getting detailed VM status and configuration
-    - Executing commands within VMs
-    - Managing VM console operations
-    - VM power management (start, stop, shutdown, reset)
-    - VM creation with customizable specifications
-    
-    Implements fallback mechanisms for scenarios where detailed
-    VM information might be temporarily unavailable. Integrates
-    with QEMU guest agent for VM command execution.
-    """
+    """Tools for managing Proxmox QEMU VMs."""
 
-    def __init__(self, proxmox_api):
-        """Initialize VM tools.
-
-        Args:
-            proxmox_api: Initialized ProxmoxAPI instance
-        """
+    def __init__(
+        self,
+        proxmox_api,
+        ssh_config: Optional[Any] = None,
+        proxmox_host: Optional[str] = None,
+    ):
         super().__init__(proxmox_api)
         self.console_manager = VMConsoleManager(proxmox_api)
+        self.ssh_config = ssh_config
+        self.proxmox_host = proxmox_host or ""
+        self._pct: Optional[PctExecutor] = None
+        if ssh_configured(ssh_config) and self.proxmox_host:
+            self._pct = PctExecutor(ssh_config, self.proxmox_host)
+
+    def _require_pct(self) -> PctExecutor:
+        if self._pct is None:
+            raise ValueError(require_host_ssh_message(context="qm_set_vm"))
+        return self._pct
+
 
     def get_vms(self) -> List[Content]:
         """List all virtual machines across the cluster with detailed status.
@@ -179,10 +180,14 @@ class VMTools(ProxmoxTool):
         sshkeys: Optional[str] = None,
         ipconfig0: Optional[str] = None,
         wait: bool = False,
+        onboot: Optional[bool] = None,
+        description: Optional[str] = None,
+        tags: Optional[str] = None,
     ) -> List[Content]:
         """Create a new virtual machine with optional ISO, cloud-init, and network overrides.
 
         When ``wait=True``, poll the create UPID until stopped (D25; default remains false).
+        DNS for guests is via cloud-init ``ipconfig0`` / guest resolvers — not LXC nameserver.
         """
         try:
             assert_id_absent(self.proxmox, node, vmid, "qemu")
@@ -244,8 +249,23 @@ class VMTools(ProxmoxTool):
                 vm_config["sshkeys"] = sshkeys
             if ipconfig0 is not None:
                 vm_config["ipconfig0"] = ipconfig0
+            if onboot is not None:
+                vm_config["onboot"] = 1 if onboot else 0
+            if description is not None and str(description).strip():
+                vm_config["description"] = str(description).strip()
+            if tags is not None and str(tags).strip():
+                vm_config["tags"] = str(tags).strip()
 
-            task_result = self.proxmox.nodes(node).qemu.create(**vm_config)
+            try:
+                task_result = self.proxmox.nodes(node).qemu.create(**vm_config)
+            except Exception as create_err:
+                self._handle_mutation_error(
+                    f"create VM {vmid}",
+                    create_err,
+                    code="vm_acl_denied",
+                    path=f"/nodes/{node}/qemu",
+                    mcp_fallback="qm_set_vm for onboot/tags/description when host SSH is root-capable",
+                )
 
             wait_block = ""
             if wait:
@@ -548,7 +568,7 @@ class VMTools(ProxmoxTool):
             self._handle_error(f"get VM {vmid} config", e)
 
     def update_vm_config(self, node: str, vmid: str, **kwargs) -> List[Content]:
-        """Update QEMU VM configuration (cores, memory, net0, name, etc.)."""
+        """Update QEMU VM configuration (cores, memory, net0, name, onboot, tags, etc.)."""
         try:
             params = {k: v for k, v in kwargs.items() if v is not None}
             if not params:
@@ -569,7 +589,67 @@ class VMTools(ProxmoxTool):
         except Exception as e:
             if is_missing_resource_error(e):
                 raise ValueError(qemu_not_found_message(vmid, node))
-            self._handle_error(f"update VM {vmid} config", e)
+            self._handle_mutation_error(
+                f"update VM {vmid} config",
+                e,
+                code="vm_acl_denied",
+                path=f"/nodes/{node}/qemu/{vmid}",
+                mcp_fallback="qm_set_vm(onboot/tags/description) when host SSH is root-capable",
+            )
+
+    def qm_set_vm(
+        self,
+        node: str,
+        vmid: str,
+        onboot: Optional[int] = None,
+        description: Optional[str] = None,
+        tags: Optional[str] = None,
+    ) -> List[Content]:
+        """Allowlisted host ``qm set`` when REST token lacks ACL (requires SSH)."""
+        try:
+            pct = self._require_pct()
+            options: dict = {}
+            if onboot is not None:
+                options["onboot"] = int(onboot)
+            if description is not None:
+                options["description"] = description
+            if tags is not None:
+                options["tags"] = tags
+            if not options:
+                raise ValueError(
+                    "qm_set_vm requires at least one of: onboot, description, tags"
+                )
+            unknown = set(options) - QM_SET_ALLOWED_KEYS
+            if unknown:
+                raise ValueError(
+                    f"qm_set_vm rejected unknown keys {sorted(unknown)}; "
+                    f"allowed={sorted(QM_SET_ALLOWED_KEYS)}"
+                )
+            result = pct.qm_set(node, vmid, **options)
+            if not result.success:
+                raise RuntimeError(
+                    f"qm set failed (exit {result.exit_code}): "
+                    f"{result.stderr or result.stdout}"
+                )
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"qm_set_vm VM {vmid}@{node}\n"
+                        f"  Options: {options}\n"
+                        f"  stdout: {(result.stdout or '').strip() or '(empty)'}\n"
+                        "Prefer REST update_vm_config when token ACL allows."
+                    ),
+                )
+            ]
+        except ValueError:
+            raise
+        except PctExecError as e:
+            raise RuntimeError(str(e)) from e
+        except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
+            self._handle_error(f"qm set VM {vmid}", e)
 
     def reboot_vm(self, node: str, vmid: str) -> List[Content]:
         """Gracefully reboot a VM (ACPI), distinct from hard reset."""

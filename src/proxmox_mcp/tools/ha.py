@@ -42,7 +42,9 @@ class HATools(ProxmoxTool):
                 )
             ]
         except Exception as e:
-            self._handle_error(f"create HA group {group}", e)
+            self._handle_mutation_error(
+                f"create HA group {group}", e, code="ha_acl_denied", path="/cluster/ha/groups"
+            )
 
     def delete_ha_group(self, group: str) -> List[Content]:
         try:
@@ -57,7 +59,9 @@ class HATools(ProxmoxTool):
                 )
             ]
         except Exception as e:
-            self._handle_error(f"delete HA group {group}", e)
+            self._handle_mutation_error(
+                f"delete HA group {group}", e, code="ha_acl_denied", path="/cluster/ha/groups"
+            )
 
     def list_ha_resources(self) -> List[Content]:
         try:
@@ -92,7 +96,9 @@ class HATools(ProxmoxTool):
                 )
             ]
         except Exception as e:
-            self._handle_error(f"create HA resource {sid}", e)
+            self._handle_mutation_error(
+                f"create HA resource {sid}", e, code="ha_acl_denied", path="/cluster/ha/resources"
+            )
 
     def update_ha_resource(
         self,
@@ -122,7 +128,9 @@ class HATools(ProxmoxTool):
                 )
             ]
         except Exception as e:
-            self._handle_error(f"update HA resource {sid}", e)
+            self._handle_mutation_error(
+                f"update HA resource {sid}", e, code="ha_acl_denied", path="/cluster/ha/resources"
+            )
 
     def delete_ha_resource(self, sid: str) -> List[Content]:
         try:
@@ -137,4 +145,6 @@ class HATools(ProxmoxTool):
                 )
             ]
         except Exception as e:
-            self._handle_error(f"delete HA resource {sid}", e)
+            self._handle_mutation_error(
+                f"delete HA resource {sid}", e, code="ha_acl_denied", path="/cluster/ha/resources"
+            )

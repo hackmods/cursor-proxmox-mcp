@@ -25,7 +25,7 @@ def test_phase_f1_tools_in_inventory():
         "deploy_static_nginx",
     ):
         assert name in ALL_TOOL_NAMES
-    assert len(ALL_TOOL_NAMES) == 165
+    assert len(ALL_TOOL_NAMES) == 169
 
 
 def test_parse_qemu_networks_virtio_mac():

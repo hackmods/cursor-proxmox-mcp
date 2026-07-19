@@ -1,5 +1,13 @@
 # Changelog / research notes
 
+## 2026-07-19 — Post-r11 expansion slices 1–5 (rev r12) — 169 tools
+
+**Why:** Close remaining FeedForge-style agent gaps after crun Path B: structured ACL UX everywhere mutations fail, one-shot Docker LXC orchestrator, SSH/status helpers, QEMU host escape hatch, VM tag/description/onboot parity.
+
+**Shipped:** `acl_denied_message` + `_handle_mutation_error` (HA/firewall/access/SDN/VM); `configure_lxc_ssh`, `get_docker_lxc_status`, `bootstrap_docker_lxc`; `qm_set_vm`; create/update VM `onboot`/`description`/`tags`.
+
+**Out of scope:** Phase C; free-form host shell; `bootstrap_cloudinit_vm`; privileged CT.
+
 ## 2026-07-19 — Docker LXC crun Path B (rev r11) — 165 tools
 
 **Why:** FeedForge CT107 lab — `keyctl=1` 403 under privsep token; stock runc fails without keyctl (`ip_unprivileged_port_start`); gateway DNS/IPv6 flaky; no host `pct set` escape hatch for agents.

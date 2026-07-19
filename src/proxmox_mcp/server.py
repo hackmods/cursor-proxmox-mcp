@@ -49,7 +49,11 @@ class ProxmoxMCPServer:
         self.proxmox = self.proxmox_manager.get_api()
 
         self.node_tools = NodeTools(self.proxmox)
-        self.vm_tools = VMTools(self.proxmox)
+        self.vm_tools = VMTools(
+            self.proxmox,
+            ssh_config=self.config.ssh,
+            proxmox_host=self.config.proxmox.host,
+        )
         self.container_tools = ContainerTools(
             self.proxmox,
             ssh_config=self.config.ssh,

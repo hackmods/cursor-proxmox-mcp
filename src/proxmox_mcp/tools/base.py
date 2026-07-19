@@ -12,6 +12,7 @@ from proxmoxer import ProxmoxAPI
 
 from ..errors import classify_proxmox_error
 from ..formatting import ProxmoxTemplates
+from .helpers import acl_denied_message, is_permission_denied_error
 
 
 class ProxmoxTool:
@@ -47,3 +48,25 @@ class ProxmoxTool:
         classified = classify_proxmox_error(operation, error)
         self.logger.error("%s", classified)
         raise classified
+
+    def _handle_mutation_error(
+        self,
+        operation: str,
+        error: Exception,
+        *,
+        code: str = "acl_denied",
+        path: Optional[str] = None,
+        mcp_fallback: Optional[str] = None,
+    ) -> None:
+        """Like ``_handle_error`` but emit structured ACL denial on 403."""
+        if is_permission_denied_error(error):
+            msg = acl_denied_message(
+                code,
+                operation=operation,
+                path=path,
+                mcp_fallback=mcp_fallback,
+                cause=str(error),
+            )
+            self.logger.error("%s", msg)
+            raise ValueError(msg) from error
+        self._handle_error(operation, error)

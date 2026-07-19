@@ -16,13 +16,13 @@ node* - Host node name"""
 # VM
 GET_VMS_DESC = """List all QEMU virtual machines across the cluster (not LXC — use get_containers, or get_cluster_resources(type=vm) for both). Status and resource usage included."""
 
-CREATE_VM_DESC = """Create a QEMU VM (async UPID — always wait_for_task before start unless wait=true). Parameters: node*, vmid*, name*, cpus*, memory* (MB), disk_size* (GB); storage?, ostype?, bridge?, net0?, iso?, boot?, ciuser?, cipassword?, sshkeys?, ipconfig0?, wait?=false"""
+CREATE_VM_DESC = """Create a QEMU VM (async UPID — always wait_for_task before start unless wait=true). Guest DNS via cloud-init ipconfig0 / guest resolvers (not LXC nameserver). Parameters: node*, vmid*, name*, cpus*, memory* (MB), disk_size* (GB); storage?, ostype?, bridge?, net0?, iso?, boot?, ciuser?, cipassword?, sshkeys?, ipconfig0?, wait?=false, onboot?, description?, tags?"""
 
 GET_VM_CONFIG_DESC = """Get full QEMU VM configuration.
 
 Parameters: node*, vmid*"""
 
-UPDATE_VM_CONFIG_DESC = """Update QEMU VM config. Parameters: node*, vmid*; cores?, memory?, name?, net0?, onboot?, agent?, iso?, boot?, ciuser?, cipassword?, sshkeys?, ipconfig0?, ide2?"""
+UPDATE_VM_CONFIG_DESC = """Update QEMU VM config. On 403 returns structured vm_acl_denied (try qm_set_vm). Parameters: node*, vmid*; cores?, memory?, name?, net0?, onboot?, agent?, iso?, boot?, ciuser?, cipassword?, sshkeys?, ipconfig0?, ide2?, description?, tags?"""
 
 EXECUTE_VM_COMMAND_DESC = """Execute commands in a VM via QEMU guest agent.
 
@@ -33,6 +33,8 @@ GET_VM_NETWORK_DESC = """Get VM network: configured netN from config plus option
 PUSH_TO_VM_DESC = """Push a file into a running VM via QEMU guest agent file-write. Provide local_path or content_base64. Max 32 MiB. Parameters: node*, vmid*, remote_path*; local_path?, content_base64?"""
 
 PULL_FROM_VM_DESC = """Pull a file from a running VM via QEMU guest agent file-read. Writes local_path when set; otherwise returns base64. Parameters: node*, vmid*, remote_path*; local_path?"""
+
+QM_SET_VM_DESC = """Allowlisted host qm set when REST token lacks ACL (requires ssh). Keys: onboot, description, tags. Not free-form shell. Prefer update_vm_config first. Parameters: node*, vmid*; onboot?, description?, tags?"""
 
 START_VM_DESC = """Start a QEMU VM (not LXC — use start_lxc / start_guest). Parameters: node*, vmid*"""
 STOP_VM_DESC = """Force-stop a QEMU VM. Parameters: node*, vmid*"""
@@ -68,6 +70,9 @@ SET_LXC_SSH_KEYS_DESC = """Install root authorized_keys via pct exec (prefer ssh
 PREPARE_LXC_FOR_DOCKER_DESC = """Idempotent Docker-in-LXC prep (D24): features + AppArmor; docker_mode=auto|keyctl|crun (auto falls back to nesting+crun when keyctl ACL denied); optional install_docker/smoke_test. Requires ssh. Success = docker run (hello-world) — not docker --version. Do not claim ready with nesting-only + stock runc. Parameters: node*, vmid*; fuse?=false, allow_apparmor_workaround?=true, install_docker?=false, smoke_test?=false, timeout?, docker_mode?=auto"""
 CONFIGURE_LXC_DNS_DESC = """Set CT nameserver/searchdomain via REST (falls back to pct set). Optionally prefer IPv4 in guest gai.conf when running. Prefer CT nameserver over editing resolv.conf (PVE rewrites on start). Parameters: node*, vmid*; nameserver?=8.8.8.8 9.9.9.9, searchdomain?, prefer_ipv4?=true"""
 PCT_SET_LXC_DESC = """Allowlisted host pct set for when REST token lacks ACL (requires ssh). Keys: features, nameserver, searchdomain, onboot, description, tags. Not free-form shell. Parameters: node*, vmid*; features?, nameserver?, searchdomain?, onboot?, description?, tags?"""
+CONFIGURE_LXC_SSH_DESC = """Ensure openssh-server enabled; optionally install ssh_public_keys and/or set password; return sshd_listening. Requires ssh. Parameters: node*, vmid*; ssh_public_keys?, password?, enable_password_ssh?=true, install_openssh?=true"""
+GET_DOCKER_LXC_STATUS_DESC = """Read-only Docker-in-LXC probe: features, DefaultRuntime, docker/compose versions, disk, IP. Does not install or smoke-test. Requires ssh for runtime fields. Parameters: node*, vmid*"""
+BOOTSTRAP_DOCKER_LXC_DESC = """Orchestrate Docker LXC: create(docker_ready)+wait → start → DNS → SSH → prepare_lxc_for_docker(docker_mode=auto, install+smoke) → restart if needed → status. Prefer when user asks for Docker LXC. Requires ssh. Parameters: node*, hostname*; vmid?, cpus?, memory?, disk_size?, storage?, bridge?, ip?, gw?, nameservers?=8.8.8.8 9.9.9.9, ostemplate_filter?=ubuntu, ssh_public_keys?, password?, docker_mode?=auto, timeout?"""
 PUSH_TO_LXC_DESC = """Push a file into a running LXC via host SSH + pct push (SFTP to host temp then pct push). Provide local_path (Cursor-side) or content_base64. Max 32 MiB. Requires ssh. Parameters: node*, vmid*, remote_path*; local_path?, content_base64?, timeout?"""
 PULL_FROM_LXC_DESC = """Pull a file from a running LXC via pct pull. Writes local_path when set; otherwise returns base64. Requires ssh. Parameters: node*, vmid*, remote_path*; local_path?, timeout?"""
 DEPLOY_STATIC_NGINX_DESC = """Install nginx in a running LXC and deploy static content to /var/www/html (Lumon-style fallback). Requires host SSH/pct. Optional content_base64 or local_path tarball/html. Parameters: node*, vmid*; local_path?, content_base64?, remote_extract_dir?=/var/www/html, timeout?"""

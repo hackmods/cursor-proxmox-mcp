@@ -58,6 +58,9 @@ TOOL_SPECS = [
     ToolSpec("prepare_lxc_for_docker", D.PREPARE_LXC_FOR_DOCKER_DESC),
     ToolSpec("configure_lxc_dns", D.CONFIGURE_LXC_DNS_DESC),
     ToolSpec("pct_set_lxc", D.PCT_SET_LXC_DESC),
+    ToolSpec("configure_lxc_ssh", D.CONFIGURE_LXC_SSH_DESC),
+    ToolSpec("get_docker_lxc_status", D.GET_DOCKER_LXC_STATUS_DESC),
+    ToolSpec("bootstrap_docker_lxc", D.BOOTSTRAP_DOCKER_LXC_DESC),
     ToolSpec("push_to_lxc", D.PUSH_TO_LXC_DESC),
     ToolSpec("pull_from_lxc", D.PULL_FROM_LXC_DESC),
     ToolSpec("deploy_static_nginx", D.DEPLOY_STATIC_NGINX_DESC),
@@ -1386,6 +1389,298 @@ Known limitations (D24):
             if is_missing_resource_error(e):
                 raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"pct set LXC {vmid}", e)
+
+    def configure_lxc_ssh(
+        self,
+        node: str,
+        vmid: str,
+        ssh_public_keys: Optional[str] = None,
+        password: Optional[str] = None,
+        enable_password_ssh: bool = True,
+        install_openssh: bool = True,
+    ) -> List[Content]:
+        """Ensure sshd is running; optionally install keys and/or set password."""
+        try:
+            pct = self._require_pct()
+            status = self.proxmox.nodes(node).lxc(vmid).status.current.get()
+            if status.get("status") != "running":
+                raise ValueError(f"LXC {vmid} must be running — start_lxc first")
+
+            applied: List[str] = []
+            if install_openssh:
+                ir = pct.execute(
+                    node,
+                    vmid,
+                    "export DEBIAN_FRONTEND=noninteractive; "
+                    "(command -v sshd >/dev/null || command -v sshd >/dev/null) || "
+                    "(apt-get update -qq && apt-get install -y -qq openssh-server); "
+                    "(systemctl enable --now ssh 2>/dev/null || systemctl enable --now sshd 2>/dev/null "
+                    "|| service ssh start || service sshd start || true)",
+                    timeout=180,
+                )
+                if not ir.success:
+                    raise RuntimeError(
+                        f"openssh install/enable failed: {ir.stderr or ir.stdout}"
+                    )
+                applied.append("openssh-server ensured")
+
+            if ssh_public_keys and str(ssh_public_keys).strip():
+                self.set_lxc_ssh_keys(node, vmid, ssh_public_keys, mode="replace")
+                applied.append("ssh_public_keys installed")
+            if password:
+                self.set_lxc_password(
+                    node, vmid, password, enable_password_ssh=enable_password_ssh
+                )
+                applied.append("root password set (not echoed)")
+
+            listen = pct.execute(
+                node,
+                vmid,
+                "ss -lntp 2>/dev/null | grep -E ':22\\b' || "
+                "netstat -lntp 2>/dev/null | grep -E ':22\\b' || "
+                "(systemctl is-active ssh 2>/dev/null || systemctl is-active sshd 2>/dev/null || true)",
+                timeout=30,
+            )
+            listening = bool(
+                listen.success
+                and (
+                    ":22" in (listen.stdout or "")
+                    or "active" in (listen.stdout or "").lower()
+                )
+            )
+            payload = {
+                "vmid": str(vmid),
+                "sshd_listening": listening,
+                "applied": applied,
+                "listen_probe": (listen.stdout or "").strip()[:300],
+            }
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"configure_lxc_ssh CT {vmid}@{node}\n"
+                        + json.dumps(payload, indent=2)
+                        + "\n💡 Prefer ssh_public_keys over password SSH."
+                    ),
+                )
+            ]
+        except ValueError:
+            raise
+        except PctExecError as e:
+            raise RuntimeError(str(e)) from e
+        except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
+            self._handle_error(f"configure SSH on LXC {vmid}", e)
+
+    def get_docker_lxc_status(self, node: str, vmid: str) -> List[Content]:
+        """Read-only Docker-in-LXC probe (features, runtime, disk, IP)."""
+        try:
+            config = self.proxmox.nodes(node).lxc(vmid).config.get()
+            status = self.proxmox.nodes(node).lxc(vmid).status.current.get()
+            networks = parse_lxc_networks(config)
+            payload: dict = {
+                "vmid": str(vmid),
+                "node": node,
+                "status": status.get("status") if isinstance(status, dict) else status,
+                "features": config.get("features"),
+                "configured_ip": configured_ipv4_summary(networks),
+                "default_runtime": None,
+                "docker_version": None,
+                "compose_version": None,
+                "disk_free": None,
+                "runtime_ips": [],
+                "docker_ok": False,
+                "note": "Read-only probe — does not install Docker or run smoke tests.",
+            }
+            if status.get("status") == "running" and self._pct:
+                pct = self._pct
+                cmds = {
+                    "runtime": "docker info -f '{{.DefaultRuntime}}' 2>/dev/null || true",
+                    "docker": "docker --version 2>/dev/null || true",
+                    "compose": "docker compose version 2>/dev/null || true",
+                    "disk": "df -h / 2>/dev/null | tail -1 || true",
+                    "ips": "hostname -I 2>/dev/null || true",
+                }
+                for key, cmd in cmds.items():
+                    try:
+                        r = pct.execute(node, vmid, cmd, timeout=60)
+                        out = (r.stdout or "").strip()
+                        if key == "runtime":
+                            payload["default_runtime"] = out or None
+                        elif key == "docker":
+                            payload["docker_version"] = out or None
+                        elif key == "compose":
+                            payload["compose_version"] = out or None
+                        elif key == "disk":
+                            payload["disk_free"] = out or None
+                        elif key == "ips":
+                            payload["runtime_ips"] = [
+                                p for p in out.split() if p and "." in p
+                            ]
+                    except PctExecError:
+                        pass
+                if payload["docker_version"]:
+                    payload["docker_ok"] = False  # version alone ≠ ready
+            elif status.get("status") != "running":
+                payload["note"] += " CT not running."
+            elif not self._pct:
+                payload["note"] += " Host SSH/pct not configured."
+
+            return [Content(type="text", text=json.dumps(payload, indent=2))]
+        except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
+            self._handle_error(f"get docker status for LXC {vmid}", e)
+
+    def bootstrap_docker_lxc(
+        self,
+        node: str,
+        hostname: str,
+        vmid: Optional[str] = None,
+        cpus: int = 2,
+        memory: int = 2048,
+        disk_size: int = 16,
+        storage: Optional[str] = None,
+        bridge: Optional[str] = None,
+        ip: Optional[str] = None,
+        gw: Optional[str] = None,
+        nameservers: str = DEFAULT_DOCKER_NAMESERVERS,
+        ostemplate_filter: str = "ubuntu",
+        ssh_public_keys: Optional[str] = None,
+        password: Optional[str] = None,
+        docker_mode: str = "auto",
+        timeout: Optional[int] = None,
+    ) -> List[Content]:
+        """Orchestrate create → start → dns → ssh → prepare Docker → verify (D24)."""
+        try:
+            pct = self._require_pct()
+            warnings: List[str] = []
+            steps: List[str] = []
+
+            if not vmid:
+                vmid = str(self.proxmox.cluster.nextid.get())
+                steps.append(f"allocated vmid={vmid}")
+            else:
+                vmid = str(vmid)
+
+            create_out = self.create_lxc(
+                node=node,
+                vmid=vmid,
+                hostname=hostname,
+                cpus=cpus,
+                memory=memory,
+                disk_size=disk_size,
+                storage=storage,
+                bridge=bridge,
+                ip=ip,
+                gw=gw,
+                nameserver=nameservers,
+                ostemplate_filter=ostemplate_filter,
+                ssh_public_keys=ssh_public_keys,
+                password=password,
+                docker_ready=True,
+                wait=True,
+            )
+            create_text = create_out[0].text if create_out else ""
+            steps.append("create_lxc wait=true finished")
+            if "needs_crun" in create_text:
+                warnings.append("needs_crun")
+
+            self.start_lxc(node, vmid)
+            steps.append("start_lxc")
+
+            self.configure_lxc_dns(node, vmid, nameserver=nameservers, prefer_ipv4=True)
+            steps.append("configure_lxc_dns")
+
+            if ssh_public_keys or password:
+                self.configure_lxc_ssh(
+                    node,
+                    vmid,
+                    ssh_public_keys=ssh_public_keys,
+                    password=password,
+                    enable_password_ssh=bool(password),
+                )
+                steps.append("configure_lxc_ssh")
+
+            prep = self.prepare_lxc_for_docker(
+                node,
+                vmid,
+                docker_mode=docker_mode,
+                install_docker=True,
+                smoke_test=True,
+                timeout=timeout or 600,
+            )
+            prep_text = prep[0].text if prep else ""
+            steps.append("prepare_lxc_for_docker")
+            restart_required = "restart_required: True" in prep_text
+            docker_path = "crun" if '"docker_path": "crun"' in prep_text or "docker_path: crun" in prep_text else "keyctl"
+            if "keyctl_denied_used_crun_fallback" in prep_text:
+                warnings.append("keyctl_denied_used_crun_fallback")
+                docker_path = "crun"
+
+            docker_ok = False
+            if restart_required:
+                self.stop_lxc(node, vmid)
+                self.start_lxc(node, vmid)
+                steps.append("stop_lxc + start_lxc (restart_required)")
+                smoke = pct.execute(
+                    node, vmid, "docker run --rm hello-world", timeout=timeout or 180
+                )
+                docker_ok = smoke.success
+                if not docker_ok:
+                    warnings.append("post_restart_smoke_failed")
+            else:
+                docker_ok = "smoke_test" in prep_text.lower() and "FAILED" not in prep_text
+
+            status = self.get_docker_lxc_status(node, vmid)
+            status_obj = {}
+            try:
+                status_obj = json.loads(status[0].text)
+            except Exception:
+                status_obj = {"raw": status[0].text if status else ""}
+
+            net = self.get_lxc_network(node, vmid, resolve_runtime=True)
+            ip_guess = status_obj.get("runtime_ips") or []
+            if not ip_guess:
+                try:
+                    net_obj = json.loads(net[0].text)
+                    ip_guess = net_obj.get("runtime_ips") or []
+                    if not ip_guess and net_obj.get("configured_ip"):
+                        ip_guess = [str(net_obj["configured_ip"]).split("/")[0]]
+                except Exception:
+                    pass
+            ip_str = ip_guess[0] if ip_guess else None
+            ssh_cmd = f"ssh root@{ip_str}" if ip_str else None
+
+            final = {
+                "vmid": str(vmid),
+                "hostname": hostname,
+                "ip": ip_str,
+                "features": status_obj.get("features"),
+                "docker_path": docker_path,
+                "docker_ok": docker_ok,
+                "ssh": ssh_cmd,
+                "warnings": warnings,
+                "steps": steps,
+            }
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        "bootstrap_docker_lxc complete\n"
+                        + json.dumps(final, indent=2)
+                        + "\n\nprepare excerpt:\n"
+                        + prep_text[-1200:]
+                    ),
+                )
+            ]
+        except ValueError:
+            raise
+        except PctExecError as e:
+            raise RuntimeError(str(e)) from e
+        except Exception as e:
+            self._handle_error(f"bootstrap docker LXC {hostname}", e)
 
     def push_to_lxc(
         self,

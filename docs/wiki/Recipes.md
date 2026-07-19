@@ -17,12 +17,12 @@ Do **not** claim the guest is “ready for apps” until you verify services you
 
 Supported path (D24):
 
-1. `create_lxc` with `docker_ready=true` + `nameserver=8.8.8.8 9.9.9.9` + `ssh_public_keys` (keyctl ACL deny → nesting-only + `needs_crun`)
-2. `wait_for_task` (or `wait=true` on create) → `start_lxc` → `get_lxc_network` → optional `configure_lxc_dns`
-3. `prepare_lxc_for_docker(docker_mode=auto, install_docker=true?, smoke_test=true?)` — Path A keyctl+runc or Path B nesting+crun
-4. If `restart_required`: **`stop_lxc` then `start_lxc`** (not reboot alone)
-5. Confirm status `docker_path` (`keyctl` or `crun`); smoke `docker run --rm hello-world` — **not** merely `docker --version`
-6. `push_to_lxc` for app files; use `pct_set_lxc` only when REST cannot set features/nameserver
+1. Prefer **`bootstrap_docker_lxc`** when the user asks for a Docker LXC (create→dns→ssh→prepare→verify)
+2. Or manually: `create_lxc` with `docker_ready=true` + `nameserver` + `ssh_public_keys`
+3. `wait_for_task` → `start_lxc` → `configure_lxc_dns` / `configure_lxc_ssh`
+4. `prepare_lxc_for_docker(docker_mode=auto, install_docker=true?, smoke_test=true?)`
+5. If `restart_required`: **`stop_lxc` then `start_lxc`**
+6. `get_docker_lxc_status` to re-check runtime; smoke `docker run --rm hello-world`
 
 Do **not** claim Docker-ready with nesting-only + stock runc.
 
