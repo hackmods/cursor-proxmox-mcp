@@ -91,9 +91,9 @@ Before starting, ensure you have:
 
 1. Clone and set up environment:
    ```bash
-   # Clone repository
-   git clone https://github.com/agentify-sh/cursor-proxmox-mcp.git
-   cd ProxmoxMCP-Plus
+   # Clone repository (this fork)
+   git clone https://github.com/hackmods/cursor-proxmox-mcp.git
+   cd cursor-proxmox-mcp
 
    # Create and activate virtual environment
    uv venv
