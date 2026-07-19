@@ -126,7 +126,7 @@ Cursor MCP (direct Python — use absolute paths):
 }
 ```
 
-Restart the **proxmox** MCP server in Cursor after pulling new tools. `start.bat` is a manual Windows fallback only.
+Restart the **proxmox** MCP server in Cursor after pulling new tools. Manual launchers: `start.bat` (Windows) / `start.sh` (Unix) — prefer `uvx cursor-proxmox-mcp` in `mcp.json`.
 
 ### Verify / local CI
 

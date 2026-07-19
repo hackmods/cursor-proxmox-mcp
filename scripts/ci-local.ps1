@@ -4,12 +4,23 @@ $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 $env:PYTHONPATH = Join-Path $Root "src"
 
-Write-Host "==> Installing package + dev deps"
+Write-Host "==> Installing package + dev deps (cursor-proxmox-mcp)"
 python -m pip install -e ".[dev]" -q
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "==> Entrypoint smoke"
 python -c "from proxmox_mcp.server import main; print('entrypoint ok')"
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+Write-Host "==> Console script smoke"
+python -c @"
+from importlib.metadata import entry_points
+eps = entry_points()
+scripts = {e.name for e in (eps.select(group='console_scripts') if hasattr(eps, 'select') else eps.get('console_scripts', []))}
+assert 'cursor-proxmox-mcp' in scripts, scripts
+assert 'proxmox-mcp' in scripts and 'proxmox-mcp-server' in scripts
+print('console scripts ok: cursor-proxmox-mcp + aliases')
+"@
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "==> Ruff"
