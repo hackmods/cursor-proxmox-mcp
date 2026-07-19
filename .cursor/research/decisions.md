@@ -16,7 +16,11 @@ Delete VM/LXC/storage/backup/snapshot/user require clear warning text in tool de
 
 ## D4 — LXC exec
 
-Proxmox does not expose `pct exec` as universally as QEMU guest-agent. `execute_lxc_command` calls the `/exec` API path when present; clusters without it will error clearly.
+Proxmox has **no REST API** for LXC guest shell (unlike QEMU guest-agent `/agent/exec`). Official mechanism is host-side `pct exec` (lxc-attach).
+
+`execute_lxc_command` requires **opt-in** config `ssh` (`enabled`, user, key) and the `paramiko` optional extra (`cursor-proxmox-mcp[ssh]`). Without SSH, the tool returns a clear actionable error — it must **not** call a fake `/lxc/{vmid}/exec` path (that yields 501 Not Implemented on real clusters).
+
+Runtime IP discovery in `get_lxc_network` uses the same SSH/`pct` path when configured; otherwise only configured `netN` (static CIDR or `dhcp`) is returned.
 
 ## D5 — Docs / inventory lockstep
 

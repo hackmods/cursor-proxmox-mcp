@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-07-19
+
+### Fixed
+
+- **`execute_lxc_command`**: Proxmox has no REST `/lxc/{vmid}/exec` (agents hit 501). Now uses opt-in SSH + host `pct exec` (requires `ssh` config + `paramiko` / `[ssh]` extra). Clear error when SSH is not configured.
+- QEMU-only tools (`start_vm`, `delete_vm`, etc.) append a hint to use `get_containers` / `*_lxc` / `start_guest(guest_type=lxc)` when the VM ID is missing.
+
+### Added
+
+- `get_lxc_network` — configured netN + optional runtime IPv4 via pct when SSH enabled (**153 tools**)
+- Optional `ssh` config section; `pip install 'cursor-proxmox-mcp[ssh]'`
+- Configured IP on `get_containers` / `get_lxc_status`
+
+### Changed
+
+- Louder `wait_for_task` guidance on create VM/LXC success and tool descriptions
+- Decision D4 revised: LXC exec is SSH/`pct` only (not version-dependent REST)
+
 ## [1.1.0] - 2026-07-19
 
 ### Added

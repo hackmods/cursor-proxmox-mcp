@@ -13,7 +13,7 @@ The models provide:
 - Field descriptions
 - Required vs optional field handling
 """
-from typing import Optional, Annotated
+from typing import Dict, Optional, Annotated
 from pydantic import BaseModel, Field
 
 class NodeStatus(BaseModel):
@@ -69,6 +69,23 @@ class LoggingConfig(BaseModel):
     format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"  # Optional: Log format
     file: Optional[str] = None  # Optional: Log file path (default: None for console logging)
 
+
+class SSHConfig(BaseModel):
+    """Opt-in SSH access to Proxmox nodes for host-side ``pct exec``.
+
+    Required for ``execute_lxc_command`` and runtime IP discovery via pct.
+    There is no Proxmox REST API for LXC shell exec (D4).
+    """
+    enabled: bool = False
+    user: str = "root"
+    port: int = 22
+    private_key_path: Optional[str] = None
+    # Map Proxmox node name → SSH hostname/IP when API host differs from nodes
+    host_overrides: Dict[str, str] = Field(default_factory=dict)
+    pct_path: str = "/usr/sbin/pct"
+    timeout: int = 30
+
+
 class Config(BaseModel):
     """Root configuration model.
     
@@ -79,3 +96,4 @@ class Config(BaseModel):
     proxmox: ProxmoxConfig  # Required: Proxmox connection settings
     auth: AuthConfig  # Required: Authentication credentials
     logging: LoggingConfig  # Required: Logging configuration
+    ssh: Optional[SSHConfig] = None  # Optional: host SSH for pct exec

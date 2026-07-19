@@ -1,5 +1,25 @@
 # Changelog / research notes
 
+## 2026-07-19 — Agent LXC UX (rev r2 / v1.1.1) — 153 tools
+
+**Why:** Lab agent hit 501 on `execute_lxc_command`, could not discover DHCP IP, confused `get_vms` vs LXC, raced create UPID, and misused `*_vm` on CT IDs.
+
+**Root cause:** Fake REST `/lxc/{vmid}/exec` does not exist upstream; only `pct exec` on the node. IP/list gaps and soft docs amplified the failure.
+
+**Shipped:**
+- Opt-in `ssh` config + `PctExecutor` (`paramiko` optional extra)
+- Rewrite `execute_lxc_command`; allowlist parity with VM exec
+- `get_lxc_network`; configured IP on `get_containers` / `get_lxc_status`
+- QEMU-not-found hints; louder create → `wait_for_task`
+- Living trackers: `revisions.md`, `agent-feedback-log.md`; D4 revised
+
+**Out of scope (logged):** auto-wait on create; merge get_vms; silent guest auto-detect; DHCP lease scraping; QEMU agent network helper.
+
+**Quirks:**
+- Without SSH, LXC exec and runtime IP remain unavailable by design
+- keyctl still privilege-gated; we do not strip flags
+- Reload Cursor MCP after pull to see 153 tools / new descriptions
+
 ## 2026-07-19 — Release v1.1.0
 
 Tagged release: 152-tool Phase E + wiki/docs polish. PyPI Trusted Publisher + MCP/Glama submissions already in place.

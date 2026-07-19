@@ -48,7 +48,11 @@ class ProxmoxMCPServer:
 
         self.node_tools = NodeTools(self.proxmox)
         self.vm_tools = VMTools(self.proxmox)
-        self.container_tools = ContainerTools(self.proxmox)
+        self.container_tools = ContainerTools(
+            self.proxmox,
+            ssh_config=self.config.ssh,
+            proxmox_host=self.config.proxmox.host,
+        )
         self.guest_power_tools = GuestPowerTools(self.proxmox)
         self.storage_tools = StorageTools(self.proxmox)
         self.cluster_tools = ClusterTools(self.proxmox)

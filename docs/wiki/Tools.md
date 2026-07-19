@@ -1,12 +1,12 @@
 # Tools overview
 
-Inventory is locked at **152** tools (`tools/inventory.py`). Domain summary:
+Inventory is locked at **153** tools (`tools/inventory.py`). Domain summary:
 
 | Domain | Highlights |
 |--------|------------|
 | Nodes / cluster / tasks | status, networks, `wait_for_task`, version, resources, log |
 | QEMU | lifecycle, ISO/cloud-init/net, status, RRD, VNC/SPICE/termproxy |
-| LXC | lifecycle, features, suspend/resume (CRIU warn), status, RRD, console tickets, exec |
+| LXC | lifecycle, features, suspend/resume (CRIU warn), status, **network**, RRD, console tickets, exec via SSH/`pct` |
 | Guest (unified) | `start/stop/shutdown/reboot/delete_guest`, `get_guest_status`, `get_guest_pending`, `move_guest_disk` — pass `guest_type=qemu\|lxc` |
 | Snapshots / backups | snapshot CRUD; one-shot vzdump; scheduled `*_backup_job` |
 | Storage | content, templates/ISOs, download-url, definition CRUD |

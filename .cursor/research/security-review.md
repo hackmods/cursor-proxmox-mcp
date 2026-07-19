@@ -9,7 +9,8 @@ Pre-release security review for `cursor-proxmox-mcp`. Status reflects remediatio
 | S1 | High | API `token_value` stored plaintext in JSON config | Env-var interpolation `${PROXMOX_TOKEN_VALUE}` in loader; document in SETUP | 2 |
 | S2 | Medium | Example config ships `verify_ssl: false` | Example default `true`; startup WARN when false; optional `ca_cert_path` | 2 |
 | S3 | Medium | Example log level `DEBUG`; console manager logs commands/agent payloads | Example → `INFO`; redacting log filter | 2 |
-| S4 | High | `execute_vm_command` / `execute_lxc_command` = arbitrary guest shell | WARN log + optional `PROXMOX_MCP_EXEC_ALLOWLIST`; document in SECURITY.md | 2 |
+| S4 | High | `execute_vm_command` / `execute_lxc_command` = arbitrary guest shell | WARN log + optional `PROXMOX_MCP_EXEC_ALLOWLIST`; LXC also gated on opt-in SSH; document in SECURITY.md | 2 (done; LXC SSH 2026-07-19) |
+| S11 | High | LXC exec over SSH expands blast radius to host `pct` | Dedicated key; document SETUP; prefer static IP when SSH off | 2 (2026-07-19) |
 | S5 | Medium | `_handle_error` re-emits raw exception strings (host/token leakage risk) | Typed errors + sanitize messages | 2 |
 | S6 | Medium | `create_token` returns secret in tool response (required by Proxmox) | Banner in response; never log secret | 2 |
 | S7 | Low | Destructive tools may lack strong "irreversible" description text | Audit `definitions.py` | 2 |

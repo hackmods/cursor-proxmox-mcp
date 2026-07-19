@@ -6,8 +6,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import re
 from typing import Any, Dict, Optional
+
+from ..helpers import check_exec_allowlist, qemu_not_found_message
 
 
 class VMConsoleManager:
@@ -17,19 +18,10 @@ class VMConsoleManager:
         self.proxmox = proxmox_api
         self.logger = logging.getLogger("proxmox-mcp.vm-console")
 
-    def _check_allowlist(self, command: str) -> None:
-        pattern = os.environ.get("PROXMOX_MCP_EXEC_ALLOWLIST", "").strip()
-        if not pattern:
-            return
-        if not re.search(pattern, command):
-            raise ValueError(
-                f"Command blocked by PROXMOX_MCP_EXEC_ALLOWLIST (pattern={pattern!r})"
-            )
-
     async def execute_command(self, node: str, vmid: str, command: str) -> Dict[str, Any]:
         """Execute a command in a VM's console via QEMU guest agent."""
         try:
-            self._check_allowlist(command)
+            check_exec_allowlist(command)
 
             vm_status = self.proxmox.nodes(node).qemu(vmid).status.current.get()
             if vm_status["status"] != "running":
@@ -89,5 +81,5 @@ class VMConsoleManager:
         except Exception as e:
             self.logger.error("Failed to execute command on VM %s: %s", vmid, e)
             if "not found" in str(e).lower():
-                raise ValueError(f"VM {vmid} not found on node {node}") from e
+                raise ValueError(qemu_not_found_message(vmid, node)) from e
             raise RuntimeError(f"Failed to execute command: {e}") from e

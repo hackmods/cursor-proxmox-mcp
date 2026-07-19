@@ -965,6 +965,16 @@ def register_all(server: ProxmoxMCPServer) -> None:
     ):
         return server.container_tools.get_lxc_status(node, vmid)
 
+    @server.mcp.tool(description=D.GET_LXC_NETWORK_DESC)
+    def get_lxc_network(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="CT ID")],
+        resolve_runtime: Annotated[
+            bool, Field(description="Try pct exec for runtime IPs when SSH configured", default=True)
+        ] = True,
+    ):
+        return server.container_tools.get_lxc_network(node, vmid, resolve_runtime)
+
     @server.mcp.tool(description=D.GET_LXC_RRD_DATA_DESC)
     def get_lxc_rrd_data(
         node: Annotated[str, Field(description="Node")],

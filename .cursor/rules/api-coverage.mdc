@@ -15,3 +15,5 @@ When adding, renaming, or removing MCP tools:
 5. Keep `tests/expected_tools.py` in sync with `server.py` `_setup_tools()`.
 6. Follow `keep-docs-aligned.mdc` for README / definitions / SETUP when auth or install changes.
 7. Auth/privsep quirks belong in `changelog-notes.md` + `decisions.md` (see D8) and `.cursor/rules/proxmox-auth.mdc`.
+8. Append a row to `.cursor/research/revisions.md` for agent-visible behavior changes.
+9. If the change came from lab/agent feedback, append to `.cursor/research/agent-feedback-log.md` (symptoms → root cause → fix → out of scope).

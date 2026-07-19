@@ -1,6 +1,6 @@
 # cursor-proxmox-mcp
 
-Formal **Cursor ↔ Proxmox VE** MCP server — **152 tools** for QEMU VMs, LXC, storage, HA, firewall, access, replication, SDN (read), ACME (read), pools, and console tickets.
+Formal **Cursor ↔ Proxmox VE** MCP server — **153 tools** for QEMU VMs, LXC, storage, HA, firewall, access, replication, SDN (read), ACME (read), pools, and console tickets.
 
 | Doc | Link |
 |-----|------|

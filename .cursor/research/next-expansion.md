@@ -1,6 +1,6 @@
 # Next expansion phases
 
-Living Cursor note for what to build after the current **152-tool** baseline.
+Living Cursor note for what to build after the current **153-tool** baseline.
 Update this file when priorities change; keep [proxmox-api-coverage.md](proxmox-api-coverage.md), [README.md](../../README.md), and [docs/api-coverage.md](../../docs/api-coverage.md) in sync.
 
 **Baseline (done):** Formal Cursor ↔ Proxmox MCP — guest lifecycle, storage, HA, firewall, access, replication, SDN read, ACME read, pools, console tickets, inventory-locked CI.
@@ -62,7 +62,10 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 | Console = ticket mint only | D6 | No websocket proxy in MCP |
 | uvx / `cursor-proxmox-mcp` preferred | D7 / D20 | Wrong PyPI name `proxmox-mcp-server` is a different project |
 | Inventory lock | D5, `tests/expected_tools.py` | Every new tool updates README + coverage + expected_tools |
-| LXC `/exec` version-dependent | D4, changelog | Fail clearly; don’t pretend QGA |
+| LXC exec requires opt-in SSH + `pct exec` (no REST) | D4, agent-feedback-log, SETUP | Fail clearly without ssh; never call fake `/lxc/.../exec` |
+| Guest IP: configured netN always; runtime via pct | get_lxc_network | DHCP without SSH → static ip or enable SSH |
+| LXC `/exec` version-dependent | ~~obsolete~~ | Superseded by D4 revision 2026-07-19 |
+
 | LXC suspend/resume is CRIU best-effort | Phase E | Prefer shutdown; warn in tool text |
 | Parallel `*_vm`/`*_lxc` + additive `*_guest` | D1 | Do not rename power tools in minor releases |
 | Destructive ops need force + warnings | D2 | Keep pattern for new delete/power tools |
@@ -72,10 +75,12 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 ## Suggested next work
 
 ```text
-1. Configure PyPI Trusted Publisher for `cursor-proxmox-mcp` → re-run publish.yml (see PUBLISHING.md)
-2. Official MCP registry: `mcp-publisher publish` after PyPI upload
-3. Glama submit + community drafts in docs/community/
-4. Only then: SDN write or ACME write if a real use case appears (Phase C)
+1. Operator: enable config ssh + paramiko for lab LXC exec / DHCP IP workflows
+2. Configure PyPI Trusted Publisher for `cursor-proxmox-mcp` → re-run publish.yml (see PUBLISHING.md)
+3. Official MCP registry: `mcp-publisher publish` after PyPI upload
+4. Glama submit + community drafts in docs/community/
+5. Only then: SDN write or ACME write if a real use case appears (Phase C)
+6. Soft: QEMU agent/network-get-interfaces (parity with get_lxc_network)
 ```
 
 When shipping any new tool: update this file’s status, coverage matrix, changelog-notes, README, and `expected_tools.py` in the same change (api-coverage + keep-docs-aligned rules).

@@ -41,7 +41,7 @@ Quick map:
 | Create guest | `create_vm` / `create_lxc` (ISO, cloud-init, bridge/net) |
 | Wait for job | `wait_for_task` (or `get_task_status`) |
 | Token ACL smoke | `get_token_permissions` |
-| Inspect config | `get_vm_config` / `get_lxc_config` / `get_guest_pending` |
+| Inspect config | `get_vm_config` / `get_lxc_config` / `get_lxc_network` / `get_guest_pending` |
 | Power (either type) | `start_guest` / `stop_guest` / … or parallel `*_vm` / `*_lxc` |
 | Safety net | `create_snapshot` / `create_backup` / `list_backup_jobs` |
 | Move disk/node | `move_guest_disk` / `migrate_guest` |

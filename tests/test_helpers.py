@@ -36,3 +36,10 @@ def test_assert_id_absent_exists():
     api = make_fake_proxmox(qemu={"100": {"name": "x", "status": "stopped"}})
     with pytest.raises(ValueError, match="already exists"):
         assert_id_absent(api, "pve", "100", "qemu")
+
+
+def test_parse_net_static_summary():
+    from proxmox_mcp.tools.helpers import configured_ipv4_summary, parse_lxc_networks
+
+    nets = parse_lxc_networks({"net0": "name=eth0,bridge=vmbr0,ip=1.2.3.4/24"})
+    assert configured_ipv4_summary(nets) == "1.2.3.4/24"

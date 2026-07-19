@@ -178,8 +178,13 @@ class ProxmoxTemplates:
                 f"  • Node: {container['node']}",
                 f"  • CPU Cores: {container.get('cpus', 'N/A')}",
                 f"  • Memory: {ProxmoxFormatters.format_bytes(memory_used)} / "
-                f"{ProxmoxFormatters.format_bytes(memory_total)} ({memory_percent:.1f}%)"
+                f"{ProxmoxFormatters.format_bytes(memory_total)} ({memory_percent:.1f}%)",
             ])
+            ip = container.get("ip")
+            if ip:
+                result.append(f"  • IP (configured): {ip}")
+            elif container.get("networks"):
+                result.append("  • IP (configured): dhcp / see get_lxc_network")
 
         return "\n".join(result)
 

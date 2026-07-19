@@ -15,5 +15,14 @@
         "level": "INFO",
         "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         "file": "logs/proxmox_mcp.log"
+    },
+    "ssh": {
+        "enabled": false,
+        "user": "root",
+        "port": 22,
+        "private_key_path": null,
+        "host_overrides": {},
+        "pct_path": "/usr/sbin/pct",
+        "timeout": 30
     }
 }

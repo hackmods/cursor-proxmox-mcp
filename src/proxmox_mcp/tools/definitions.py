@@ -14,9 +14,9 @@ Parameters:
 node* - Host node name"""
 
 # VM
-GET_VMS_DESC = """List all virtual machines across the cluster with their status and resource usage."""
+GET_VMS_DESC = """List all QEMU virtual machines across the cluster (not LXC — use get_containers, or get_cluster_resources(type=vm) for both). Status and resource usage included."""
 
-CREATE_VM_DESC = """Create a QEMU VM. Parameters: node*, vmid*, name*, cpus*, memory* (MB), disk_size* (GB); storage?, ostype?, bridge?, net0?, iso?, boot?, ciuser?, cipassword?, sshkeys?, ipconfig0?"""
+CREATE_VM_DESC = """Create a QEMU VM (async UPID — always wait_for_task before start). Parameters: node*, vmid*, name*, cpus*, memory* (MB), disk_size* (GB); storage?, ostype?, bridge?, net0?, iso?, boot?, ciuser?, cipassword?, sshkeys?, ipconfig0?"""
 
 GET_VM_CONFIG_DESC = """Get full QEMU VM configuration.
 
@@ -28,21 +28,21 @@ EXECUTE_VM_COMMAND_DESC = """Execute commands in a VM via QEMU guest agent.
 
 Parameters: node*, vmid*, command*"""
 
-START_VM_DESC = """Start a virtual machine. Parameters: node*, vmid*"""
-STOP_VM_DESC = """Force-stop a virtual machine. Parameters: node*, vmid*"""
-SHUTDOWN_VM_DESC = """Gracefully shut down a VM. Parameters: node*, vmid*"""
-RESET_VM_DESC = """Hard-reset a VM. Parameters: node*, vmid*"""
+START_VM_DESC = """Start a QEMU VM (not LXC — use start_lxc / start_guest). Parameters: node*, vmid*"""
+STOP_VM_DESC = """Force-stop a QEMU VM. Parameters: node*, vmid*"""
+SHUTDOWN_VM_DESC = """Gracefully shut down a QEMU VM. Parameters: node*, vmid*"""
+RESET_VM_DESC = """Hard-reset a QEMU VM. Parameters: node*, vmid*"""
 REBOOT_VM_DESC = """Graceful ACPI reboot (distinct from reset). Parameters: node*, vmid*"""
 SUSPEND_VM_DESC = """Suspend a VM. Parameters: node*, vmid*"""
 RESUME_VM_DESC = """Resume a suspended VM. Parameters: node*, vmid*"""
-DELETE_VM_DESC = """IRREVERSIBLE: permanently delete a VM and its disks. Parameters: node*, vmid*, force?=false"""
+DELETE_VM_DESC = """IRREVERSIBLE: permanently delete a QEMU VM and its disks (not LXC). Parameters: node*, vmid*, force?=false"""
 CLONE_VM_DESC = """Clone a VM to a new ID. Parameters: node*, vmid*, newid*, name?, full?=true, target?, storage?"""
 RESIZE_VM_DISK_DESC = """Grow a VM disk. Parameters: node*, vmid*, disk* (e.g. scsi0), size* (e.g. +10G)"""
 CONVERT_VM_TEMPLATE_DESC = """Convert VM to template. Parameters: node*, vmid*"""
 
 # LXC
-GET_CONTAINERS_DESC = """List all LXC containers across the cluster."""
-CREATE_LXC_DESC = """Create an LXC. Parameters: node*, vmid*, hostname*; ostemplate? (auto-pick if omitted), cpus?, memory?, disk_size?, storage?, features?, password?, unprivileged?, bridge?, ip?, gw?, net0?, ostemplate_filter?"""
+GET_CONTAINERS_DESC = """List all LXC containers across the cluster (includes configured IP from netN when set). For QEMU use get_vms."""
+CREATE_LXC_DESC = """Create an LXC (async UPID — always wait_for_task before start; task errors e.g. missing template surface there). Parameters: node*, vmid*, hostname*; ostemplate? (auto-pick if omitted), cpus?, memory?, disk_size?, storage?, features?, password?, unprivileged?, bridge?, ip?, gw?, net0?, ostemplate_filter?"""
 GET_LXC_CONFIG_DESC = """Get full LXC configuration. Parameters: node*, vmid*"""
 UPDATE_LXC_CONFIG_DESC = """Update LXC config. Parameters: node*, vmid* plus cores/memory/hostname/net0/features etc."""
 START_LXC_DESC = """Start an LXC container. Parameters: node*, vmid*"""
@@ -50,16 +50,17 @@ STOP_LXC_DESC = """Force-stop an LXC container. Parameters: node*, vmid*"""
 SHUTDOWN_LXC_DESC = """Gracefully shut down an LXC. Parameters: node*, vmid*"""
 REBOOT_LXC_DESC = """Reboot an LXC (applies pending config). Parameters: node*, vmid*"""
 DELETE_LXC_DESC = """IRREVERSIBLE: permanently delete an LXC and its rootfs. Parameters: node*, vmid*, force?=false"""
-UPDATE_LXC_FEATURES_DESC = """Update LXC features (nesting/keyctl/fuse). Parameters: node*, vmid*, features*"""
+UPDATE_LXC_FEATURES_DESC = """Update LXC features (nesting/keyctl/fuse). keyctl/fuse beyond nesting usually need elevated role or root@pam — tool does not strip unsupported flags. Parameters: node*, vmid*, features*"""
 CLONE_LXC_DESC = """Clone an LXC. Parameters: node*, vmid*, newid*, hostname?, full?=true, target?, storage?"""
 RESIZE_LXC_DISK_DESC = """Grow an LXC volume. Parameters: node*, vmid*, disk* (e.g. rootfs), size* (e.g. +5G)"""
 CONVERT_LXC_TEMPLATE_DESC = """Convert LXC to template. Parameters: node*, vmid*"""
-EXECUTE_LXC_COMMAND_DESC = """Execute a command inside a running LXC. Parameters: node*, vmid*, command*"""
+EXECUTE_LXC_COMMAND_DESC = """Execute a command inside a running LXC via host SSH + pct exec (no Proxmox REST exec API). Requires opt-in ssh config + paramiko. Parameters: node*, vmid*, command*"""
 SUSPEND_LXC_DESC = """WARNING: LXC suspend uses CRIU checkpoint and is often unreliable/unsupported. Prefer shutdown. Parameters: node*, vmid*"""
 RESUME_LXC_DESC = """WARNING: resume after LXC suspend (CRIU) is best-effort. Parameters: node*, vmid*"""
 GET_LXC_RRD_DATA_DESC = """Get RRD metrics for an LXC. Parameters: node*, vmid*, timeframe?=hour"""
 CREATE_SPICE_TICKET_LXC_DESC = """Mint SPICE ticket for an LXC (connect externally). Parameters: node*, vmid*"""
-
+GET_LXC_NETWORK_DESC = """Get LXC network: configured netN (static/dhcp/MAC/bridge) plus optional runtime IPv4 via pct exec when SSH is configured. Parameters: node*, vmid*, resolve_runtime?=true"""
+GET_LXC_STATUS_DESC = """Get current runtime status for one LXC (includes configured_ip/networks from config). Parameters: node*, vmid*"""
 # Unified guest power (additive; keeps *_vm / *_lxc)
 START_GUEST_DESC = """Start a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu|lxc"""
 STOP_GUEST_DESC = """Force-stop a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu|lxc"""
@@ -88,7 +89,7 @@ DELETE_BACKUP_JOB_DESC = """IRREVERSIBLE: delete a scheduled backup job. Paramet
 # Tasks / cluster
 GET_TASK_STATUS_DESC = """Get status for a task UPID. Parameters: node*, upid*"""
 LIST_TASKS_DESC = """List recent tasks on a node. Parameters: node*"""
-WAIT_FOR_TASK_DESC = """Poll a task UPID until it stops (or timeout). Parameters: node*, upid*, timeout?=300, poll_interval?=2.0"""
+WAIT_FOR_TASK_DESC = """Poll a task UPID until it stops (or timeout). Required after create_vm/create_lxc before start — create returns UPID immediately; failures (missing template, etc.) appear here. Parameters: node*, upid*, timeout?=300, poll_interval?=2.0"""
 GET_NEXT_VMID_DESC = """Get the next free VM/CT ID from the cluster."""
 GET_CLUSTER_STATUS_DESC = """Get overall Proxmox cluster health and quorum status."""
 
@@ -188,7 +189,6 @@ CREATE_TERMPROXY_TICKET_VM_DESC = """Mint termproxy ticket for a VM. Parameters:
 CREATE_VNC_TICKET_LXC_DESC = """Mint VNC ticket for an LXC. Parameters: node*, vmid*, websocket?=true"""
 CREATE_TERMPROXY_TICKET_LXC_DESC = """Mint termproxy ticket for an LXC. Parameters: node*, vmid*"""
 GET_VM_STATUS_DESC = """Get current runtime status for one VM. Parameters: node*, vmid*"""
-GET_LXC_STATUS_DESC = """Get current runtime status for one LXC. Parameters: node*, vmid*"""
 GET_VM_RRD_DATA_DESC = """Get RRD metrics for a VM. Parameters: node*, vmid*, timeframe?=hour"""
 
 # Cluster extras

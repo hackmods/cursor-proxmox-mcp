@@ -8,12 +8,20 @@ Provides lifecycle management for LXC containers:
 - Deletion
 - Post-create feature updates (nesting, keyctl, fuse)
 """
-from typing import List, Optional
+from typing import Any, List, Optional
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
-from .helpers import DEFAULT_LXC_FEATURES, assert_id_absent, pick_storage
+from .helpers import (
+    DEFAULT_LXC_FEATURES,
+    assert_id_absent,
+    check_exec_allowlist,
+    configured_ipv4_summary,
+    parse_lxc_networks,
+    pick_storage,
+)
 from .spec import ToolSpec
 from . import definitions as D
+from ..ssh import PctExecError, PctExecutor, ssh_configured
 
 TOOL_SPECS = [
     ToolSpec("get_containers", D.GET_CONTAINERS_DESC),
@@ -33,6 +41,7 @@ TOOL_SPECS = [
     ToolSpec("suspend_lxc", D.SUSPEND_LXC_DESC),
     ToolSpec("resume_lxc", D.RESUME_LXC_DESC),
     ToolSpec("get_lxc_status", D.GET_LXC_STATUS_DESC),
+    ToolSpec("get_lxc_network", D.GET_LXC_NETWORK_DESC),
     ToolSpec("get_lxc_rrd_data", D.GET_LXC_RRD_DATA_DESC),
     ToolSpec("create_vnc_ticket_lxc", D.CREATE_VNC_TICKET_LXC_DESC),
     ToolSpec("create_spice_ticket_lxc", D.CREATE_SPICE_TICKET_LXC_DESC),
@@ -42,6 +51,19 @@ TOOL_SPECS = [
 
 class ContainerTools(ProxmoxTool):
     """Tools for managing Proxmox LXC containers."""
+
+    def __init__(
+        self,
+        proxmox_api: Any,
+        ssh_config: Optional[Any] = None,
+        proxmox_host: Optional[str] = None,
+    ):
+        super().__init__(proxmox_api)
+        self.ssh_config = ssh_config
+        self.proxmox_host = proxmox_host or ""
+        self._pct: Optional[PctExecutor] = None
+        if ssh_configured(ssh_config) and self.proxmox_host:
+            self._pct = PctExecutor(ssh_config, self.proxmox_host)
 
     def get_containers(self) -> List[Content]:
         """List all LXC containers across the cluster with detailed status.
@@ -62,6 +84,7 @@ class ContainerTools(ProxmoxTool):
                     name = ct.get("name") or ct.get("hostname") or f"CT-{vmid}"
                     try:
                         config = self.proxmox.nodes(node_name).lxc(vmid).config.get()
+                        networks = parse_lxc_networks(config)
                         result.append({
                             "vmid": vmid,
                             "name": config.get("hostname", name),
@@ -72,6 +95,8 @@ class ContainerTools(ProxmoxTool):
                                 "used": ct.get("mem", 0),
                                 "total": ct.get("maxmem", 0),
                             },
+                            "ip": configured_ipv4_summary(networks),
+                            "networks": networks,
                         })
                     except Exception:
                         result.append({
@@ -84,6 +109,8 @@ class ContainerTools(ProxmoxTool):
                                 "used": ct.get("mem", 0),
                                 "total": ct.get("maxmem", 0),
                             },
+                            "ip": None,
+                            "networks": [],
                         })
             return self._format_response(result, "containers")
         except Exception as e:
@@ -172,7 +199,7 @@ class ContainerTools(ProxmoxTool):
 
 🔧 Task ID: {task_result}
 
-💡 Next: wait_for_task → update_lxc_features (if Docker needs keyctl) → start_lxc."""
+💡 Next: wait_for_task(node, upid) until stopped (create is async — CT not usable yet; failures like missing template appear on the task). Then update_lxc_features (if Docker needs keyctl; elevated role/root@pam often required) → start_lxc."""
 
             return [Content(type="text", text=result_text)]
 
@@ -493,28 +520,41 @@ class ContainerTools(ProxmoxTool):
             self._handle_error(f"convert LXC {vmid} to template", e)
 
     def execute_lxc_command(self, node: str, vmid: str, command: str) -> List[Content]:
-        """Execute a command inside a running LXC via the Proxmox exec API.
+        """Execute a command inside a running LXC via host-side ``pct exec`` over SSH.
 
-        Uses POST /nodes/{node}/lxc/{vmid}/exec when available on the cluster.
+        Proxmox has no REST ``/lxc/{{vmid}}/exec`` endpoint. Requires opt-in
+        ``ssh`` config (and the ``paramiko`` extra). See SETUP.md / D4.
         """
         try:
+            check_exec_allowlist(command)
+
+            if not self._pct:
+                raise ValueError(
+                    "execute_lxc_command requires opt-in SSH config for host-side "
+                    "`pct exec` (Proxmox has no REST LXC exec API). Add an `ssh` "
+                    "section to PROXMOX_MCP_CONFIG with enabled=true, user, and "
+                    "private_key_path; install paramiko (`pip install "
+                    "'cursor-proxmox-mcp[ssh]'`). See SETUP.md."
+                )
+
             status = self.proxmox.nodes(node).lxc(vmid).status.current.get()
             if status.get("status") != "running":
                 raise ValueError(f"LXC {vmid} is not running on node {node}")
 
-            # Proxmox exposes guest exec as a callable subpath on some versions
-            endpoint = self.proxmox.nodes(node).lxc(vmid)
-            try:
-                result = endpoint("exec").post(command=command)
-            except Exception:
-                # Fallback: some builds expect command as a list-like string
-                result = endpoint.post("exec", command=command)
-
+            result = self._pct.execute(node, vmid, command)
             return self._format_response(
-                {"success": True, "command": command, "result": result}
+                {
+                    "success": result.success,
+                    "command": result.command,
+                    "exit_code": result.exit_code,
+                    "stdout": result.stdout,
+                    "stderr": result.stderr,
+                }
             )
         except ValueError:
             raise
+        except PctExecError as e:
+            raise RuntimeError(str(e)) from e
         except Exception as e:
             self._handle_error(f"execute command on LXC {vmid}", e)
 
@@ -545,12 +585,71 @@ class ContainerTools(ProxmoxTool):
             self._handle_error(f"create SPICE ticket for LXC {vmid}", e)
 
     def get_lxc_status(self, node: str, vmid: str) -> List[Content]:
-        """Get current runtime status for a single LXC."""
+        """Get current runtime status for a single LXC (includes configured net)."""
         try:
             status = self.proxmox.nodes(node).lxc(vmid).status.current.get()
-            return self._format_response(status)
+            config = self.proxmox.nodes(node).lxc(vmid).config.get()
+            networks = parse_lxc_networks(config)
+            payload = dict(status) if isinstance(status, dict) else {"status": status}
+            payload["configured_ip"] = configured_ipv4_summary(networks)
+            payload["networks"] = networks
+            return self._format_response(payload)
         except Exception as e:
             self._handle_error(f"get status for LXC {vmid}", e)
+
+    def get_lxc_network(
+        self, node: str, vmid: str, resolve_runtime: bool = True
+    ) -> List[Content]:
+        """Return configured (and optionally runtime) network info for an LXC.
+
+        Configured addressing comes from netN in CT config. Runtime IPv4 requires
+        SSH ``pct exec`` when resolve_runtime=True and ssh is configured.
+        """
+        try:
+            config = self.proxmox.nodes(node).lxc(vmid).config.get()
+            status = self.proxmox.nodes(node).lxc(vmid).status.current.get()
+            networks = parse_lxc_networks(config)
+            payload: dict = {
+                "vmid": vmid,
+                "node": node,
+                "status": status.get("status") if isinstance(status, dict) else status,
+                "configured_ip": configured_ipv4_summary(networks),
+                "networks": networks,
+                "runtime_ips": [],
+                "runtime_note": None,
+            }
+
+            if resolve_runtime and status.get("status") == "running":
+                if self._pct:
+                    try:
+                        result = self._pct.execute(
+                            node,
+                            vmid,
+                            "hostname -I 2>/dev/null || ip -4 -o addr show scope global "
+                            "| awk '{print $4}' | cut -d/ -f1",
+                        )
+                        ips = [
+                            p
+                            for p in result.stdout.replace("\n", " ").split()
+                            if p and "." in p and ":" not in p
+                        ]
+                        payload["runtime_ips"] = ips
+                        if result.stderr and not ips:
+                            payload["runtime_note"] = result.stderr.strip()
+                    except PctExecError as e:
+                        payload["runtime_note"] = str(e)
+                else:
+                    payload["runtime_note"] = (
+                        "Runtime IP requires opt-in ssh config + pct exec. "
+                        "Configured net only (static CIDR or dhcp). "
+                        "For DHCP, set a static ip= on create/update or enable SSH."
+                    )
+            elif resolve_runtime and status.get("status") != "running":
+                payload["runtime_note"] = "Container not running; runtime IP unavailable."
+
+            return self._format_response(payload)
+        except Exception as e:
+            self._handle_error(f"get network for LXC {vmid}", e)
 
     def get_lxc_rrd_data(
         self, node: str, vmid: str, timeframe: str = "hour"

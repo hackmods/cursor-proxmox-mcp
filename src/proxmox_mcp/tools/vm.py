@@ -21,7 +21,7 @@ from typing import List, Optional
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
 from .console.manager import VMConsoleManager
-from .helpers import assert_id_absent, pick_storage
+from .helpers import assert_id_absent, pick_storage, qemu_not_found_message
 from .spec import ToolSpec
 from . import definitions as D
 
@@ -243,7 +243,7 @@ class VMTools(ProxmoxTool):
 
 🔧 Task ID: {task_result}
 
-💡 Next: wait_for_task → start_vm (or install from ISO console)."""
+💡 Next: wait_for_task(node, upid) until stopped (create is async — VM not usable yet). Then start_vm (or install from ISO console)."""
 
             return [Content(type="text", text=result_text)]
 
@@ -282,7 +282,7 @@ class VMTools(ProxmoxTool):
 
         except Exception as e:
             if "does not exist" in str(e).lower() or "not found" in str(e).lower():
-                raise ValueError(f"VM {vmid} not found on node {node}")
+                raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"start VM {vmid}", e)
 
     def stop_vm(self, node: str, vmid: str) -> List[Content]:
@@ -315,7 +315,7 @@ class VMTools(ProxmoxTool):
 
         except Exception as e:
             if "does not exist" in str(e).lower() or "not found" in str(e).lower():
-                raise ValueError(f"VM {vmid} not found on node {node}")
+                raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"stop VM {vmid}", e)
 
     def shutdown_vm(self, node: str, vmid: str) -> List[Content]:
@@ -348,7 +348,7 @@ class VMTools(ProxmoxTool):
 
         except Exception as e:
             if "does not exist" in str(e).lower() or "not found" in str(e).lower():
-                raise ValueError(f"VM {vmid} not found on node {node}")
+                raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"shutdown VM {vmid}", e)
 
     def reset_vm(self, node: str, vmid: str) -> List[Content]:
@@ -381,7 +381,7 @@ class VMTools(ProxmoxTool):
 
         except Exception as e:
             if "does not exist" in str(e).lower() or "not found" in str(e).lower():
-                raise ValueError(f"VM {vmid} not found on node {node}")
+                raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"reset VM {vmid}", e)
 
     async def execute_command(self, node: str, vmid: str, command: str) -> List[Content]:
@@ -454,7 +454,7 @@ class VMTools(ProxmoxTool):
                 vm_name = vm_status.get("name", f"VM-{vmid}")
             except Exception as e:
                 if "does not exist" in str(e).lower() or "not found" in str(e).lower():
-                    raise ValueError(f"VM {vmid} not found on node {node}")
+                    raise ValueError(qemu_not_found_message(vmid, node))
                 raise e
 
             # Check if VM is running
@@ -541,7 +541,7 @@ class VMTools(ProxmoxTool):
             ]
         except Exception as e:
             if "does not exist" in str(e).lower() or "not found" in str(e).lower():
-                raise ValueError(f"VM {vmid} not found on node {node}")
+                raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"reboot VM {vmid}", e)
 
     def suspend_vm(self, node: str, vmid: str) -> List[Content]:

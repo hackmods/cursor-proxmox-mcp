@@ -65,6 +65,7 @@ ALL_TOOL_NAMES = frozenset(
         "convert_lxc_to_template",
         "execute_lxc_command",
         "get_lxc_status",
+        "get_lxc_network",
         "get_lxc_rrd_data",
         "create_vnc_ticket_lxc",
         "create_spice_ticket_lxc",

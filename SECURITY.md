@@ -32,8 +32,9 @@ This MCP server is a privileged automation client for Proxmox VE. Treat it like 
 2. Keep **Privilege Separation = Yes** on API tokens and grant ACLs to the **token**.
 3. Prefer `verify_ssl: true` with a trusted CA; disabling SSL verification is for labs only.
 4. Keep `token_value` out of git. Prefer env interpolation in config (see SETUP.md).
-5. Tools such as `execute_vm_command` / `execute_lxc_command` can run arbitrary guest commands within token permissions — scope the token accordingly.
-6. Destructive tools (`delete_*`, restore-overwrite, ACL/firewall changes) are irreversible; review agent plans before approving.
-7. Install the PyPI package **`cursor-proxmox-mcp`** — not the unrelated `proxmox-mcp-server` package on PyPI.
+5. Tools such as `execute_vm_command` / `execute_lxc_command` can run arbitrary guest commands — scope the API token and (for LXC) the SSH key accordingly. LXC exec is opt-in via config `ssh` + `pct exec` on the host; keep keys dedicated and restrictable.
+6. Optional `PROXMOX_MCP_EXEC_ALLOWLIST` regex can block guest commands that do not match.
+7. Destructive tools (`delete_*`, restore-overwrite, ACL/firewall changes) are irreversible; review agent plans before approving.
+8. Install the PyPI package **`cursor-proxmox-mcp`** — not the unrelated `proxmox-mcp-server` package on PyPI.
 
 Full findings and remediation tracking: [`.cursor/research/security-review.md`](.cursor/research/security-review.md).

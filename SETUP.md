@@ -2,7 +2,7 @@
 
 Connect Cursor (or another MCP client) to your Proxmox VE cluster so you can query and manage infrastructure in natural language.
 
-This guide walks through a home-lab style setup for **[hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)** — a formal Cursor ↔ Proxmox integration with **152 tools** (VMs, LXC, storage, HA, firewall, access, replication, SDN, and more).
+This guide walks through a home-lab style setup for **[hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)** — a formal Cursor ↔ Proxmox integration with **153 tools** (VMs, LXC, storage, HA, firewall, access, replication, SDN, and more).
 
 Inspired by Brandon Lee’s walkthrough on [Virtualization Howto](https://www.virtualizationhowto.com/2026/07/i-connected-ai-to-my-proxmox-cluster-using-mcp-and-it-was-better-than-i-expected/) (July 2026). That article used an earlier PyPI package with env-var config; this repo uses a **JSON config file** and a much broader tool surface. Steps below match **this** project.
 
@@ -153,7 +153,8 @@ After creation (and after wiring MCP), confirm permissions three ways:
 
 - **Interactive consoles:** Proxmox documents that some VM/system **console** endpoints require a real user session and **cannot** be used via API token. This MCP still **mints** VNC/SPICE/termproxy *tickets* where the API allows; opening a full interactive console may still need UI/password auth depending on version and endpoint.
 - **Guest agent exec** (`execute_vm_command`) needs the QEMU guest agent inside the VM — permissions alone are not enough.
-- **`keyctl` / nested features on LXC** often need privileges beyond a narrow VM role.
+- **LXC exec** (`execute_lxc_command`) needs opt-in **SSH + `pct exec`** on the node (Proxmox has no REST LXC exec API). See [SSH for LXC exec](#ssh-for-lxc-exec-opt-in) below.
+- **`keyctl` / nested features on LXC** often need privileges beyond a narrow VM role (often elevated / historically `root@pam`). The tool does **not** silently strip unsupported flags — Proxmox will reject them.
 
 ---
 
@@ -251,6 +252,28 @@ Do **not** commit `config.json` — it holds credentials. It is gitignored (`pro
 | Backslashes only on Windows paths in JSON | Flaky startup | Prefer `C:/Users/...` forward slashes |
 | Edited `config.example.json` only | Still using empty/defaults | Copy to `config.json` and edit that |
 
+### SSH for LXC exec (opt-in)
+
+Proxmox **does not** expose a REST API to run shell inside LXC (unlike QEMU guest-agent). `execute_lxc_command` and runtime IPs from `get_lxc_network` use host-side `pct exec` over SSH.
+
+1. Install paramiko: `pip install 'cursor-proxmox-mcp[ssh]'` (or `uvx` with the `[ssh]` extra when packaging supports it).
+2. Create a key-restricted SSH user on each node that can run `/usr/sbin/pct` (often `root` in labs; prefer a dedicated user + sudoers for `pct` in production).
+3. Add to `config.json`:
+
+```json
+"ssh": {
+  "enabled": true,
+  "user": "root",
+  "port": 22,
+  "private_key_path": "C:/Users/YOU/.ssh/proxmox_mcp",
+  "host_overrides": {},
+  "pct_path": "/usr/sbin/pct",
+  "timeout": 30
+}
+```
+
+Without SSH, prefer static `ip=` on `create_lxc` / `update_lxc_config`, then `get_lxc_network` / list configured IP. Always call `wait_for_task` after create before start.
+
 ### Smoke-test outside Cursor
 
 From the repo root:
@@ -337,7 +360,7 @@ Cursor caches the MCP process and tool list. After pulling new tools:
 1. Save any open work; note your `mcp.json` still points at this checkout (or at `uvx cursor-proxmox-mcp` if you switched to PyPI).
 2. Open **Cursor Settings → MCP**.
 3. Find the **proxmox** server → **Disable** → wait until it shows disconnected → **Enable** (or use Restart if shown).
-4. Confirm the tool count matches the README inventory (~152). If Cursor still shows ~13–14 tools after Enable, the catalog snapshot is stale — **fully quit Cursor** (all windows) and reopen. Prefer `uvx --from <checkout> cursor-proxmox-mcp` with only `PROXMOX_MCP_CONFIG` (avoid leftover `uvx proxmox-mcp-server`, which is a different PyPI project).
+4. Confirm the tool count matches the README inventory (~153). If Cursor still shows ~13–14 tools after Enable, the catalog snapshot is stale — **fully quit Cursor** (all windows) and reopen. Prefer `uvx --from <checkout> cursor-proxmox-mcp` with only `PROXMOX_MCP_CONFIG` (avoid leftover `uvx proxmox-mcp-server`, which is a different PyPI project).
 5. Smoke in chat: *“Call `get_nodes` and `get_version`.”* Then *“Call `get_containers` and `get_token_permissions` for my MCP user/token.”*
 6. If you use `uvx --from <checkout>`, a restart is enough (uvx rebuilds the env). If you use an editable `pip install -e .`, reinstall after large dependency changes: `uv pip install -e ".[dev]"`.
 
@@ -452,7 +475,7 @@ Home labs are ideal for learning where AI+MCP helps (health checks, template clo
 | SSL / connection errors | Ping `:8006`; set `verify_ssl` correctly; check host firewall / VPN |
 | Tools missing after pull | Follow [MCP reload checklist](#after-git-pull--live-cursor-mcp-reload-checklist) |
 | `ModuleNotFoundError: proxmox_mcp` | Prefer `uvx cursor-proxmox-mcp` or `uvx --from <repo>`; or set `PYTHONPATH` to `.../src` |
-| Green MCP but agent never calls tools | Explicitly say “use the Proxmox MCP tools”; confirm tool list is long (~152) in Cursor MCP settings |
+| Green MCP but agent never calls tools | Explicitly say “use the Proxmox MCP tools”; confirm tool list is long (~153) in Cursor MCP settings |
 | Green MCP but only ~13–14 tools | Stale Cursor catalog or wrong package (`uvx proxmox-mcp-server` ≠ this repo). Disable/Enable proxmox, quit Cursor fully, use `uvx --from <checkout> cursor-proxmox-mcp` |
 
 Local verification:
