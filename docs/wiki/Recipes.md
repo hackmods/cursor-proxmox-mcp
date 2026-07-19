@@ -13,14 +13,17 @@ Living playbooks for Cursor agents using **cursor-proxmox-mcp**. Tool names are 
 
 Do **not** claim the guest is “ready for apps” until you verify services yourself.
 
-## Nested Docker on LXC (honest path)
+## Nested Docker on LXC
 
-Docker is **not** baked into `create_lxc`. Supported path:
+Supported path (Phase F):
 
-1. Create with `features` including nesting (+ `keyctl` when required) and `ssh_public_keys`
+1. `create_lxc` with `docker_ready=true` (or `features=nesting=1,keyctl=1`) + `ssh_public_keys`
 2. `wait_for_task` → `start_lxc` → confirm IP
-3. Install via `execute_lxc_command` (host SSH/`pct`) or guest SSH
-4. Verify `docker --version`; do not claim a site is live until something listens on the expected port
+3. `prepare_lxc_for_docker` — host `lxc-pve` gate + dual AppArmor workaround if unpatched
+4. If `restart_required`: **`stop_lxc` then `start_lxc`** (not reboot alone)
+5. Install Docker if needed (`install_docker=true` or `execute_lxc_command`)
+6. Smoke: `docker run --rm nginx:alpine` — **not** merely `docker --version`
+7. `push_to_lxc` for app files
 
 Prompt-style recipe: [SETUP.md — Provision a nested Docker LXC](https://github.com/hackmods/cursor-proxmox-mcp/blob/main/SETUP.md).
 

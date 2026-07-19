@@ -16,13 +16,13 @@ Copy `config.example.json` → `config.json` and fill in host + API token fields
 | `auth.token_name` | yes | Token id only — e.g. `cursor` |
 | `auth.token_value` | yes | Secret UUID shown once at token creation |
 | `logging.*` | optional | `DEBUG` while bringing MCP up; `INFO` after |
-| `ssh.enabled` | optional | `true` to enable host SSH for `pct exec` (LXC shell / runtime IP). Default off. |
+| `ssh.enabled` | optional | `true` to enable host SSH for `pct` (LXC shell / push / prepare / runtime IP). Default off. |
 | `ssh.user` | if enabled | SSH user on the node (often `root` or a sudo-capable user that can run `pct`) |
 | `ssh.port` | optional | SSH port (default `22`) |
 | `ssh.private_key_path` | recommended | Absolute path to private key; agent/`look_for_keys` also tried |
 | `ssh.host_overrides` | optional | Map node name → SSH address when API host ≠ node, e.g. `{ "pve": "192.168.0.23" }` |
 | `ssh.pct_path` | optional | Default `/usr/sbin/pct` |
-| `ssh.timeout` | optional | Seconds (default `30`) |
+| `ssh.timeout` | optional | Seconds (default `30`; use **120+** for Docker installs) |
 
 ## Privilege Separation
 
@@ -32,7 +32,7 @@ Full walkthrough: [SETUP.md §1](../SETUP.md#1-create-a-proxmox-api-token).
 
 ## SSH + LXC exec (opt-in)
 
-Proxmox has **no REST API** for LXC guest shell. `execute_lxc_command`, `set_lxc_password`, `set_lxc_ssh_keys`, and runtime IPs in `get_lxc_network` use host-side `pct exec` over SSH when `ssh.enabled` is true. Install the optional dependency: `pip install 'cursor-proxmox-mcp[ssh]'` (paramiko).
+Proxmox has **no REST API** for LXC guest shell. `execute_lxc_command`, `set_lxc_password`, `set_lxc_ssh_keys`, `prepare_lxc_for_docker`, `push_to_lxc` / `pull_from_lxc`, and runtime IPs in `get_lxc_network` use host-side `pct` over SSH when `ssh.enabled` is true. **paramiko is a core dependency** since 1.3.0 (`[ssh]` extra is an empty back-compat alias).
 
 **Host SSH ≠ guest SSH.** Host SSH is MCP → Proxmox node → `pct`. Guest keys inside a CT (`ssh_public_keys` / `set_lxc_ssh_keys`) are separate.
 

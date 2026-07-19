@@ -51,7 +51,7 @@ Quick map:
 | Replication | `list_replication_jobs` / `update_replication_job` / `run_replication_job` |
 | SDN | `list_sdn_zones` / `apply_sdn` |
 | Console ticket | `create_vnc_ticket_vm` (mint only) |
-| Cluster overview | `get_cluster_resources` / `get_version` |
+| Cluster overview | `get_cluster_resources` / `get_version` / `get_mcp_capabilities` |
 
 ## Exclusions / planned
 

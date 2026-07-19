@@ -144,3 +144,45 @@ Expanded SETUP SSH checklist (keygen → node `authorized_keys` → `host_overri
 
 - Automating public-key install on the Proxmox host
 - Schema / `SSHConfig` field changes
+
+---
+
+## 2026-07-19 — Lumon CT122 first successful MCP deploy (Phase F input)
+
+**Session context:** CT **122** (`lumon-docker`) served via **host nginx**, not Docker. Host SSH + `pct exec` + `set_lxc_password` worked after reload/`[ssh]`. Docker CE installed but containers stuck in `Created` with `ip_unprivileged_port_start` permission denied.
+
+### What worked
+
+v1.1.2+ tools after MCP reload; host SSH + `pct exec`; `set_lxc_password(enable_password_ssh=true)`; `create_lxc` static IP; lifecycle/`wait_for_task`; `pct set` features nesting/keyctl; Windows tar → scp → `pct push` → extract; apt nginx fallback → HTTP 200.
+
+### What didn’t (product gaps)
+
+| Gap | Impact |
+|-----|--------|
+| Stale MCP / missing `ssh` in config / paramiko not in default uvx env | Tools “exist” in docs but fail until reload + `[ssh]` |
+| Create-time `password` alone | Still insufficient for guest SSH (D21) |
+| Unprivileged nested Docker run | Build OK; run fails (CVE-2025-52881 / AppArmor) |
+| Naive `lxc.apparmor.profile: unconfined` | Overrides nesting; Docker AppArmor complaints — need **both** unconfined + `/dev/null` AppArmor bind, or host `lxc-pve ≥ 6.0.5-2` |
+| No MCP `pct push` / prepare-docker helper | Left MCP for scp + guessed AppArmor |
+| Long installs | Need `ssh.timeout` ~120 |
+
+### Planned fixes → Phase F (**shipped** r8 / v1.3.0)
+
+paramiko core; `get_mcp_capabilities`; `prepare_lxc_for_docker`; `push_to_lxc`/`pull_from_lxc`; SSH/exec QOL. See [next-expansion.md](next-expansion.md) Phase F.
+
+### Queued → Phase F.1 (effort estimates)
+
+| Item | Effort | Notes |
+|------|--------|-------|
+| `get_vm_network` | S ~0.5d | QEMU agent interfaces; best cheap parity |
+| `create_*` `wait=true` (default false) | S ~0.5d / L if default-on | Preserve D10; never default true without explicit decision |
+| `push_to_vm` | M ~1–1.5d | Agent file APIs ≠ pct push |
+| `deploy_static_nginx` | M ~0.5–1d | What unblocked Lumon; optional recipe tool |
+| Inventory docker/`:80` probes | M ~0.5–1d **opt-in only** | Default-on too slow/noisy |
+
+### Out of scope (do not reopen casually)
+
+- Auto-wait **default-on** inside create
+- Baking Docker install as the only create path
+- Privileged CT or containerd downgrade as happy path
+- Free-form raw LXC config mutator

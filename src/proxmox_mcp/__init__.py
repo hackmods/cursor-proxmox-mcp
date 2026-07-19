@@ -2,7 +2,7 @@
 Proxmox MCP Server - A Model Context Protocol server for interacting with Proxmox hypervisors.
 """
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 __all__ = ["ProxmoxMCPServer"]
 
 

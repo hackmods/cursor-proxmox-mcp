@@ -28,7 +28,7 @@ from .helpers import (
 )
 from .spec import ToolSpec
 from . import definitions as D
-from ..ssh import PctExecError, PctExecutor, ssh_configured
+from ..ssh import PctExecError, PctExecutor, require_host_ssh_message, ssh_configured
 
 TOOL_SPECS = [
     ToolSpec("get_containers", D.GET_CONTAINERS_DESC),
@@ -47,6 +47,9 @@ TOOL_SPECS = [
     ToolSpec("execute_lxc_command", D.EXECUTE_LXC_COMMAND_DESC),
     ToolSpec("set_lxc_password", D.SET_LXC_PASSWORD_DESC),
     ToolSpec("set_lxc_ssh_keys", D.SET_LXC_SSH_KEYS_DESC),
+    ToolSpec("prepare_lxc_for_docker", D.PREPARE_LXC_FOR_DOCKER_DESC),
+    ToolSpec("push_to_lxc", D.PUSH_TO_LXC_DESC),
+    ToolSpec("pull_from_lxc", D.PULL_FROM_LXC_DESC),
     ToolSpec("suspend_lxc", D.SUSPEND_LXC_DESC),
     ToolSpec("resume_lxc", D.RESUME_LXC_DESC),
     ToolSpec("get_lxc_status", D.GET_LXC_STATUS_DESC),
@@ -144,12 +147,15 @@ class ContainerTools(ProxmoxTool):
         gw: Optional[str] = None,
         net0: Optional[str] = None,
         ostemplate_filter: Optional[str] = None,
+        docker_ready: bool = False,
     ) -> List[Content]:
         """Create an LXC container. If ostemplate is omitted, auto-picks from storage (optional filter).
 
         ``password`` and ``ssh_public_keys`` are applied only at create time by Proxmox
         (rootfs provisioning). Many templates still block root password SSH
         (PermitRootLogin prohibit-password) — prefer ``ssh_public_keys`` for guest SSH.
+        ``docker_ready`` sets nesting+keyctl features and tips ``prepare_lxc_for_docker``;
+        it does not install Docker or claim runtime readiness (D21).
         """
         try:
             assert_id_absent(self.proxmox, node, vmid, "lxc")
@@ -167,7 +173,9 @@ class ContainerTools(ProxmoxTool):
             if not ostemplate:
                 ostemplate = self._resolve_ostemplate(node, ostemplate_filter)
 
-            if features is None:
+            if docker_ready and features is None:
+                features = "nesting=1,keyctl=1"
+            elif features is None:
                 features = DEFAULT_LXC_FEATURES
 
             from .helpers import DEFAULT_BRIDGE
@@ -225,13 +233,18 @@ class ContainerTools(ProxmoxTool):
                 auth_lines.append("  • SSH public keys: none (pass ssh_public_keys for guest SSH)")
 
             ssh_pct = (
-                "configured — execute_lxc_command / set_lxc_password available after start"
+                "configured — execute_lxc_command / set_lxc_password / prepare_lxc_for_docker / push_to_lxc available after start"
                 if self._pct
-                else "NOT configured — enable config ssh + paramiko for pct exec "
+                else "NOT configured — enable config ssh + reload MCP for pct "
                 "(Proxmox has no REST LXC shell; 501 /exec means stale MCP build)"
             )
 
             warn_block = f"\n⚠️ {hostname_warn}\n" if hostname_warn else "\n"
+            docker_line = (
+                "  • docker_ready: true (features nesting+keyctl; call prepare_lxc_for_docker after start)\n"
+                if docker_ready
+                else ""
+            )
 
             result_text = f"""🎉 LXC container {vmid} create task started (OS template only — not a deployed app).
 
@@ -246,7 +259,7 @@ class ContainerTools(ProxmoxTool):
   • Features: {features}
   • Unprivileged: {unprivileged}
   • Network: {net0_value}
-{chr(10).join(auth_lines)}
+{docker_line}{chr(10).join(auth_lines)}
   • Host SSH/pct for MCP: {ssh_pct}
 {warn_block}🔧 Task ID: {task_result}
 
@@ -254,8 +267,8 @@ class ContainerTools(ProxmoxTool):
   1. wait_for_task(node, upid) until stopped — create ≠ ready; task errors (missing template) surface here
   2. start_lxc → get_lxc_network (configured/runtime IP)
   3. Guest access: prefer ssh_public_keys at create; or set_lxc_password / set_lxc_ssh_keys / execute_lxc_command (all need config ssh)
-  4. Nesting alone ≠ Docker installed — install via execute_lxc_command or guest SSH after access works
-  5. keyctl for Docker-in-LXC often needs elevated role / root@pam (update_lxc_features)"""
+  4. For Docker: prepare_lxc_for_docker → stop_lxc + start_lxc → smoke with docker run --rm nginx:alpine (nesting alone ≠ Docker)
+  5. keyctl for Docker-in-LXC often needs elevated role / root@pam (update_lxc_features / prepare)"""
 
             return [Content(type="text", text=result_text)]
 
@@ -308,13 +321,7 @@ class ContainerTools(ProxmoxTool):
 
     def _require_pct(self) -> PctExecutor:
         if not self._pct:
-            raise ValueError(
-                "This operation requires opt-in SSH config for host-side `pct exec` "
-                "(Proxmox has no REST API to set LXC password/keys after create, and no "
-                "LXC /exec endpoint). Add `ssh` to PROXMOX_MCP_CONFIG with enabled=true, "
-                "install paramiko (`pip install 'cursor-proxmox-mcp[ssh]'`), reload MCP. "
-                "If you still see HTTP 501 on /lxc/.../exec, Cursor is running a pre-1.1.1 build."
-            )
+            raise ValueError(require_host_ssh_message(context="This operation"))
         return self._pct
 
     def _resolve_ostemplate(self, node: str, filter: Optional[str] = None) -> str:
@@ -550,7 +557,8 @@ class ContainerTools(ProxmoxTool):
 🔧 Task/result: {task_result}
 
 💡 Note: Setting keyctl/fuse (beyond nesting) typically requires root@pam.
-   Restart or reboot_lxc may be needed for some feature changes to take effect."""
+💡 Next: get_guest_pending (guest_type=lxc) — prefer stop_lxc + start_lxc (or reboot_lxc)
+   so feature / raw config changes apply. For Docker-in-LXC use prepare_lxc_for_docker."""
 
             return [Content(type="text", text=result_text)]
 
@@ -665,11 +673,17 @@ class ContainerTools(ProxmoxTool):
                 raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"convert LXC {vmid} to template", e)
 
-    def execute_lxc_command(self, node: str, vmid: str, command: str) -> List[Content]:
+    def execute_lxc_command(
+        self,
+        node: str,
+        vmid: str,
+        command: str,
+        timeout: Optional[int] = None,
+    ) -> List[Content]:
         """Execute a command inside a running LXC via host-side ``pct exec`` over SSH.
 
         Proxmox has no REST ``/lxc/{vmid}/exec`` endpoint. Requires opt-in
-        ``ssh`` config (and the ``paramiko`` extra). See SETUP.md / D4.
+        ``ssh`` config. See SETUP.md / D4. Response includes VM-parity output/error aliases.
         """
         try:
             check_exec_allowlist(command)
@@ -679,7 +693,7 @@ class ContainerTools(ProxmoxTool):
             if status.get("status") != "running":
                 raise ValueError(f"LXC {vmid} is not running on node {node}")
 
-            result = pct.execute(node, vmid, command)
+            result = pct.execute(node, vmid, command, timeout=timeout)
             return self._format_response(
                 {
                     "success": result.success,
@@ -687,6 +701,8 @@ class ContainerTools(ProxmoxTool):
                     "exit_code": result.exit_code,
                     "stdout": result.stdout,
                     "stderr": result.stderr,
+                    "output": result.stdout,
+                    "error": result.stderr,
                 }
             )
         except ValueError:
@@ -831,6 +847,258 @@ class ContainerTools(ProxmoxTool):
             raise RuntimeError(str(e)) from e
         except Exception as e:
             self._handle_error(f"set SSH keys on LXC {vmid}", e)
+
+    def prepare_lxc_for_docker(
+        self,
+        node: str,
+        vmid: str,
+        fuse: bool = False,
+        allow_apparmor_workaround: bool = True,
+        install_docker: bool = False,
+        smoke_test: bool = False,
+        timeout: Optional[int] = None,
+    ) -> List[Content]:
+        """Idempotent Proxmox-side prep for Docker-in-LXC (D24)."""
+        try:
+            pct = self._require_pct()
+            try:
+                config = self.proxmox.nodes(node).lxc(vmid).config.get()
+            except Exception as e:
+                if is_missing_resource_error(e):
+                    raise ValueError(lxc_not_found_message(vmid, node))
+                raise e
+
+            applied: List[str] = []
+            features = "nesting=1,keyctl=1" + (",fuse=1" if fuse else "")
+            prev_features = str(config.get("features", "") or "")
+            if features not in prev_features.replace(" ", "") and prev_features != features:
+                try:
+                    self.proxmox.nodes(node).lxc(vmid).config.put(features=features)
+                    applied.append(f"features → {features} (was {prev_features or '(none)'})")
+                except Exception as feat_err:
+                    # Fall back to pct set (may need root on host)
+                    fr = pct.ensure_features(node, vmid, features)
+                    if not fr.success:
+                        raise RuntimeError(
+                            f"Failed to set features={features}: {feat_err}; "
+                            f"pct set also failed: {fr.stderr or fr.stdout}. "
+                            "keyctl often needs elevated role / root@pam."
+                        ) from feat_err
+                    applied.append(f"features → {features} via pct set")
+
+            raw_ver, _parsed, patched = pct.probe_lxc_pve_version(node)
+            host_patch = (
+                f"ok (lxc-pve {raw_ver})"
+                if patched
+                else f"unpatched or unknown (lxc-pve={raw_ver or 'n/a'}; need ≥6.0.5-2)"
+            )
+
+            restart_required = False
+            if patched:
+                stripped = pct.strip_docker_apparmor_workaround(node, vmid)
+                if stripped:
+                    applied.extend(stripped)
+                    restart_required = True
+                applied.append("host patch OK — left generated AppArmor/nesting (no unconfined)")
+            elif allow_apparmor_workaround:
+                changes = pct.apply_docker_apparmor_workaround(node, vmid)
+                if changes:
+                    applied.extend(changes)
+                    restart_required = True
+                else:
+                    applied.append("AppArmor workaround lines already present")
+                restart_required = True
+            else:
+                applied.append(
+                    "host unpatched and allow_apparmor_workaround=false — "
+                    "upgrade lxc-pve on the node, or re-run with workaround enabled"
+                )
+
+            docker_note = ""
+            if install_docker:
+                status = self.proxmox.nodes(node).lxc(vmid).status.current.get()
+                if status.get("status") != "running":
+                    raise ValueError(
+                        f"LXC {vmid} must be running for install_docker — start_lxc first "
+                        "(after stop/start if restart_required)"
+                    )
+                install_cmd = (
+                    "export DEBIAN_FRONTEND=noninteractive; "
+                    "(command -v docker >/dev/null && docker --version) || "
+                    "(apt-get update -qq && apt-get install -y -qq ca-certificates curl && "
+                    "curl -fsSL https://get.docker.com | sh)"
+                )
+                ir = pct.execute(node, vmid, install_cmd, timeout=timeout or 300)
+                if not ir.success:
+                    raise RuntimeError(
+                        f"install_docker failed (exit {ir.exit_code}): "
+                        f"{ir.stderr or ir.stdout}"
+                    )
+                applied.append("docker install attempted via get.docker.com / existing docker")
+                docker_note = f"\nDocker install stdout (tail):\n{(ir.stdout or '')[-500:]}"
+
+            smoke_note = ""
+            if smoke_test:
+                if restart_required:
+                    smoke_note = (
+                        "\nsmoke_test skipped: restart_required — "
+                        "stop_lxc + start_lxc first, then re-run with smoke_test=true "
+                        "or execute_lxc_command('docker run --rm nginx:alpine')"
+                    )
+                else:
+                    status = self.proxmox.nodes(node).lxc(vmid).status.current.get()
+                    if status.get("status") != "running":
+                        raise ValueError(f"LXC {vmid} must be running for smoke_test")
+                    sr = pct.execute(
+                        node,
+                        vmid,
+                        "docker run --rm nginx:alpine true",
+                        timeout=timeout or 180,
+                    )
+                    if not sr.success:
+                        smoke_note = (
+                            f"\n⚠️ smoke_test FAILED (exit {sr.exit_code}): "
+                            f"{sr.stderr or sr.stdout}\n"
+                            "If ip_unprivileged_port_start: upgrade host lxc-pve or ensure "
+                            "dual AppArmor workaround + full stop/start."
+                        )
+                    else:
+                        smoke_note = "\n✅ smoke_test: docker run --rm nginx:alpine OK"
+                        applied.append("smoke_test passed")
+
+            applied_txt = "\n".join(f"  • {a}" for a in applied) or "  • (no changes)"
+            result = f"""prepare_lxc_for_docker CT {vmid}@{node}
+
+host_patch_status: {host_patch}
+restart_required: {restart_required}
+applied:
+{applied_txt}
+{docker_note}{smoke_note}
+
+Known limitations (D24):
+  • Docker --privileged / --sysctl / --security-opt do NOT fix nested AppArmor CVE issues
+  • Do not downgrade containerd to "fix" run (re-opens CVE-2025-52881)
+  • Bare lxc.apparmor.profile: unconfined without the /dev/null bind breaks nesting/Docker
+  • Success criterion: docker run --rm nginx:alpine — not merely docker --version
+
+💡 Next: {"stop_lxc → start_lxc (full stop/start, not reboot alone) → " if restart_required else ""}"""
+            result += (
+                "execute_lxc_command('docker run --rm -p 8080:80 nginx:alpine') then curl; "
+                "use push_to_lxc for app files."
+            )
+            return [Content(type="text", text=result)]
+        except ValueError:
+            raise
+        except PctExecError as e:
+            raise RuntimeError(str(e)) from e
+        except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
+            self._handle_error(f"prepare LXC {vmid} for docker", e)
+
+    def push_to_lxc(
+        self,
+        node: str,
+        vmid: str,
+        remote_path: str,
+        local_path: Optional[str] = None,
+        content_base64: Optional[str] = None,
+        timeout: Optional[int] = None,
+    ) -> List[Content]:
+        """Push file bytes into a CT via SFTP + pct push."""
+        try:
+            pct = self._require_pct()
+            if not remote_path or not str(remote_path).strip():
+                raise ValueError("remote_path is required")
+            if bool(local_path) == bool(content_base64):
+                raise ValueError("Provide exactly one of local_path or content_base64")
+
+            if local_path:
+                with open(local_path, "rb") as fh:
+                    data = fh.read()
+                src = local_path
+            else:
+                data = base64.b64decode(content_base64 or "")
+                src = "content_base64"
+
+            try:
+                self.proxmox.nodes(node).lxc(vmid).status.current.get()
+            except Exception as e:
+                if is_missing_resource_error(e):
+                    raise ValueError(lxc_not_found_message(vmid, node))
+                raise e
+
+            pct.push_to_guest(node, vmid, data, remote_path, timeout=timeout)
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"Pushed {len(data)} bytes → CT {vmid}:{remote_path} "
+                        f"(from {src}) via pct push.\n"
+                        f"💡 Next: execute_lxc_command to extract/chmod as needed."
+                    ),
+                )
+            ]
+        except ValueError:
+            raise
+        except PctExecError as e:
+            raise RuntimeError(str(e)) from e
+        except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
+            self._handle_error(f"push to LXC {vmid}", e)
+
+    def pull_from_lxc(
+        self,
+        node: str,
+        vmid: str,
+        remote_path: str,
+        local_path: Optional[str] = None,
+        timeout: Optional[int] = None,
+    ) -> List[Content]:
+        """Pull a file from a CT via pct pull."""
+        try:
+            pct = self._require_pct()
+            if not remote_path or not str(remote_path).strip():
+                raise ValueError("remote_path is required")
+
+            try:
+                self.proxmox.nodes(node).lxc(vmid).status.current.get()
+            except Exception as e:
+                if is_missing_resource_error(e):
+                    raise ValueError(lxc_not_found_message(vmid, node))
+                raise e
+
+            data = pct.pull_from_guest(node, vmid, remote_path, timeout=timeout)
+            if local_path:
+                with open(local_path, "wb") as fh:
+                    fh.write(data)
+                return [
+                    Content(
+                        type="text",
+                        text=(
+                            f"Pulled CT {vmid}:{remote_path} → {local_path} "
+                            f"({len(data)} bytes) via pct pull."
+                        ),
+                    )
+                ]
+            b64 = base64.b64encode(data).decode("ascii")
+            return self._format_response(
+                {
+                    "vmid": vmid,
+                    "remote_path": remote_path,
+                    "size": len(data),
+                    "content_base64": b64,
+                }
+            )
+        except ValueError:
+            raise
+        except PctExecError as e:
+            raise RuntimeError(str(e)) from e
+        except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
+            self._handle_error(f"pull from LXC {vmid}", e)
 
     def create_vnc_ticket(self, node: str, vmid: str, websocket: bool = True) -> List[Content]:
         """Mint a VNC proxy ticket for an LXC (no websocket proxy)."""

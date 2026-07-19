@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cursor-proxmox-mcp"
-version = "1.2.0"
+version = "1.3.0"
 description = "Formal Cursor MCP server for Proxmox VE — VMs, LXC, storage, HA, firewall, access"
 requires-python = ">=3.9"
 authors = [
@@ -31,12 +31,12 @@ dependencies = [
     "proxmoxer>=2.0.1,<3.0.0",
     "requests>=2.31.0,<3.0.0",
     "pydantic>=2.0.0,<3.0.0",
+    "paramiko>=3.0.0,<4.0.0",
 ]
 
 [project.optional-dependencies]
-ssh = [
-    "paramiko>=3.0.0,<4.0.0",
-]
+# Back-compat alias — paramiko is a core dependency since 1.3.0
+ssh = []
 dev = [
     "pytest>=7.0.0,<9.0.0",
     "black>=23.0.0,<25.0.0",

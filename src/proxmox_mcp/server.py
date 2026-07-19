@@ -34,6 +34,8 @@ from .tools.acme import ACMETools
 from .tools.sdn import SDNTools
 from .tools.pool import PoolTools
 from .tools.guest_power import GuestPowerTools
+from .tools.capabilities import CapabilitiesTools
+from .ssh import require_host_ssh_message, ssh_configured
 
 
 class ProxmoxMCPServer:
@@ -54,6 +56,11 @@ class ProxmoxMCPServer:
             proxmox_host=self.config.proxmox.host,
         )
         self.guest_power_tools = GuestPowerTools(self.proxmox)
+        self.capabilities_tools = CapabilitiesTools(
+            self.proxmox,
+            ssh_config=self.config.ssh,
+            proxmox_host=self.config.proxmox.host,
+        )
         self.storage_tools = StorageTools(self.proxmox)
         self.cluster_tools = ClusterTools(self.proxmox)
         self.task_tools = TaskTools(self.proxmox)
@@ -71,6 +78,24 @@ class ProxmoxMCPServer:
 
         self.mcp = FastMCP("ProxmoxMCP")
         self._setup_tools()
+        self._warn_ssh_capabilities()
+
+    def _warn_ssh_capabilities(self) -> None:
+        """Loud startup warning when day-2 LXC tools need SSH but it is off."""
+        if not ssh_configured(self.config.ssh):
+            self.logger.warning(
+                "LXC day-2 tools (execute_lxc_command, prepare_lxc_for_docker, "
+                "push_to_lxc, …) are registered but host SSH is disabled. %s",
+                require_host_ssh_message(context="Fix"),
+            )
+            return
+        try:
+            import paramiko  # noqa: F401
+        except ImportError:
+            self.logger.warning(
+                "ssh.enabled but paramiko is not importable — "
+                "reinstall cursor-proxmox-mcp (paramiko is a core dependency since 1.3.0)."
+            )
 
     def _setup_tools(self) -> None:
         """Register all MCP tools via tools.register.register_all."""

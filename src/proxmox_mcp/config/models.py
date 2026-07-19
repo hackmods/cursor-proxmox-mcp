@@ -13,8 +13,11 @@ The models provide:
 - Field descriptions
 - Required vs optional field handling
 """
+import logging
 from typing import Dict, Optional, Annotated
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+_ssh_logger = logging.getLogger("proxmox-mcp.config")
 
 class NodeStatus(BaseModel):
     """Model for node status query parameters.
@@ -71,10 +74,11 @@ class LoggingConfig(BaseModel):
 
 
 class SSHConfig(BaseModel):
-    """Opt-in SSH access to Proxmox nodes for host-side ``pct exec``.
+    """Opt-in SSH access to Proxmox nodes for host-side ``pct`` (exec/push/set).
 
-    Required for ``execute_lxc_command`` and runtime IP discovery via pct.
-    There is no Proxmox REST API for LXC shell exec (D4).
+    Required for ``execute_lxc_command``, push/pull, prepare_lxc_for_docker, and
+    runtime IP discovery via pct. There is no Proxmox REST API for LXC shell (D4).
+    Paramiko is a core dependency; opt-in remains ``enabled`` + host key trust.
     """
     enabled: bool = False
     user: str = "root"
@@ -83,7 +87,17 @@ class SSHConfig(BaseModel):
     # Map Proxmox node name → SSH hostname/IP when API host differs from nodes
     host_overrides: Dict[str, str] = Field(default_factory=dict)
     pct_path: str = "/usr/sbin/pct"
-    timeout: int = 30
+    timeout: int = 30  # Use 120+ for Docker installs; or PROXMOX_MCP_EXEC_TIMEOUT
+
+    @model_validator(mode="after")
+    def _warn_missing_key(self) -> "SSHConfig":
+        if self.enabled and not self.private_key_path:
+            _ssh_logger.warning(
+                "ssh.enabled=true but private_key_path is unset — "
+                "will try SSH agent / default keys; prefer an explicit key path. "
+                "Reload MCP after fixing config."
+            )
+        return self
 
 
 class Config(BaseModel):

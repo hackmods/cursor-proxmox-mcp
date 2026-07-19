@@ -5,7 +5,7 @@
 [![PyPI](https://img.shields.io/pypi/v/cursor-proxmox-mcp)](https://pypi.org/project/cursor-proxmox-mcp/)
 [![GHCR](https://img.shields.io/badge/GHCR-cursor--proxmox--mcp-blue)](https://github.com/hackmods/cursor-proxmox-mcp/pkgs/container/cursor-proxmox-mcp)
 
-**Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 155 tools covering QEMU VMs, LXC, unified guest power, storage admin, cluster/tasks, snapshots, backups (incl. scheduled jobs), migration, HA, firewall (incl. IPSet CIDRs), access control, replication, SDN (read), ACME (read), pools, and console tickets. v1.2.0 tags the post-1.1 line (LXC pct exec, guest auth, QOL sweep) plus `wait_for_task` failure-path coverage.
+**Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 159 tools covering QEMU VMs, LXC (incl. day-2 prepare/push + capabilities), unified guest power, storage admin, cluster/tasks, snapshots, backups (incl. scheduled jobs), migration, HA, firewall (incl. IPSet CIDRs), access control, replication, SDN (read), ACME (read), pools, and console tickets. v1.3.0 ships Phase F LXC day-2 god mode (paramiko core, `prepare_lxc_for_docker`, `push_to_lxc`).
 
 **Repo:** [hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)
 
@@ -20,9 +20,9 @@ Registered via `tools/register.py` (called from `ProxmoxMCPServer._setup_tools()
 | Domain | Tools |
 |--------|--------|
 | **Nodes** | `get_nodes`, `get_node_status`, `list_node_networks`, `get_node_subscription`, `list_node_certificates`, `get_node_report`, `list_node_services`, `get_node_time`, `wake_node` |
-| **Cluster / tasks** | `get_cluster_status`, `get_next_vmid`, `get_task_status`, `list_tasks`, `wait_for_task`, `get_version`, `get_cluster_resources`, `get_cluster_log`, `get_cluster_options` |
+| **Cluster / tasks** | `get_cluster_status`, `get_next_vmid`, `get_task_status`, `list_tasks`, `wait_for_task`, `get_version`, `get_mcp_capabilities`, `get_cluster_resources`, `get_cluster_log`, `get_cluster_options` |
 | **QEMU** | lifecycle + config (ISO/cloud-init/net on create/update) + `get_vm_status`, `get_vm_rrd_data`, console tickets |
-| **LXC** | lifecycle + config + suspend/resume (CRIU warn) + `get_lxc_status` / `get_lxc_network` / `get_lxc_rrd_data` + VNC/SPICE/termproxy; `ssh_public_keys` on create; `set_lxc_password` / `set_lxc_ssh_keys` / `execute_lxc_command` via opt-in **host** SSH + `pct exec` ([setup](SETUP.md#ssh-for-lxc-exec-opt-in)) |
+| **LXC** | lifecycle + config + suspend/resume (CRIU warn) + `get_lxc_status` / `get_lxc_network` / `get_lxc_rrd_data` + VNC/SPICE/termproxy; `ssh_public_keys` / `docker_ready` on create; `set_lxc_password` / `set_lxc_ssh_keys` / `execute_lxc_command` / `prepare_lxc_for_docker` / `push_to_lxc` / `pull_from_lxc` via opt-in **host** SSH + `pct` ([setup](SETUP.md#ssh-for-lxc-exec-opt-in)) |
 | **Guest (unified)** | `start/stop/shutdown/reboot/delete_guest`, `get_guest_status`, `get_guest_pending`, `move_guest_disk` (`guest_type`) |
 | **Snapshots / Backups** | snapshot CRUD/rollback; one-shot backup CRUD; scheduled `list/create/delete_backup_job` |
 | **Storage** | list, content, `list_os_templates`, `list_isos`, download-url, definition CRUD |
@@ -216,7 +216,7 @@ After adding a tool: update `definitions.py`, README table, `.cursor/research/pr
 
 ## Status
 
-- [x] Formal multi-domain Proxmox API coverage (155 tools)
+- [x] Formal multi-domain Proxmox API coverage (159 tools)
 - [x] Phase B + Phase D agent QOL tools
 - [x] v1.0 security hardening, code-design audit, full test suite
 - [x] uvx `cursor-proxmox-mcp` + PyPI/GHCR release workflow

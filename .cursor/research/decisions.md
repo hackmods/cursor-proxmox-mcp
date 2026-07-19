@@ -16,9 +16,9 @@ Delete VM/LXC/storage/backup/snapshot/user require clear warning text in tool de
 
 ## D4 — LXC exec
 
-Proxmox has **no REST API** for LXC guest shell (unlike QEMU guest-agent `/agent/exec`). Official mechanism is host-side `pct exec` (lxc-attach).
+Proxmox has **no REST API** for LXC guest shell (unlike QEMU guest-agent `/agent/exec`). Official mechanism is host-side `pct exec` (lxc-attach). File push/pull uses `pct push`/`pct pull`.
 
-`execute_lxc_command` requires **opt-in** config `ssh` (`enabled`, user, key) and the `paramiko` optional extra (`cursor-proxmox-mcp[ssh]`). Without SSH, the tool returns a clear actionable error — it must **not** call a fake `/lxc/{vmid}/exec` path (that yields 501 Not Implemented on real clusters). HTTP 501 from agents usually means Cursor is still on a pre-1.1.1 MCP build — reload/`uvx --from` checkout.
+Day-2 LXC tools (`execute_lxc_command`, `set_lxc_password` / `set_lxc_ssh_keys`, `prepare_lxc_for_docker`, `push_to_lxc` / `pull_from_lxc`, runtime IP in `get_lxc_network`) require **opt-in** config `ssh` (`enabled`, user, key). **paramiko is a core dependency** since 1.3.0 (`[ssh]` extra is an empty back-compat alias). Without SSH, tools return a clear actionable error (reload MCP after config change) — they must **not** call a fake `/lxc/{vmid}/exec` path (that yields 501 Not Implemented on real clusters). HTTP 501 from agents usually means Cursor is still on a pre-1.1.1 MCP build — reload/`uvx --from` checkout.
 
 Runtime IP discovery in `get_lxc_network` uses the same SSH/`pct` path when configured; otherwise only configured `netN` (static CIDR or `dhcp`) is returned.
 
@@ -108,3 +108,19 @@ Tools that return a Proxmox task UPID must append `upid_response_footer` (Task I
 ## D23 — Destructive response echo
 
 Destructive tools already warn in descriptions (D2). Responses must also echo `⚠️ IRREVERSIBLE` so agents that skip descriptions still see the warning.
+
+## D24 — Docker-in-LXC
+
+Nested Docker on unprivileged LXC fails at `docker run` (not install) when host AppArmor + runc CVE-2025-52881 interact (`ip_unprivileged_port_start` reopen denied).
+
+**Stance (implemented by `prepare_lxc_for_docker`):**
+
+1. Prefer host **`lxc-pve ≥ 6.0.5-2`** (generated nested AppArmor fix). Strip stale `unconfined` workarounds after upgrade.
+2. Unpatched host: allowlisted dual raw lines via host conf — `lxc.apparmor.profile: unconfined` **and** `lxc.mount.entry: /dev/null sys/module/apparmor/parameters/enabled none bind 0 0` — then full stop/start. Never bare `unconfined` alone (overrides nesting / breaks Docker AppArmor checks).
+3. Do **not** treat Docker `--privileged` / `--sysctl` / containerd downgrade as the supported path.
+4. Keep unprivileged default; privileged CT is last-resort docs only.
+5. Success criterion: `docker run --rm nginx:alpine`, not merely `docker --version`.
+
+## D25 — Create auto-wait (Phase F.1 only)
+
+D10 keeps create tools UPID-first. Phase F.1 may add optional `wait: bool = False` on `create_vm` / `create_lxc` that polls internally when true. **Default must remain false** unless a future decision explicitly changes the contract. Default-on is high product risk (MCP latency, agent expectations).

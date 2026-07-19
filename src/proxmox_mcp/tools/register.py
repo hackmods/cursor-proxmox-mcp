@@ -241,6 +241,7 @@ def register_all(server: ProxmoxMCPServer) -> None:
         gw: Annotated[Optional[str], Field(description="Gateway", default=None)] = None,
         net0: Annotated[Optional[str], Field(description="Full net0 override", default=None)] = None,
         ostemplate_filter: Annotated[Optional[str], Field(description="Auto-pick filter e.g. ubuntu", default=None)] = None,
+        docker_ready: Annotated[bool, Field(description="Set nesting+keyctl and tip prepare_lxc_for_docker", default=False)] = False,
     ):
         return server.container_tools.create_lxc(
             node=node,
@@ -260,6 +261,7 @@ def register_all(server: ProxmoxMCPServer) -> None:
             gw=gw,
             net0=net0,
             ostemplate_filter=ostemplate_filter,
+            docker_ready=docker_ready,
         )
 
     @server.mcp.tool(description=D.GET_LXC_CONFIG_DESC)
@@ -365,8 +367,9 @@ def register_all(server: ProxmoxMCPServer) -> None:
         node: Annotated[str, Field(description="Node")],
         vmid: Annotated[str, Field(description="CT ID")],
         command: Annotated[str, Field(description="Command")],
+        timeout: Annotated[Optional[int], Field(description="Seconds (else ssh.timeout / PROXMOX_MCP_EXEC_TIMEOUT)", default=None)] = None,
     ):
-        return server.container_tools.execute_lxc_command(node, vmid, command)
+        return server.container_tools.execute_lxc_command(node, vmid, command, timeout)
 
     @server.mcp.tool(description=D.SET_LXC_PASSWORD_DESC)
     def set_lxc_password(
@@ -389,6 +392,51 @@ def register_all(server: ProxmoxMCPServer) -> None:
         mode: Annotated[str, Field(description="replace or append", default="replace")] = "replace",
     ):
         return server.container_tools.set_lxc_ssh_keys(node, vmid, ssh_public_keys, mode)
+
+    @server.mcp.tool(description=D.PREPARE_LXC_FOR_DOCKER_DESC)
+    def prepare_lxc_for_docker(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="CT ID")],
+        fuse: Annotated[bool, Field(description="Also set fuse=1", default=False)] = False,
+        allow_apparmor_workaround: Annotated[
+            bool, Field(description="Apply dual AppArmor lines if host unpatched", default=True)
+        ] = True,
+        install_docker: Annotated[bool, Field(description="Install Docker CE via pct exec", default=False)] = False,
+        smoke_test: Annotated[bool, Field(description="Run docker run --rm nginx:alpine", default=False)] = False,
+        timeout: Annotated[Optional[int], Field(description="Seconds for long installs", default=None)] = None,
+    ):
+        return server.container_tools.prepare_lxc_for_docker(
+            node,
+            vmid,
+            fuse=fuse,
+            allow_apparmor_workaround=allow_apparmor_workaround,
+            install_docker=install_docker,
+            smoke_test=smoke_test,
+            timeout=timeout,
+        )
+
+    @server.mcp.tool(description=D.PUSH_TO_LXC_DESC)
+    def push_to_lxc(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="CT ID")],
+        remote_path: Annotated[str, Field(description="Path inside CT")],
+        local_path: Annotated[Optional[str], Field(description="Local file path", default=None)] = None,
+        content_base64: Annotated[Optional[str], Field(description="Base64 file content", default=None)] = None,
+        timeout: Annotated[Optional[int], Field(description="Seconds", default=None)] = None,
+    ):
+        return server.container_tools.push_to_lxc(
+            node, vmid, remote_path, local_path, content_base64, timeout
+        )
+
+    @server.mcp.tool(description=D.PULL_FROM_LXC_DESC)
+    def pull_from_lxc(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="CT ID")],
+        remote_path: Annotated[str, Field(description="Path inside CT")],
+        local_path: Annotated[Optional[str], Field(description="Write to local path", default=None)] = None,
+        timeout: Annotated[Optional[int], Field(description="Seconds", default=None)] = None,
+    ):
+        return server.container_tools.pull_from_lxc(node, vmid, remote_path, local_path, timeout)
 
     # --- Unified guest power (additive) ---
     @server.mcp.tool(description=D.START_GUEST_DESC)
@@ -921,6 +969,14 @@ def register_all(server: ProxmoxMCPServer) -> None:
     @server.mcp.tool(description=D.GET_VERSION_DESC)
     def get_version():
         return server.cluster_tools.get_version()
+
+    @server.mcp.tool(description=D.GET_MCP_CAPABILITIES_DESC)
+    def get_mcp_capabilities(
+        probe_node: Annotated[
+            Optional[str], Field(description="Optional node name for live pct version probe", default=None)
+        ] = None,
+    ):
+        return server.capabilities_tools.get_mcp_capabilities(probe_node)
 
     @server.mcp.tool(description=D.GET_CLUSTER_RESOURCES_DESC)
     def get_cluster_resources(

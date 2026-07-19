@@ -71,7 +71,7 @@ def test_execute_lxc_via_pct():
     )
     with patch.object(tools._pct, "execute", return_value=fake_result) as mock_exec:
         out = tools.execute_lxc_command("pve", "121", "hostname")
-    mock_exec.assert_called_once_with("pve", "121", "hostname")
+    mock_exec.assert_called_once_with("pve", "121", "hostname", timeout=None)
     text = out[0].text
     assert "hostname" in text
     assert '"exit_code": 0' in text or "exit_code" in text

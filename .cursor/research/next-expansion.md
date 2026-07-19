@@ -1,6 +1,6 @@
 # Next expansion phases
 
-Living Cursor note for what to build after the current **155-tool** baseline.
+Living Cursor note for what to build after the current **159-tool** baseline.
 Update this file when priorities change; keep [proxmox-api-coverage.md](proxmox-api-coverage.md), [README.md](../../README.md), and [docs/api-coverage.md](../../docs/api-coverage.md) in sync.
 
 **Baseline (done):** Formal Cursor ↔ Proxmox MCP — guest lifecycle, storage, HA, firewall, access, replication, SDN read, ACME read, pools, console tickets, inventory-locked CI.
@@ -8,6 +8,10 @@ Update this file when priorities change; keep [proxmox-api-coverage.md](proxmox-
 **Phase D (done):** Agent QOL — `wait_for_task`, ISO/cloud-init/net on create, template/ISO helpers, token ACL helper, SETUP reload + nested Docker prompts, mcpo CI smoke, PyPI publish workflow.
 
 **Phase E (done):** LXC↔VM parity + unified guest power + ops completeness — RRD/SPICE/suspend LXC, `*_guest` aliases, pending, pool membership, IPSet CIDRs, move disk, replication update, backup jobs.
+
+**Phase F (done / v1.3.0):** LXC day-2 god mode — paramiko core, `get_mcp_capabilities`, `prepare_lxc_for_docker`, `push_to_lxc`/`pull_from_lxc`, SSH/exec QOL. Lab source: [agent-feedback-log.md](agent-feedback-log.md) (Lumon deploy).
+
+**Phase F.1 (queued after F):** Cheap/medium VM parity + create wait opt-in + optional app helpers — effort table below. Do **not** start until Phase F ships.
 
 ---
 
@@ -39,7 +43,42 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 | PBS direct admin | Medium | Separate product | Use `storage.type=pbs` until needed |
 | Node reboot / shutdown | Low code, high risk | Host power | Needs explicit confirmation UX |
 | Node network create/update/reload | Medium | Med | Bridge automation labs |
-| QEMU agent helpers beyond exec | Low–med | Low | Richer guest introspection |
+| QEMU agent helpers beyond exec | Low–med | Low | **Split:** `get_vm_network` → Phase F.1; richer agent APIs stay here |
+
+---
+
+## Phase F — LXC day-2 god mode (shipped v1.3.0)
+
+| Priority | Item | Status |
+|----------|------|--------|
+| P0 | paramiko core dep + `[ssh]` alias; shared `require_host_ssh` | done |
+| P0 | `get_mcp_capabilities` + boot warning | done |
+| P0 | `PctExecutor` host cmds (`run_host`, push/pull, `pct set`/conf) | done |
+| P0 | `prepare_lxc_for_docker` (host `lxc-pve` gate + dual AppArmor workaround) | done |
+| P0 | `create_lxc(docker_ready=…)` tip only (D21 honest) | done |
+| P1 | `push_to_lxc` / `pull_from_lxc` | done |
+| P1 | Exec/SSH QOL: timeouts, field aliases, features pending footer | done |
+| Docs | SETUP/Recipes success = `docker run`, not `docker --version` | done |
+
+**Docker-in-LXC (D24):** CVE-2025-52881 / runc + nested AppArmor → prefer host `lxc-pve ≥ 6.0.5-2`; else dual raw lines via host conf + stop/start; never bare `unconfined`; Docker `--privileged`/`--sysctl` do not fix.
+
+---
+
+## Phase F.1 — Queued after Phase F (effort estimates)
+
+Captured 2026-07-19 from Lumon lab deferrals + sizing. Relative to Phase F (~2–3 focused days). **Combined F.1 ≈ +2.5–4 days** if all five ship.
+
+| Priority | Item | Effort | Risk / notes | Status |
+|----------|------|--------|--------------|--------|
+| P0 | `get_vm_network` (QEMU agent `network-get-interfaces`) | **S ~0.5d** | Best cheap VM↔LXC parity; fail clearly if agent down | queued |
+| P1 | `create_vm` / `create_lxc` optional `wait=true` (default **false**) | **S ~0.5d** code; **L** if default-true | Preserves D10 UPID contract; default-on = latency + doc churn — **do not** default true | queued |
+| P1 | `push_to_vm` (guest-agent file-write/read) | **M ~1–1.5d** | Little reuse from `pct push`; chunked base64 / size limits | queued |
+| P2 | `deploy_static_nginx` (LXC recipe) | **M ~0.5–1d** | Thin wrap over push + `execute_lxc_command`; Lumon unblocker; easy scope creep | queued |
+| P2 | `get_containers` docker/`:80` probes | **M ~0.5–1d** if **opt-in** | Default-on = N× pct exec, slow/noisy — only `probes=true` (or similar) | queued |
+
+**Pull-forward order (recommended):** (1) `get_vm_network` (2) `wait=true` opt-in (3) `push_to_vm` after LXC push proven (4) nginx helper if static deploys stay common (5) inventory probes last / only opt-in.
+
+**Explicitly still out:** auto-wait default-on; merge LXC into `get_vms`; DHCP lease scraping; free-form raw LXC config; privileged CT / containerd downgrade as happy path.
 
 ---
 
@@ -63,9 +102,10 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 | uvx / `cursor-proxmox-mcp` preferred | D7 / D20 | Wrong PyPI name `proxmox-mcp-server` is a different project |
 | Inventory lock | D5, `tests/expected_tools.py` | Every new tool updates README + coverage + expected_tools |
 | LXC exec requires opt-in SSH + `pct exec` (no REST) | D4, agent-feedback-log, SETUP | Fail clearly without ssh; never call fake `/lxc/.../exec` |
-| Guest IP: configured netN always; runtime via pct | get_lxc_network | DHCP without SSH → static ip or enable SSH |
+| Guest IP: configured netN always; runtime via pct | get_lxc_network | DHCP without SSH → static IP or enable SSH; VM parity → F.1 `get_vm_network` |
 | LXC `/exec` version-dependent | ~~obsolete~~ | Superseded by D4 revision 2026-07-19 |
-
+| Docker-in-LXC AppArmor / CVE-2025-52881 | Phase F / D24 | Host `lxc-pve` patch first; dual workaround only if unpatched |
+| Create returns UPID immediately | D10 / D22 / D25 | Always `wait_for_task`; F.1 may add opt-in `wait=` (default false) |
 | LXC suspend/resume is CRIU best-effort | Phase E | Prefer shutdown; warn in tool text |
 | Parallel `*_vm`/`*_lxc` + additive `*_guest` | D1 | Do not rename power tools in minor releases |
 | Destructive ops need force + warnings | D2 | Keep pattern for new delete/power tools |
@@ -75,12 +115,12 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 ## Suggested next work
 
 ```text
-1. Operator: enable config ssh + paramiko for lab LXC exec / DHCP IP workflows
-2. Configure PyPI Trusted Publisher for `cursor-proxmox-mcp` → re-run publish.yml (see PUBLISHING.md)
-3. Official MCP registry: `mcp-publisher publish` after PyPI upload
-4. Glama submit + community drafts in docs/community/
-5. Only then: SDN write or ACME write if a real use case appears (Phase C)
-6. Soft: QEMU agent/network-get-interfaces (parity with get_lxc_network)
+1. Phase F — LXC day-2 god mode (paramiko core, capabilities, prepare_lxc_for_docker, push/pull, SSH QOL)
+2. Phase F.1 — get_vm_network → create wait= opt-in → push_to_vm → optional nginx / inventory probes
+3. Configure PyPI Trusted Publisher for cursor-proxmox-mcp → re-run publish.yml (see PUBLISHING.md)
+4. Official MCP registry: mcp-publisher publish after PyPI upload
+5. Glama submit + community drafts in docs/community/
+6. Only then: SDN write or ACME write if a real use case appears (Phase C)
 ```
 
 When shipping any new tool: update this file’s status, coverage matrix, changelog-notes, README, and `expected_tools.py` in the same change (api-coverage + keep-docs-aligned rules).

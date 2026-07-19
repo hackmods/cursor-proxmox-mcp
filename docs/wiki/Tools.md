@@ -27,7 +27,7 @@ python scripts/generate-wiki-tools.py
 
 <!-- BEGIN GENERATED TOOLS -->
 
-_Generated from `tools/inventory.py` — **155** tools. Do not edit by hand; run `python scripts/generate-wiki-tools.py`._
+_Generated from `tools/inventory.py` — **159** tools. Do not edit by hand; run `python scripts/generate-wiki-tools.py`._
 
 ### Nodes
 
@@ -51,6 +51,7 @@ _Generated from `tools/inventory.py` — **155** tools. Do not edit by hand; run
 | `get_cluster_options` | Get cluster-wide options. |
 | `get_cluster_resources` | List cluster resources. Parameters: type? (vm\|storage\|node\|sdn) |
 | `get_cluster_status` | Get overall Proxmox cluster health and quorum status. |
+| `get_mcp_capabilities` | Self-check: MCP package version, ssh.enabled, paramiko, day-2 tool presence, optional pct version probe. Call after reload/config change. Parameters: probe_node? |
 | `get_next_vmid` | Get the next free VM/CT ID from the cluster (best-effort — race possible before create). |
 | `get_task_status` | Get status for a task UPID. Parameters: node*, upid* |
 | `get_version` | Get Proxmox VE version/API info. |
@@ -89,17 +90,20 @@ _Generated from `tools/inventory.py` — **155** tools. Do not edit by hand; run
 |------|-------------|
 | `clone_lxc` | Clone an LXC (async UPID — wait_for_task). Parameters: node*, vmid*, newid*, hostname?, full?=true, target?, storage? |
 | `convert_lxc_to_template` | Convert LXC to template. Parameters: node*, vmid* |
-| `create_lxc` | Create an LXC (async UPID — always wait_for_task before start). OS template only — not Docker/app deploy. Prefer ssh_public_keys for guest SSH (many templates block root password SSH). Parameters: node*, vmid*, hostname*; ostemplate?, cpus?, memory?, disk_size?, storage?, features?, password?, ssh_public_keys?, unprivileged?, bridge?, ip?, gw?, net0?, ostemplate_filter? |
+| `create_lxc` | Create an LXC (async UPID — always wait_for_task before start). OS template only — not Docker/app deploy. Prefer ssh_public_keys for guest SSH (many templates block root password SSH). docker_ready=true sets nesting=1,keyctl=1 and tips prepare_lxc_for_docker (does not install Docker). Parameters: node*, vmid*, hostname*; ostemplate?, cpus?, memory?, disk_size?, storage?, features?, password?, ssh_public_keys?, unprivileged?, bridge?, ip?, gw?, net0?, ostemplate_filter?, docker_ready?=false |
 | `create_spice_ticket_lxc` | Mint SPICE ticket for an LXC (connect externally). Parameters: node*, vmid* |
 | `create_termproxy_ticket_lxc` | Mint termproxy ticket for an LXC. Parameters: node*, vmid* |
 | `create_vnc_ticket_lxc` | Mint VNC ticket for an LXC. Parameters: node*, vmid*, websocket?=true |
 | `delete_lxc` | IRREVERSIBLE: permanently delete an LXC and its rootfs. Parameters: node*, vmid*, force?=false |
-| `execute_lxc_command` | Execute a command inside a running LXC via host SSH + pct exec (no Proxmox REST /exec — HTTP 501 means stale MCP build). Requires opt-in ssh config + paramiko. Parameters: node*, vmid*, command* |
+| `execute_lxc_command` | Execute a command inside a running LXC via host SSH + pct exec (no Proxmox REST /exec — HTTP 501 means stale MCP build). Requires opt-in ssh config. Response includes stdout/stderr and output/error aliases. Parameters: node*, vmid*, command*; timeout? (seconds, else ssh.timeout / PROXMOX_MCP_EXEC_TIMEOUT) |
 | `get_containers` | List all LXC containers across the cluster (includes configured IP from netN when set). For QEMU use get_vms. |
 | `get_lxc_config` | Get full LXC configuration. Parameters: node*, vmid* |
 | `get_lxc_network` | Get LXC network: configured netN (static/dhcp/MAC/bridge) plus optional runtime IPv4 via pct exec when SSH is configured. Parameters: node*, vmid*, resolve_runtime?=true |
 | `get_lxc_rrd_data` | Get RRD metrics for an LXC. Parameters: node*, vmid*, timeframe?=hour |
 | `get_lxc_status` | Get current runtime status for one LXC (includes configured_ip/networks from config). Parameters: node*, vmid* |
+| `prepare_lxc_for_docker` | Idempotent host-side prep for Docker-in-LXC (D24): nesting+keyctl features; probe lxc-pve ≥6.0.5-2; if unpatched apply dual AppArmor workaround (never bare unconfined); optional install_docker/smoke_test. Requires ssh. Success = docker run after stop/start — not docker --version. Parameters: node*, vmid*; fuse?=false, allow_apparmor_workaround?=true, install_docker?=false, smoke_test?=false, timeout? |
+| `pull_from_lxc` | Pull a file from a running LXC via pct pull. Writes local_path when set; otherwise returns base64. Requires ssh. Parameters: node*, vmid*, remote_path*; local_path?, timeout? |
+| `push_to_lxc` | Push a file into a running LXC via host SSH + pct push (SFTP to host temp then pct push). Provide local_path (Cursor-side) or content_base64. Max 32 MiB. Requires ssh. Parameters: node*, vmid*, remote_path*; local_path?, content_base64?, timeout? |
 | `reboot_lxc` | Reboot an LXC (applies pending config). Parameters: node*, vmid* |
 | `resize_lxc_disk` | Grow an LXC volume. Parameters: node*, vmid*, disk* (e.g. rootfs), size* (e.g. +5G) |
 | `resume_lxc` | WARNING: resume after LXC suspend (CRIU) is best-effort. Parameters: node*, vmid* |
@@ -110,7 +114,7 @@ _Generated from `tools/inventory.py` — **155** tools. Do not edit by hand; run
 | `stop_lxc` | Force-stop an LXC container. Parameters: node*, vmid* |
 | `suspend_lxc` | WARNING: LXC suspend uses CRIU checkpoint and is often unreliable/unsupported. Prefer shutdown. Parameters: node*, vmid* |
 | `update_lxc_config` | Update LXC config (cores/memory/hostname/net0/features). Does NOT set password or SSH keys — use set_lxc_password / set_lxc_ssh_keys (need host SSH/pct) or recreate with password/ssh_public_keys. |
-| `update_lxc_features` | Update LXC features (nesting/keyctl/fuse). keyctl/fuse beyond nesting usually need elevated role or root@pam — tool does not strip unsupported flags. Parameters: node*, vmid*, features* |
+| `update_lxc_features` | Update LXC features (nesting/keyctl/fuse). keyctl/fuse beyond nesting usually need elevated role or root@pam — tool does not strip unsupported flags. After change: get_guest_pending + stop/start or reboot. Parameters: node*, vmid*, features* |
 
 ### Guest (unified)
 

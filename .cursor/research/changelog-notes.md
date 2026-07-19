@@ -1,5 +1,26 @@
 # Changelog / research notes
 
+## 2026-07-19 — Phase F LXC day-2 god mode (rev r8 / v1.3.0) — 159 tools
+
+**Why:** Lumon CT122 lab: pct exec + password SSH worked; Docker CE installed but `docker run` failed (`ip_unprivileged_port_start`); no MCP push/prepare; paramiko optional extra + stale MCP friction.
+
+**Shipped:** paramiko core; `get_mcp_capabilities`; `prepare_lxc_for_docker` (D24); `push_to_lxc`/`pull_from_lxc`; `docker_ready` on create; SSH/exec QOL (timeouts, output/error aliases, startup warning); SETUP/Recipes rewrite.
+
+**Out of scope (Phase F.1):** `get_vm_network`, create `wait=`, `push_to_vm`, `deploy_static_nginx`, inventory probes.
+
+## 2026-07-19 — Phase F / F.1 pipeline queued (planning)
+
+**Why:** First successful Cursor↔Proxmox MCP lab deploy (Lumon CT122) proved pct exec + password SSH, then hit Docker-in-LXC AppArmor/CVE gap and missing push/prepare tools. Sized deferred parity items for the expansion pipeline.
+
+**Queued (not shipped):**
+
+- ~~**Phase F**~~ — **shipped r8 / v1.3.0**
+- **Phase F.1** — effort table in [next-expansion.md](next-expansion.md): `get_vm_network` (S ~0.5d), create `wait=` opt-in (S ~0.5d / L if default-on), `push_to_vm` (M ~1–1.5d), `deploy_static_nginx` (M ~0.5–1d), inventory probes opt-in (M ~0.5–1d). Combined F.1 ≈ +2.5–4d after F.
+
+**Insights locked:** Docker `--privileged`/`--sysctl` do not fix `ip_unprivileged_port_start`; prefer host `lxc-pve ≥ 6.0.5-2`; unpatched hosts need **both** AppArmor workaround lines + stop/start; bare `unconfined` overrides nesting.
+
+**Out of scope until F.1 decisions:** default-on create auto-wait; default-on inventory probes.
+
 ## 2026-07-19 — Wiki living guide (rev r7) — 155 tools
 
 **Why:** Wiki only summarized domains; agents/operators needed a durable guide with every tool listed and a site-wide git footer.

@@ -11,10 +11,8 @@ Source of truth for registered names: `ProxmoxMCPServer._setup_tools()` and `tes
 | Domain | MCP tools | API (representative) |
 |--------|-----------|----------------------|
 | Nodes | get_nodes, get_node_status, list_node_networks, subscription, certificates, report, services, time, wakeonlan | /nodes... |
-| Cluster | get_cluster_status, get_next_vmid, get_version, get_cluster_resources, get_cluster_log, get_cluster_options | /cluster..., /version |
-| Tasks | get_task_status, list_tasks, wait_for_task | /nodes/{n}/tasks... |
-| QEMU | full lifecycle + config (ISO/cloud-init/net) + status + rrd + console tickets | /nodes/{n}/qemu... |
-| LXC | full lifecycle + config + suspend/resume (CRIU warn) + status + **get_lxc_network** + rrd + VNC/SPICE/termproxy + **exec/password/keys via SSH/pct** + **ssh_public_keys on create** | /nodes/{n}/lxc... + host pct (opt-in ssh) |
+| LXC | full lifecycle + config + suspend/resume (CRIU warn) + status + **get_lxc_network** + rrd + VNC/SPICE/termproxy + **exec/password/keys via SSH/pct** + **prepare_lxc_for_docker** + **push/pull** + **ssh_public_keys / docker_ready on create** | /nodes/{n}/lxc... + host pct (opt-in ssh) |
+| Cluster | get_cluster_status, get_next_vmid, get_version, **get_mcp_capabilities**, get_cluster_resources, get_cluster_log, get_cluster_options | /cluster..., /version + MCP self-check |
 | Guest unified | start/stop/shutdown/reboot/delete_guest, get_guest_status/pending, move_guest_disk | qemu\|lxc status + pending + move_disk/move_volume |
 | Snapshots | list/create/delete/rollback | .../snapshot |
 | Backups | one-shot create/list/restore/delete + scheduled list/create/delete_backup_job | vzdump + /cluster/backup |
@@ -44,6 +42,26 @@ See [next-expansion.md](next-expansion.md). Summary:
 | `get_token_permissions` (privsep ACL smoke) | done |
 | PyPI package + publish.yml for `uvx cursor-proxmox-mcp` | done (publish on Release) |
 
+### Phase F — LXC day-2 (done / v1.3.0)
+
+| Item | Status |
+|------|--------|
+| `get_mcp_capabilities` | done |
+| `prepare_lxc_for_docker` | done |
+| `push_to_lxc` / `pull_from_lxc` | done |
+| paramiko core + SSH/exec QOL | done |
+| `create_lxc(docker_ready=…)` tip/features only | done |
+
+### Phase F.1 — Queued after F (see next-expansion effort table)
+
+| Item | Effort | Status |
+|------|--------|--------|
+| `get_vm_network` (agent network-get-interfaces) | S ~0.5d | queued |
+| `create_vm`/`create_lxc` optional `wait=` (default false) | S ~0.5d | queued |
+| `push_to_vm` (agent file-write/read) | M ~1–1.5d | queued |
+| `deploy_static_nginx` | M ~0.5–1d | queued |
+| `get_containers` probes (docker/`:80`, opt-in only) | M ~0.5–1d | queued |
+
 ### Phase C — Heavy / deferred
 
 | Area | Reason to defer |
@@ -55,6 +73,7 @@ See [next-expansion.md](next-expansion.md). Summary:
 | Full VNC/SPICE websocket proxy | Long-lived stream ≠ MCP request/response |
 | PBS direct admin | Separate product; use storage.type=pbs |
 | Node reboot/shutdown | Physical host power needs extra confirmation UX |
+| QEMU agent helpers beyond `get_vm_network` / file push | Richer introspection; F.1 takes network + file first |
 
 ## Excluded
 

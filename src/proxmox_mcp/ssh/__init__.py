@@ -1,4 +1,19 @@
-"""Optional SSH helpers for host-side Proxmox CLI (pct exec)."""
-from .pct import PctExecError, PctExecutor, ssh_configured
+from .pct import (
+    DOCKER_APPARMOR_LINES,
+    PctExecError,
+    PctExecutor,
+    lxc_pve_is_patched,
+    parse_lxc_pve_version,
+    require_host_ssh_message,
+    ssh_configured,
+)
 
-__all__ = ["PctExecError", "PctExecutor", "ssh_configured"]
+__all__ = [
+    "DOCKER_APPARMOR_LINES",
+    "PctExecError",
+    "PctExecutor",
+    "lxc_pve_is_patched",
+    "parse_lxc_pve_version",
+    "require_host_ssh_message",
+    "ssh_configured",
+]

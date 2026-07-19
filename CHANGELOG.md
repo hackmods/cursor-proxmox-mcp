@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-19
+
+### Added
+
+- **Phase F — LXC day-2:** `get_mcp_capabilities`, `prepare_lxc_for_docker`, `push_to_lxc`, `pull_from_lxc` (**159 tools**).
+- `create_lxc(docker_ready=true)` sets `nesting=1,keyctl=1` and tips prepare (does not claim Docker runtime ready).
+- Docker-in-LXC prep probes host `lxc-pve ≥ 6.0.5-2`; unpatched hosts get dual AppArmor workaround via host conf (never bare `unconfined`).
+
+### Changed
+
+- **paramiko** is a **core** dependency (`[ssh]` extra kept as empty back-compat alias).
+- Shared `require_host_ssh` tips (reload MCP; no `pip install …[ssh]`).
+- `execute_lxc_command` optional `timeout`; honors `PROXMOX_MCP_EXEC_TIMEOUT`; response includes `output`/`error` aliases.
+- Startup warning when LXC pct tools are registered but `ssh` is off.
+- `update_lxc_features` hints `get_guest_pending` + stop/start.
+
 ## [1.2.0] - 2026-07-19
 
 ### Added
