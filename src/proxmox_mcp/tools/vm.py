@@ -21,6 +21,33 @@ from typing import List, Optional
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
 from .console.manager import VMConsoleManager
+from .helpers import assert_id_absent, pick_storage
+from .spec import ToolSpec
+from . import definitions as D
+
+TOOL_SPECS = [
+    ToolSpec("get_vms", D.GET_VMS_DESC),
+    ToolSpec("create_vm", D.CREATE_VM_DESC),
+    ToolSpec("get_vm_config", D.GET_VM_CONFIG_DESC),
+    ToolSpec("update_vm_config", D.UPDATE_VM_CONFIG_DESC),
+    ToolSpec("execute_vm_command", D.EXECUTE_VM_COMMAND_DESC),
+    ToolSpec("start_vm", D.START_VM_DESC),
+    ToolSpec("stop_vm", D.STOP_VM_DESC),
+    ToolSpec("shutdown_vm", D.SHUTDOWN_VM_DESC),
+    ToolSpec("reset_vm", D.RESET_VM_DESC),
+    ToolSpec("reboot_vm", D.REBOOT_VM_DESC),
+    ToolSpec("suspend_vm", D.SUSPEND_VM_DESC),
+    ToolSpec("resume_vm", D.RESUME_VM_DESC),
+    ToolSpec("delete_vm", D.DELETE_VM_DESC),
+    ToolSpec("clone_vm", D.CLONE_VM_DESC),
+    ToolSpec("resize_vm_disk", D.RESIZE_VM_DISK_DESC),
+    ToolSpec("convert_vm_to_template", D.CONVERT_VM_TEMPLATE_DESC),
+    ToolSpec("get_vm_status", D.GET_VM_STATUS_DESC),
+    ToolSpec("get_vm_rrd_data", D.GET_VM_RRD_DATA_DESC),
+    ToolSpec("create_vnc_ticket_vm", D.CREATE_VNC_TICKET_VM_DESC),
+    ToolSpec("create_spice_ticket_vm", D.CREATE_SPICE_TICKET_VM_DESC),
+    ToolSpec("create_termproxy_ticket_vm", D.CREATE_TERMPROXY_TICKET_VM_DESC),
+]
 
 class VMTools(ProxmoxTool):
     """Tools for managing Proxmox QEMU VMs.
@@ -137,43 +164,25 @@ class VMTools(ProxmoxTool):
     ) -> List[Content]:
         """Create a new virtual machine with optional ISO, cloud-init, and network overrides."""
         try:
-            try:
-                self.proxmox.nodes(node).qemu(vmid).config.get()
-                raise ValueError(f"VM {vmid} already exists on node {node}")
-            except Exception as e:
-                if "does not exist" not in str(e).lower():
-                    raise e
+            assert_id_absent(self.proxmox, node, vmid, "qemu")
 
             storage_list = self.proxmox.nodes(node).storage.get()
             storage_info = {s["storage"]: s for s in storage_list}
-
-            if storage is None:
-                for preferred in ("local-lvm", "vm-storage"):
-                    for s in storage_list:
-                        if s["storage"] == preferred and "images" in s.get("content", ""):
-                            storage = s["storage"]
-                            break
-                    if storage:
-                        break
-                if storage is None:
-                    for s in storage_list:
-                        if "images" in s.get("content", ""):
-                            storage = s["storage"]
-                            break
-                if storage is None:
-                    raise ValueError("No suitable storage found for VM images")
-
-            if storage not in storage_info:
-                raise ValueError(f"Storage '{storage}' not found on node {node}")
-            if "images" not in storage_info[storage].get("content", ""):
-                raise ValueError(f"Storage '{storage}' does not support VM images")
+            storage = pick_storage(
+                storage_list,
+                content="images",
+                preferred=["local-lvm", "vm-storage"],
+                explicit=storage,
+            )
 
             storage_type = storage_info[storage]["type"]
             disk_format = "raw" if storage_type in ["lvm", "lvmthin"] else "qcow2"
             if ostype is None:
                 ostype = "l26"
 
-            bridge = bridge or "vmbr0"
+            from .helpers import DEFAULT_BRIDGE
+
+            bridge = bridge or DEFAULT_BRIDGE
             net0_value = net0 or f"virtio,bridge={bridge}"
 
             want_cloudinit = any([ciuser, cipassword, sshkeys, ipconfig0])
@@ -261,16 +270,16 @@ class VMTools(ProxmoxTool):
             # Check if VM exists and get current status
             vm_status = self.proxmox.nodes(node).qemu(vmid).status.current.get()
             current_status = vm_status.get("status")
-            
+
             if current_status == "running":
                 result_text = f"🟢 VM {vmid} is already running"
             else:
                 # Start the VM
                 task_result = self.proxmox.nodes(node).qemu(vmid).status.start.post()
                 result_text = f"🚀 VM {vmid} start initiated successfully\nTask ID: {task_result}"
-                
+
             return [Content(type="text", text=result_text)]
-            
+
         except Exception as e:
             if "does not exist" in str(e).lower() or "not found" in str(e).lower():
                 raise ValueError(f"VM {vmid} not found on node {node}")
@@ -294,16 +303,16 @@ class VMTools(ProxmoxTool):
             # Check if VM exists and get current status
             vm_status = self.proxmox.nodes(node).qemu(vmid).status.current.get()
             current_status = vm_status.get("status")
-            
+
             if current_status == "stopped":
                 result_text = f"🔴 VM {vmid} is already stopped"
             else:
                 # Stop the VM
                 task_result = self.proxmox.nodes(node).qemu(vmid).status.stop.post()
                 result_text = f"🛑 VM {vmid} stop initiated successfully\nTask ID: {task_result}"
-                
+
             return [Content(type="text", text=result_text)]
-            
+
         except Exception as e:
             if "does not exist" in str(e).lower() or "not found" in str(e).lower():
                 raise ValueError(f"VM {vmid} not found on node {node}")
@@ -327,16 +336,16 @@ class VMTools(ProxmoxTool):
             # Check if VM exists and get current status
             vm_status = self.proxmox.nodes(node).qemu(vmid).status.current.get()
             current_status = vm_status.get("status")
-            
+
             if current_status == "stopped":
                 result_text = f"🔴 VM {vmid} is already stopped"
             else:
                 # Shutdown the VM gracefully
                 task_result = self.proxmox.nodes(node).qemu(vmid).status.shutdown.post()
                 result_text = f"💤 VM {vmid} graceful shutdown initiated\nTask ID: {task_result}"
-                
+
             return [Content(type="text", text=result_text)]
-            
+
         except Exception as e:
             if "does not exist" in str(e).lower() or "not found" in str(e).lower():
                 raise ValueError(f"VM {vmid} not found on node {node}")
@@ -360,16 +369,16 @@ class VMTools(ProxmoxTool):
             # Check if VM exists and get current status
             vm_status = self.proxmox.nodes(node).qemu(vmid).status.current.get()
             current_status = vm_status.get("status")
-            
+
             if current_status == "stopped":
                 result_text = f"⚠️ Cannot reset VM {vmid}: VM is currently stopped\nUse start_vm to start it first"
             else:
                 # Reset the VM
                 task_result = self.proxmox.nodes(node).qemu(vmid).status.reset.post()
                 result_text = f"🔄 VM {vmid} reset initiated successfully\nTask ID: {task_result}"
-                
+
             return [Content(type="text", text=result_text)]
-            
+
         except Exception as e:
             if "does not exist" in str(e).lower() or "not found" in str(e).lower():
                 raise ValueError(f"VM {vmid} not found on node {node}")
@@ -447,7 +456,7 @@ class VMTools(ProxmoxTool):
                 if "does not exist" in str(e).lower() or "not found" in str(e).lower():
                     raise ValueError(f"VM {vmid} not found on node {node}")
                 raise e
-            
+
             # Check if VM is running
             if current_status == "running":
                 if not force:
@@ -459,10 +468,10 @@ class VMTools(ProxmoxTool):
                     result_text = f"🛑 Stopping VM {vmid} ({vm_name}) before deletion...\n"
             else:
                 result_text = f"🗑️ Deleting VM {vmid} ({vm_name})...\n"
-            
+
             # Delete the VM
             task_result = self.proxmox.nodes(node).qemu(vmid).delete()
-            
+
             result_text += f"""🗑️ VM {vmid} ({vm_name}) deletion initiated successfully!
 
 ⚠️ WARNING: This operation will permanently remove:
@@ -474,9 +483,9 @@ class VMTools(ProxmoxTool):
 🔧 Task ID: {task_result}
 
 ✅ VM {vmid} ({vm_name}) is being deleted from node {node}"""
-            
+
             return [Content(type="text", text=result_text)]
-            
+
         except ValueError as e:
             raise e
         except Exception as e:

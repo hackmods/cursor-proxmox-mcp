@@ -20,9 +20,9 @@ python -m pytest tests/ -q --tb=short
 
 echo "==> Tool inventory sanity"
 python -c "
-from tests.expected_tools import EXPECTED_TOOLS
-print(f'Expected tools: {len(EXPECTED_TOOLS)}')
-assert len(EXPECTED_TOOLS) >= 100, 'inventory too small'
+from proxmox_mcp.tools.inventory import ALL_TOOL_NAMES
+print(f'Tools: {len(ALL_TOOL_NAMES)}')
+assert len(ALL_TOOL_NAMES) >= 100, 'inventory too small'
 print('OK')
 "
 

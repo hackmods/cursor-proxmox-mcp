@@ -133,13 +133,19 @@ class AccessTools(ProxmoxTool):
             if comment is not None:
                 params["comment"] = comment
             result = self.proxmox.access.users(userid).token(tokenid).post(**params)
-            # Token secret is returned once — include in response for the caller
+            # Token secret is returned once — include in response for the caller; never log it
+            self.logger.info(
+                "API token created for user %s id %s (secret returned to caller once; not logged)",
+                userid,
+                tokenid,
+            )
             return [
                 Content(
                     type="text",
                     text=(
                         f"API token '{userid}!{tokenid}' created.\n"
-                        f"⚠️ Store the secret now; it is only shown once.\n"
+                        "⚠️ SECURITY: Store the secret now; Proxmox shows it only once. "
+                        "Do not paste it into chat logs or commit it to git.\n"
                         f"Result: {result}"
                     ),
                 )

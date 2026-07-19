@@ -60,7 +60,7 @@ class NodeTools(ProxmoxTool):
         try:
             result = self.proxmox.nodes.get()
             nodes = []
-            
+
             # Get detailed info for each node
             for node in result:
                 node_name = node["node"]

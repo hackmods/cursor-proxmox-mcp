@@ -1,14 +1,18 @@
 # cursor-proxmox-mcp
 
+[![CI](https://github.com/hackmods/cursor-proxmox-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/hackmods/cursor-proxmox-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/proxmox-mcp-server)](https://pypi.org/project/proxmox-mcp-server/)
+
 **Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 132 tools covering QEMU VMs, LXC, storage admin, cluster/tasks, snapshots, backups, migration, HA, firewall, access control, replication, SDN (read), ACME (read), pools, and console tickets.
 
 **Repo:** [hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)
 
-Docs: [**Setup guide**](SETUP.md) · [API coverage](docs/api-coverage.md) · [Next expansion](.cursor/research/next-expansion.md) · Research matrix: [`.cursor/research/proxmox-api-coverage.md`](.cursor/research/proxmox-api-coverage.md)
+Docs: [**Setup guide**](SETUP.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [API coverage](docs/api-coverage.md) · [Changelog](CHANGELOG.md)
 
 ## MCP tools
 
-Registered in `ProxmoxMCPServer._setup_tools()` — inventory locked by `tests/expected_tools.py` (CI fails on drift).
+Registered via `tools/register.py` (called from `ProxmoxMCPServer._setup_tools()`) — inventory locked by `tools/inventory.py` / `tests/expected_tools.py` (CI fails on drift).
 
 | Domain | Tools |
 |--------|--------|
@@ -173,16 +177,22 @@ Create the token in Proxmox UI: Datacenter → Permissions → API Tokens. See *
 
 **Privilege Separation:** leave **Yes** (default) and grant ACLs to the **token** (`user@realm!tokenid`). Setting it to **No** makes the token inherit the user’s full permissions (common lab shortcut; larger blast radius if leaked). Grant roles matching the tools you use (`PVEAuditor`, `PVEVMAdmin`, `Datastore.*`, `Sys.Audit`/`Sys.Modify` for HA/firewall/access).
 
+Prefer `"token_value": "${PROXMOX_TOKEN_VALUE}"` in config and set the env var in Cursor MCP config so secrets stay out of the JSON file.
+
+## Security
+
+This server can create/delete guests, change firewall/ACL, and run guest commands. Treat the API token like production infra credentials. Full policy: **[SECURITY.md](SECURITY.md)**.
+
 ## Features
 
-- Token auth via proxmoxer
+- Token auth via proxmoxer (JSON config + optional `${ENV}` secret interpolation)
 - Full guest lifecycle, snapshots, vzdump backups
 - Storage content + definition CRUD + URL download
 - Cluster HA, firewall (rules/aliases/ipsets), access/ACL/tokens
 - Replication jobs, SDN read + apply, ACME read, pools
 - Console **ticket mint** only (VNC/SPICE/termproxy) — no websocket proxy
-- uvx / uv / pip install paths; optional `.[openapi]` for mcpo
-- Local + GitHub CI (`ruff` + `pytest` + inventory lock)
+- uvx / uv / pip / Docker (GHCR) install paths; optional `.[openapi]` for mcpo
+- Local + GitHub CI (`ruff` + `pytest` + coverage + inventory + design invariants)
 
 ### Planned (not implemented yet)
 
@@ -199,10 +209,11 @@ After adding a tool: update `definitions.py`, README table, `.cursor/research/pr
 ## Status
 
 - [x] Formal multi-domain Proxmox API coverage (132 tools)
-- [x] Phase B: replication, SDN read, ACME read, certs, console tickets, pools, firewall extras
-- [x] Phase D agent QOL: `wait_for_task`, ISO/cloud-init/net create, `list_os_templates`/`list_isos`, `get_token_permissions`
-- [x] uvx `proxmox-mcp-server` entrypoint + PyPI publish workflow
-- [x] Local + GitHub CI with inventory floor + optional mcpo smoke
+- [x] Phase B + Phase D agent QOL tools
+- [x] v1.0 security hardening, code-design audit, full test suite
+- [x] uvx `proxmox-mcp-server` + PyPI/GHCR release workflow
+- [x] Local + GitHub CI with coverage + design invariants
+- [ ] Phase C heavy/dangerous endpoints (documented only)
 - [ ] Phase C heavy/dangerous endpoints (documented only)
 
 ## License

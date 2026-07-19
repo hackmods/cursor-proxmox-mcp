@@ -6,7 +6,7 @@ from .theme import ProxmoxTheme
 
 class ProxmoxColors:
     """ANSI color definitions and utilities for terminal output."""
-    
+
     # Foreground colors
     BLACK = '\033[30m'
     RED = '\033[31m'
@@ -16,7 +16,7 @@ class ProxmoxColors:
     MAGENTA = '\033[35m'
     CYAN = '\033[36m'
     WHITE = '\033[37m'
-    
+
     # Background colors
     BG_BLACK = '\033[40m'
     BG_RED = '\033[41m'
@@ -26,7 +26,7 @@ class ProxmoxColors:
     BG_MAGENTA = '\033[45m'
     BG_CYAN = '\033[46m'
     BG_WHITE = '\033[47m'
-    
+
     # Styles
     BOLD = '\033[1m'
     DIM = '\033[2m'
@@ -36,10 +36,10 @@ class ProxmoxColors:
     REVERSE = '\033[7m'
     HIDDEN = '\033[8m'
     STRIKE = '\033[9m'
-    
+
     # Reset
     RESET = '\033[0m'
-    
+
     @classmethod
     def colorize(cls, text: str, color: str, style: Optional[str] = None) -> str:
         """Add color and optional style to text with theme awareness.
@@ -54,11 +54,11 @@ class ProxmoxColors:
         """
         if not ProxmoxTheme.USE_COLORS:
             return text
-            
+
         if style:
             return f"{style}{color}{text}{cls.RESET}"
         return f"{color}{text}{cls.RESET}"
-    
+
     @classmethod
     def status_color(cls, status: str) -> str:
         """Get appropriate color for a status value.
@@ -77,7 +77,7 @@ class ProxmoxColors:
         elif status in ['pending', 'warning']:
             return cls.YELLOW
         return cls.BLUE
-    
+
     @classmethod
     def resource_color(cls, resource_type: str) -> str:
         """Get appropriate color for a resource type.
@@ -96,7 +96,7 @@ class ProxmoxColors:
         elif resource_type in ['storage', 'disk']:
             return cls.MAGENTA
         return cls.BLUE
-    
+
     @classmethod
     def metric_color(cls, value: float, warning: float = 80.0, critical: float = 90.0) -> str:
         """Get appropriate color for a metric value based on thresholds.

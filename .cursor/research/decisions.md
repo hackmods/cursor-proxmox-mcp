@@ -51,3 +51,31 @@ After the 128-tool baseline, expand create/wait paths before exotic admin APIs. 
 ## D12 — PyPI package name matches uvx entrypoint
 
 Publish as `proxmox-mcp-server` (not only `proxmox-mcp`) so `uvx proxmox-mcp-server` resolves without `--from`. Import package remains `proxmox_mcp`. Release via `.github/workflows/publish.yml` + PyPI Trusted Publishing.
+
+## D13 — Shared guest helpers, parallel VM/LXC classes
+
+Keep `VMTools` and `ContainerTools` as separate classes for clear agent-facing tool names. Extract shared internals (`pick_storage`, `assert_id_absent`, constants for `vmbr0` / default features). Do not merge into one GuestTools class in v1.0.
+
+## D14 — Response strings frozen for v1.0
+
+Existing emoji / prose `Content` payloads stay byte-stable where possible. New internal helpers may use plain structured text. Bulk formatter rewrite is post-1.0.
+
+## D15 — JSON config + env interpolation is canonical auth
+
+`PROXMOX_MCP_CONFIG` JSON is the only startup path. Secrets may use `${ENV_VAR}` interpolation in JSON values. Remove unused `utils/auth.py` env-only loader to avoid dual silent paths.
+
+## D16 — Single logging module
+
+Only `core.logging.setup_logging` is used. Delete `utils/logging.py`. Attach a redacting filter for token/password patterns.
+
+## D17 — Guest routing via guest.py
+
+Cross-cutting qemu|lxc tools (snapshot, migrate, firewall) must use `guest_resource` / `normalize_guest_type`. Enforced by design-invariant tests.
+
+## D18 — Lab default constants
+
+Hardcoded defaults (`vmbr0`, `nesting=1`) live as named constants for testability. New optional create params remain Phase D (see D11) when they would change the public schema.
+
+## D19 — Declarative tool metadata + register module
+
+Each tools domain exports `TOOL_SPECS` (name + description ref). Registration wrappers live in `tools/register.py`; `server._setup_tools` calls `register_all`. Public tool names/params unchanged; `expected_tools.py` remains the golden inventory.

@@ -6,7 +6,7 @@ from .colors import ProxmoxColors
 
 class ProxmoxFormatters:
     """Core formatting functions for Proxmox data."""
-    
+
     @staticmethod
     def format_bytes(bytes_value: int) -> str:
         """Format bytes with proper units.
@@ -22,7 +22,7 @@ class ProxmoxFormatters:
                 return f"{bytes_value:.2f} {unit}"
             bytes_value /= 1024
         return f"{bytes_value:.2f} TB"
-    
+
     @staticmethod
     def format_uptime(seconds: int) -> str:
         """Format uptime in seconds to human readable format.
@@ -36,7 +36,7 @@ class ProxmoxFormatters:
         days = seconds // 86400
         hours = (seconds % 86400) // 3600
         minutes = (seconds % 3600) // 60
-        
+
         parts = []
         if days > 0:
             parts.append(f"{days}d")
@@ -44,9 +44,9 @@ class ProxmoxFormatters:
             parts.append(f"{hours}h")
         if minutes > 0:
             parts.append(f"{minutes}m")
-            
+
         return f"{ProxmoxTheme.METRICS['uptime']} " + " ".join(parts) if parts else "0m"
-    
+
     @staticmethod
     def format_percentage(value: float, warning: float = 80.0, critical: float = 90.0) -> str:
         """Format percentage with color based on thresholds.
@@ -61,7 +61,7 @@ class ProxmoxFormatters:
         """
         color = ProxmoxColors.metric_color(value, warning, critical)
         return ProxmoxColors.colorize(f"{value:.1f}%", color)
-    
+
     @staticmethod
     def format_status(status: str) -> str:
         """Format status with emoji and color.
@@ -76,7 +76,7 @@ class ProxmoxFormatters:
         emoji = ProxmoxTheme.get_status_emoji(status)
         color = ProxmoxColors.status_color(status)
         return f"{emoji} {ProxmoxColors.colorize(status.upper(), color)}"
-    
+
     @staticmethod
     def format_resource_header(resource_type: str, name: str) -> str:
         """Format resource header with emoji and styling.
@@ -91,7 +91,7 @@ class ProxmoxFormatters:
         emoji = ProxmoxTheme.get_resource_emoji(resource_type)
         color = ProxmoxColors.resource_color(resource_type)
         return f"\n{emoji} {ProxmoxColors.colorize(name, color, ProxmoxColors.BOLD)}"
-    
+
     @staticmethod
     def format_section_header(title: str, section_type: str = 'header') -> str:
         """Format section header with emoji and border.
@@ -107,7 +107,7 @@ class ProxmoxFormatters:
         header = f"{emoji} {title}"
         border = "═" * len(header)
         return f"\n{header}\n{border}\n"
-    
+
     @staticmethod
     def format_key_value(key: str, value: str, emoji: str = "") -> str:
         """Format key-value pair with optional emoji.
@@ -123,9 +123,9 @@ class ProxmoxFormatters:
         key_str = ProxmoxColors.colorize(key, ProxmoxColors.CYAN)
         prefix = f"{emoji} " if emoji else ""
         return f"{prefix}{key_str}: {value}"
-    
+
     @staticmethod
-    def format_command_output(success: bool, command: str, output: str, error: str = None) -> str:
+    def format_command_output(success: bool, command: str, output: str, error: str | None = None) -> str:
         """Format command execution output.
         
         Args:
@@ -145,12 +145,12 @@ class ProxmoxFormatters:
             "Output:",
             output.strip()
         ]
-        
+
         if error:
             result.extend([
                 "",
                 "Error:",
                 error.strip()
             ])
-            
+
         return "\n".join(result)

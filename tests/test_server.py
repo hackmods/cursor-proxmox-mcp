@@ -51,25 +51,25 @@ def mock_proxmox():
         # Create a mock instance
         mock_instance = Mock()
         mock.return_value = mock_instance
-        
+
         # Mock nodes endpoint
         mock_instance.nodes.get.return_value = [
             {"node": "node1", "status": "online"},
             {"node": "node2", "status": "online"}
         ]
-        
+
         # Mock node status
         mock_instance.nodes.return_value.status.get.return_value = {
             "status": "running",
             "uptime": 123456
         }
-        
+
         # Mock VMs
         mock_instance.nodes.return_value.qemu.get.return_value = [
             {"vmid": "100", "name": "vm1", "status": "running"},
             {"vmid": "101", "name": "vm2", "status": "stopped"}
         ]
-        
+
         # Mock containers
         mock_instance.nodes.return_value.lxc.get.return_value = [
             {"vmid": "200", "name": "container1", "status": "running", "mem": 0, "maxmem": 2147483648},
@@ -94,20 +94,20 @@ def mock_proxmox():
             "UPID:node1:000:000:vzdestroy:200:"
         )
         mock_instance.nodes.return_value.lxc.return_value.config.put.return_value = None
-        
+
         # Mock storage with proper numeric values
         mock_instance.storage.get.return_value = [
             {"storage": "local", "type": "dir", "enabled": True},
             {"storage": "ceph", "type": "rbd", "enabled": True}
         ]
-        
+
         # Mock storage status with numeric values
         mock_instance.nodes.return_value.storage.return_value.status.get.return_value = {
             "used": 1000000000,  # 1GB
             "total": 10000000000,  # 10GB
             "avail": 9000000000   # 9GB
         }
-        
+
         # Mock cluster status as a list (not dict)
         mock_instance.cluster.status.get.return_value = [
             {"name": "test-cluster", "quorate": 1, "nodes": 2}
@@ -132,12 +132,12 @@ def mock_proxmox():
         mock_instance.access.roles.get.return_value = []
         mock_instance.access.acl.get.return_value = []
         mock_instance.access.permissions.get.return_value = {}
-        
+
         # Mock VM status for command execution
         mock_instance.nodes.return_value.qemu.return_value.status.current.get.return_value = {
             "status": "running"
         }
-        
+
         # Mock VM command execution
         mock_instance.nodes.return_value.qemu.return_value.agent.return_value.post.return_value = {
             "pid": 12345
@@ -148,7 +148,7 @@ def mock_proxmox():
             "exitcode": 0,
             "exited": 1
         }
-        
+
         yield mock
 
 @pytest.fixture
@@ -200,7 +200,7 @@ async def test_get_node_status_missing_parameter(server):
 async def test_get_node_status(server, mock_proxmox):
     """Test get_node_status tool with valid parameter."""
     response = await server.mcp.call_tool("get_node_status", {"node": "node1"})
-    
+
     assert len(response) == 1
     assert response[0].type == "text"
     assert "node1" in response[0].text
@@ -210,7 +210,7 @@ async def test_get_node_status(server, mock_proxmox):
 async def test_get_vms(server, mock_proxmox):
     """Test get_vms tool."""
     response = await server.mcp.call_tool("get_vms", {})
-    
+
     assert len(response) == 1
     assert response[0].type == "text"
     assert "vm1" in response[0].text
@@ -282,7 +282,7 @@ async def test_update_lxc_features(server, mock_proxmox):
 async def test_get_storage(server, mock_proxmox):
     """Test get_storage tool."""
     response = await server.mcp.call_tool("get_storage", {})
-    
+
     assert len(response) == 1
     assert response[0].type == "text"
     assert "local" in response[0].text
@@ -293,7 +293,7 @@ async def test_get_storage(server, mock_proxmox):
 async def test_get_cluster_status(server, mock_proxmox):
     """Test get_cluster_status tool."""
     response = await server.mcp.call_tool("get_cluster_status", {})
-    
+
     assert len(response) == 1
     assert response[0].type == "text"
     assert "test-cluster" in response[0].text
@@ -306,7 +306,7 @@ async def test_execute_vm_command_success(server, mock_proxmox):
         "vmid": "100",
         "command": "ls -l"
     })
-    
+
     assert len(response) == 1
     assert response[0].type == "text"
     assert "SUCCESS" in response[0].text
@@ -350,7 +350,7 @@ async def test_execute_vm_command_with_error(server, mock_proxmox):
         "vmid": "100",
         "command": "invalid-command"
     })
-    
+
     assert len(response) == 1
     assert response[0].type == "text"
     assert "SUCCESS" in response[0].text  # API call succeeded

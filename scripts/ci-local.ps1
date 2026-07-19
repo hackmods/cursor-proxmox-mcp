@@ -21,7 +21,7 @@ python -m pytest tests/ -q --tb=short
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "==> Tool inventory sanity"
-python -c "from tests.expected_tools import EXPECTED_TOOLS; print(f'Expected tools: {len(EXPECTED_TOOLS)}'); assert len(EXPECTED_TOOLS) >= 100"
+python -c "from proxmox_mcp.tools.inventory import ALL_TOOL_NAMES; print(f'Tools: {len(ALL_TOOL_NAMES)}'); assert len(ALL_TOOL_NAMES) >= 100"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "==> Optional OpenAPI (mcpo) smoke"

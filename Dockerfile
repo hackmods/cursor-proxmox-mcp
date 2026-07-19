@@ -1,34 +1,13 @@
-# Use Python 3.11 slim image as base
-FROM python:3.11-slim
+# Production image for proxmox-mcp-server (stdio MCP; mount config at runtime)
+FROM python:3.12-slim
 
-# Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+COPY pyproject.toml README.md LICENSE ./
+COPY src ./src
 
-# Install Python dependencies
-RUN pip install mcpo uv
+RUN pip install --no-cache-dir .
 
-# Copy project files
-COPY . .
+ENV PROXMOX_MCP_CONFIG=/config/config.json
 
-# Create virtual environment and install dependencies
-RUN uv venv && \
-    . .venv/bin/activate && \
-    uv pip install -e ".[dev]"
-
-# Expose port
-EXPOSE 8811
-
-# Set environment variables
-ENV PROXMOX_MCP_CONFIG="/app/proxmox-config/config.json"
-ENV API_HOST="0.0.0.0"
-ENV API_PORT="8811"
-
-# Startup command
-CMD ["mcpo", "--host", "0.0.0.0", "--port", "8811", "--", \
-     "/bin/bash", "-c", "cd /app && source .venv/bin/activate && python -m proxmox_mcp.server"]
+ENTRYPOINT ["proxmox-mcp-server"]

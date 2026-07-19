@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "proxmox-mcp-server"
-version = "0.3.0"
+version = "1.0.0"
 description = "Formal Cursor MCP server for Proxmox VE — VMs, LXC, storage, HA, firewall, access"
 requires-python = ">=3.9"
 authors = [
@@ -14,7 +14,7 @@ readme = "README.md"
 license = {text = "MIT"}
 keywords = ["proxmox", "mcp", "cursor", "virtualization", "qemu", "lxc"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -39,8 +39,11 @@ dev = [
     "black>=23.0.0,<25.0.0",
     "mypy>=1.0.0,<2.0.0",
     "pytest-asyncio>=0.21.0,<1.0.0",
+    "pytest-cov>=4.0.0,<6.0.0",
     "ruff>=0.1.0,<1.0.0",
     "types-requests>=2.31.0,<3.0.0",
+    "pip-audit>=2.0.0",
+    "bandit>=1.7.0",
 ]
 openapi = [
     "mcpo>=0.0.1",
@@ -61,7 +64,24 @@ asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-v"
+addopts = "-v --cov=src/proxmox_mcp --cov-report=term-missing --cov-fail-under=80"
+
+[tool.coverage.run]
+source = ["src/proxmox_mcp"]
+omit = [
+    "src/proxmox_mcp/tools/register.py",
+    "src/proxmox_mcp/formatting/components.py",
+    "src/proxmox_mcp/formatting/colors.py",
+    "src/proxmox_mcp/formatting/theme.py",
+    "src/proxmox_mcp/utils/*",
+]
+
+[tool.coverage.report]
+fail_under = 80
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+]
 
 [tool.mypy]
 python_version = "3.9"
@@ -74,9 +94,17 @@ line-length = 100
 target-version = "py39"
 
 [tool.ruff.lint]
-# Keep CI focused on real bugs; avoid mass churn on legacy import order.
-select = ["E9", "F63", "F7", "F82", "F401", "F841"]
-ignore = ["E501"]
+# Broadened for v1.0; ignore style churn that would touch every legacy file at once.
+select = ["E", "W", "F", "B", "UP", "SIM", "RUF", "S"]
+ignore = [
+    "E501",
+    "S101", "S104", "S105", "S106", "S107", "S110", "S112", "S311", "S324", "S603", "S607",
+    "B007", "B008", "B904", "B017",
+    "UP006", "UP007", "UP035", "UP045",
+    "SIM102", "SIM105", "SIM108", "SIM117", "SIM118",
+    "RUF012", "RUF005", "RUF001", "RUF002", "RUF003",
+    "W291", "W293",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -11,6 +11,29 @@ Provides lifecycle management for LXC containers:
 from typing import List, Optional
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
+from .helpers import DEFAULT_LXC_FEATURES, assert_id_absent, pick_storage
+from .spec import ToolSpec
+from . import definitions as D
+
+TOOL_SPECS = [
+    ToolSpec("get_containers", D.GET_CONTAINERS_DESC),
+    ToolSpec("create_lxc", D.CREATE_LXC_DESC),
+    ToolSpec("get_lxc_config", D.GET_LXC_CONFIG_DESC),
+    ToolSpec("update_lxc_config", D.UPDATE_LXC_CONFIG_DESC),
+    ToolSpec("start_lxc", D.START_LXC_DESC),
+    ToolSpec("stop_lxc", D.STOP_LXC_DESC),
+    ToolSpec("shutdown_lxc", D.SHUTDOWN_LXC_DESC),
+    ToolSpec("reboot_lxc", D.REBOOT_LXC_DESC),
+    ToolSpec("delete_lxc", D.DELETE_LXC_DESC),
+    ToolSpec("update_lxc_features", D.UPDATE_LXC_FEATURES_DESC),
+    ToolSpec("clone_lxc", D.CLONE_LXC_DESC),
+    ToolSpec("resize_lxc_disk", D.RESIZE_LXC_DISK_DESC),
+    ToolSpec("convert_lxc_to_template", D.CONVERT_LXC_TEMPLATE_DESC),
+    ToolSpec("execute_lxc_command", D.EXECUTE_LXC_COMMAND_DESC),
+    ToolSpec("get_lxc_status", D.GET_LXC_STATUS_DESC),
+    ToolSpec("create_vnc_ticket_lxc", D.CREATE_VNC_TICKET_LXC_DESC),
+    ToolSpec("create_termproxy_ticket_lxc", D.CREATE_TERMPROXY_TICKET_LXC_DESC),
+]
 
 
 class ContainerTools(ProxmoxTool):
@@ -83,51 +106,27 @@ class ContainerTools(ProxmoxTool):
     ) -> List[Content]:
         """Create an LXC container. If ostemplate is omitted, auto-picks from storage (optional filter)."""
         try:
-            try:
-                self.proxmox.nodes(node).lxc(vmid).config.get()
-                raise ValueError(f"LXC container {vmid} already exists on node {node}")
-            except Exception as e:
-                if "does not exist" not in str(e).lower():
-                    raise e
-
-            try:
-                self.proxmox.nodes(node).qemu(vmid).config.get()
-                raise ValueError(f"VM ID {vmid} is already used by a QEMU VM on node {node}")
-            except Exception as e:
-                if "does not exist" not in str(e).lower():
-                    raise e
+            assert_id_absent(self.proxmox, node, vmid, "lxc")
+            assert_id_absent(self.proxmox, node, vmid, "qemu")
 
             storage_list = self.proxmox.nodes(node).storage.get()
             storage_info = {s["storage"]: s for s in storage_list}
-
-            if storage is None:
-                for preferred in ("local-lvm", "vm-storage"):
-                    for s in storage_list:
-                        if s["storage"] == preferred and "rootdir" in s.get("content", ""):
-                            storage = s["storage"]
-                            break
-                    if storage:
-                        break
-                if storage is None:
-                    for s in storage_list:
-                        if "rootdir" in s.get("content", ""):
-                            storage = s["storage"]
-                            break
-                if storage is None:
-                    raise ValueError("No suitable storage found for LXC rootfs (rootdir)")
-
-            if storage not in storage_info:
-                raise ValueError(f"Storage '{storage}' not found on node {node}")
-            if "rootdir" not in storage_info[storage].get("content", ""):
-                raise ValueError(f"Storage '{storage}' does not support LXC rootfs (rootdir)")
+            storage = pick_storage(
+                storage_list,
+                content="rootdir",
+                preferred=["local-lvm", "vm-storage"],
+                explicit=storage,
+            )
 
             if not ostemplate:
                 ostemplate = self._resolve_ostemplate(node, ostemplate_filter)
 
             if features is None:
-                features = "nesting=1"
+                features = DEFAULT_LXC_FEATURES
 
-            bridge = bridge or "vmbr0"
+            from .helpers import DEFAULT_BRIDGE
+
+            bridge = bridge or DEFAULT_BRIDGE
             ip_val = ip or "dhcp"
             if net0:
                 net0_value = net0

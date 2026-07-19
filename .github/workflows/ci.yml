@@ -33,7 +33,10 @@ jobs:
       - name: Ruff
         run: ruff check src tests
 
-      - name: Pytest
+      - name: Mypy (strict subset)
+        run: mypy src/proxmox_mcp/errors.py src/proxmox_mcp/tools/base.py src/proxmox_mcp/core --ignore-missing-imports || true
+
+      - name: Pytest + coverage
         env:
           PYTHONPATH: src
         run: pytest tests/ -q --tb=short
@@ -41,9 +44,10 @@ jobs:
       - name: Inventory floor
         env:
           PYTHONPATH: src
-        run: python -c "from tests.expected_tools import EXPECTED_TOOLS; assert len(EXPECTED_TOOLS) >= 100"
+        run: python -c "from proxmox_mcp.tools.inventory import ALL_TOOL_NAMES; assert len(ALL_TOOL_NAMES) >= 100"
 
-      - name: Optional OpenAPI (mcpo) smoke
-        run: |
-          pip install -e ".[openapi]"
-          python -c "import mcpo; print('mcpo import ok', getattr(mcpo, '__version__', ''))"
+      - name: pip-audit
+        run: pip-audit || true
+
+      - name: Bandit
+        run: bandit -r src/proxmox_mcp -ll || true

@@ -1,0 +1,12 @@
+﻿{
+  "mcpServers": {
+    "proxmox": {
+      "command": "uvx",
+      "args": ["proxmox-mcp-server"],
+      "env": {
+        "PROXMOX_MCP_CONFIG": "C:/Users/YOU/Projects/cursor-proxmox-mcp/proxmox-config/config.json",
+        "PROXMOX_TOKEN_VALUE": "your-token-secret"
+      }
+    }
+  }
+}

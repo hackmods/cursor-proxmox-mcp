@@ -44,6 +44,7 @@ class ProxmoxConfig(BaseModel):
     host: str  # Required: Proxmox host address
     port: int = 8006  # Optional: API port (default: 8006)
     verify_ssl: bool = True  # Optional: SSL verification (default: True)
+    ca_cert_path: Optional[str] = None  # Optional: path to CA bundle when verify_ssl is True
     service: str = "PVE"  # Optional: Service type (default: PVE)
 
 class AuthConfig(BaseModel):

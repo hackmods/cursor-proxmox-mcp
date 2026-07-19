@@ -7,7 +7,7 @@ from .theme import ProxmoxTheme
 
 class ProxmoxTemplates:
     """Output templates for different Proxmox resource types."""
-    
+
     @staticmethod
     def node_list(nodes: List[Dict[str, Any]]) -> str:
         """Template for node list output.
@@ -19,17 +19,17 @@ class ProxmoxTemplates:
             Formatted node list string
         """
         result = [f"{ProxmoxTheme.RESOURCES['node']} Proxmox Nodes"]
-        
+
         for node in nodes:
             # Get node status
             status = node.get("status", "unknown")
-            
+
             # Get memory info
             memory = node.get("memory", {})
             memory_used = memory.get("used", 0)
             memory_total = memory.get("total", 0)
             memory_percent = (memory_used / memory_total * 100) if memory_total > 0 else 0
-            
+
             # Format node info
             result.extend([
                 "",  # Empty line between nodes
@@ -40,7 +40,7 @@ class ProxmoxTemplates:
                 f"  • Memory: {ProxmoxFormatters.format_bytes(memory_used)} / "
                 f"{ProxmoxFormatters.format_bytes(memory_total)} ({memory_percent:.1f}%)"
             ])
-            
+
             # Add disk usage if available
             disk = node.get("disk", {})
             if disk:
@@ -51,9 +51,9 @@ class ProxmoxTemplates:
                     f"  • Disk: {ProxmoxFormatters.format_bytes(disk_used)} / "
                     f"{ProxmoxFormatters.format_bytes(disk_total)} ({disk_percent:.1f}%)"
                 )
-            
+
         return "\n".join(result)
-    
+
     @staticmethod
     def node_status(node: str, status: Dict[str, Any]) -> str:
         """Template for detailed node status output.
@@ -69,7 +69,7 @@ class ProxmoxTemplates:
         memory_used = memory.get("used", 0)
         memory_total = memory.get("total", 0)
         memory_percent = (memory_used / memory_total * 100) if memory_total > 0 else 0
-        
+
         result = [
             f"{ProxmoxTheme.RESOURCES['node']} Node: {node}",
             f"  • Status: {status.get('status', 'unknown').upper()}",
@@ -78,7 +78,7 @@ class ProxmoxTemplates:
             f"  • Memory: {ProxmoxFormatters.format_bytes(memory_used)} / "
             f"{ProxmoxFormatters.format_bytes(memory_total)} ({memory_percent:.1f}%)"
         ]
-        
+
         # Add disk usage if available
         disk = status.get("disk", {})
         if disk:
@@ -89,9 +89,9 @@ class ProxmoxTemplates:
                 f"  • Disk: {ProxmoxFormatters.format_bytes(disk_used)} / "
                 f"{ProxmoxFormatters.format_bytes(disk_total)} ({disk_percent:.1f}%)"
             )
-        
+
         return "\n".join(result)
-    
+
     @staticmethod
     def vm_list(vms: List[Dict[str, Any]]) -> str:
         """Template for VM list output.
@@ -103,13 +103,13 @@ class ProxmoxTemplates:
             Formatted VM list string
         """
         result = [f"{ProxmoxTheme.RESOURCES['vm']} Virtual Machines"]
-        
+
         for vm in vms:
             memory = vm.get("memory", {})
             memory_used = memory.get("used", 0)
             memory_total = memory.get("total", 0)
             memory_percent = (memory_used / memory_total * 100) if memory_total > 0 else 0
-            
+
             result.extend([
                 "",  # Empty line between VMs
                 f"{ProxmoxTheme.RESOURCES['vm']} {vm['name']} (ID: {vm['vmid']})",
@@ -119,9 +119,9 @@ class ProxmoxTemplates:
                 f"  • Memory: {ProxmoxFormatters.format_bytes(memory_used)} / "
                 f"{ProxmoxFormatters.format_bytes(memory_total)} ({memory_percent:.1f}%)"
             ])
-            
+
         return "\n".join(result)
-    
+
     @staticmethod
     def storage_list(storage: List[Dict[str, Any]]) -> str:
         """Template for storage list output.
@@ -133,12 +133,12 @@ class ProxmoxTemplates:
             Formatted storage list string
         """
         result = [f"{ProxmoxTheme.RESOURCES['storage']} Storage Pools"]
-        
+
         for store in storage:
             used = store.get("used", 0)
             total = store.get("total", 0)
             percent = (used / total * 100) if total > 0 else 0
-            
+
             result.extend([
                 "",  # Empty line between storage pools
                 f"{ProxmoxTheme.RESOURCES['storage']} {store['storage']}",
@@ -147,9 +147,9 @@ class ProxmoxTemplates:
                 f"  • Usage: {ProxmoxFormatters.format_bytes(used)} / "
                 f"{ProxmoxFormatters.format_bytes(total)} ({percent:.1f}%)"
             ])
-            
+
         return "\n".join(result)
-    
+
     @staticmethod
     def container_list(containers: List[Dict[str, Any]]) -> str:
         """Template for container list output.
@@ -162,15 +162,15 @@ class ProxmoxTemplates:
         """
         if not containers:
             return f"{ProxmoxTheme.RESOURCES['container']} No containers found"
-            
+
         result = [f"{ProxmoxTheme.RESOURCES['container']} Containers"]
-        
+
         for container in containers:
             memory = container.get("memory", {})
             memory_used = memory.get("used", 0)
             memory_total = memory.get("total", 0)
             memory_percent = (memory_used / memory_total * 100) if memory_total > 0 else 0
-            
+
             result.extend([
                 "",  # Empty line between containers
                 f"{ProxmoxTheme.RESOURCES['container']} {container['name']} (ID: {container['vmid']})",
@@ -180,7 +180,7 @@ class ProxmoxTemplates:
                 f"  • Memory: {ProxmoxFormatters.format_bytes(memory_used)} / "
                 f"{ProxmoxFormatters.format_bytes(memory_total)} ({memory_percent:.1f}%)"
             ])
-            
+
         return "\n".join(result)
 
     @staticmethod
@@ -194,7 +194,7 @@ class ProxmoxTemplates:
             Formatted cluster status string
         """
         result = [f"{ProxmoxTheme.SECTIONS['configuration']} Proxmox Cluster"]
-        
+
         # Basic cluster info
         result.extend([
             "",
@@ -202,10 +202,10 @@ class ProxmoxTemplates:
             f"  • Quorum: {'OK' if status.get('quorum') else 'NOT OK'}",
             f"  • Nodes: {status.get('nodes', 0)}",
         ])
-        
+
         # Add resource count if available
         resources = status.get('resources', [])
         if resources:
             result.append(f"  • Resources: {len(resources)}")
-        
+
         return "\n".join(result)

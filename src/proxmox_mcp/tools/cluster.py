@@ -64,7 +64,7 @@ class ClusterTools(ProxmoxTool):
         """
         try:
             result = self.proxmox.cluster.status.get()
-        
+
             first_item = result[0] if result and len(result) > 0 else {}
             status = {
                 "name": first_item.get("name") if first_item else None,

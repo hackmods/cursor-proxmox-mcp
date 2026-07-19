@@ -9,9 +9,9 @@ from .templates import ProxmoxTemplates
 from .components import ProxmoxComponents
 
 __all__ = [
-    'ProxmoxTheme',
     'ProxmoxColors',
+    'ProxmoxComponents',
     'ProxmoxFormatters',
     'ProxmoxTemplates',
-    'ProxmoxComponents'
+    'ProxmoxTheme'
 ]
