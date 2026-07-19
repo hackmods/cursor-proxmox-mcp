@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Notes
 
-- Phase C remains deferred (D26). Add PyPI Trusted Publisher for `release.yml` + env `pypi` if tag-push PyPI still fails (see PUBLISHING.md).
+- Phase C remains deferred (D26). PyPI Trusted Publishers for both `release.yml` and `publish.yml` (+ env `pypi`) are registered.
 
 ## [1.4.0] - 2026-07-19
 

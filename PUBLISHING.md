@@ -6,39 +6,30 @@ How to ship `cursor-proxmox-mcp` to PyPI, GHCR, the official MCP Registry, and G
 
 `proxmox-mcp-server` on PyPI is a **different** project. This repo publishes as **`cursor-proxmox-mcp`**.
 
-### Status (v1.4.0)
+### Status (v1.4.0+)
 
 | Workflow | Environment | Trusted Publisher | Notes |
 |----------|-------------|-------------------|--------|
-| `publish.yml` | `pypi` | **Registered** (works) | Manual / retry path |
-| `release.yml` | `pypi` | **Add if missing** | Tag-push primary path; `invalid-publisher` without this row |
+| `publish.yml` | `pypi` | **Registered** | Manual / retry path |
+| `release.yml` | `pypi` | **Registered** (2026-07-19) | Tag-push primary path |
 
 GitHub environment `pypi` already exists on `hackmods/cursor-proxmox-mcp`.
 
 ### One-time: register trusted publishers
 
-1. Open [PyPI publishing](https://pypi.org/manage/account/publishing/) while logged in as the owner of `cursor-proxmox-mcp` (or project → **Publishing**).
-2. Ensure **two** GitHub publishers exist with these claims:
+Both GitHub publishers for `cursor-proxmox-mcp` should exist with these claims (already configured):
 
-| Field | Value |
-|-------|--------|
-| PyPI project name | `cursor-proxmox-mcp` |
-| Owner | `hackmods` |
-| Repository | `cursor-proxmox-mcp` |
-| Workflow name | **`release.yml`** (required for tag uploads) |
-| Environment name | **`pypi`** |
+| Field | `release.yml` | `publish.yml` |
+|-------|---------------|---------------|
+| PyPI project name | `cursor-proxmox-mcp` | `cursor-proxmox-mcp` |
+| Owner | `hackmods` | `hackmods` |
+| Repository | `cursor-proxmox-mcp` | `cursor-proxmox-mcp` |
+| Workflow name | **`release.yml`** | **`publish.yml`** |
+| Environment name | **`pypi`** | **`pypi`** |
 
-| Field | Value |
-|-------|--------|
-| PyPI project name | `cursor-proxmox-mcp` |
-| Owner | `hackmods` |
-| Repository | `cursor-proxmox-mcp` |
-| Workflow name | **`publish.yml`** (manual retry) |
-| Environment name | **`pypi`** |
+Manage at [PyPI publishing](https://pypi.org/manage/account/publishing/). If a future tag hits `invalid-publisher`, re-check the row for that workflow filename + environment `pypi`. GHCR + GitHub Release still ship when the PyPI step uses `continue-on-error`.
 
-If tag-push `release.yml` fails with `invalid-publisher` while `publish.yml` succeeds, only the `release.yml` publisher is missing — add that row. GHCR + GitHub Release still ship (`continue-on-error` on the PyPI step).
-
-**Debug claims from a failed `release.yml` OIDC exchange (v1.4.0):**
+**Historical debug claims from a failed `release.yml` OIDC exchange (v1.4.0 before the publisher was added):**
 
 | Claim | Expected |
 |-------|----------|

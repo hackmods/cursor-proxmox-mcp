@@ -113,12 +113,11 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 ## Suggested next work
 
 ```text
-1. ~~Tag v1.4.0 → release.yml (GHCR + GitHub Release)~~ done; PyPI via publish.yml
+1. ~~Tag v1.4.0 → release.yml (GHCR + GitHub Release + PyPI)~~ done; Trusted Publishers for release.yml + publish.yml registered
 2. ~~Official MCP registry~~ done for v1.4.0
 3. ~~Community draft tooling~~ `.\scripts\post-community.ps1` / `./scripts/post-community.sh` (see docs/community/README.md)
-4. Register PyPI Trusted Publisher for workflow `release.yml` + env `pypi` (publish.yml already works) — see PUBLISHING.md
-5. Post drafts when ready: `.\scripts\post-community.ps1 -Channel cursor-forum -Open` (manual paste)
-6. Phase C (SDN/ACME/Ceph/…) stays deferred (D26) until a real use case
+4. Post drafts when ready: `.\scripts\post-community.ps1 -Channel cursor-forum -Open` (manual paste)
+5. Phase C (SDN/ACME/Ceph/…) stays deferred (D26) until a real use case
 ```
 
 When shipping any new tool: update this file’s status, coverage matrix, changelog-notes, README, and `expected_tools.py` in the same change (api-coverage + keep-docs-aligned rules).
