@@ -21,6 +21,16 @@ How to ship `cursor-proxmox-mcp` to PyPI, GHCR, the official MCP Registry, and G
 
 If tag-push `release.yml` fails with `invalid-publisher` while `publish.yml` succeeds, the Trusted Publisher is missing for `release.yml` — add/update that entry. PyPI can still ship via Actions → **Publish to PyPI** → Run workflow. GHCR continues from `release.yml` even when the PyPI step fails (`continue-on-error`).
 
+**Debug claims from a failed `release.yml` OIDC exchange (v1.4.0):** configure the publisher so these match:
+
+| Claim | Expected |
+|-------|----------|
+| Owner | `hackmods` |
+| Repository | `cursor-proxmox-mcp` |
+| Workflow name | `release.yml` (and separately `publish.yml`) |
+| Environment | `pypi` |
+| `workflow_ref` (example) | `hackmods/cursor-proxmox-mcp/.github/workflows/release.yml@refs/tags/v1.4.0` |
+
 3. In GitHub → **Settings → Environments → `pypi`**, create the environment (no secrets needed for OIDC).
 
 ### Publish a version
