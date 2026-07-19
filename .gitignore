@@ -57,6 +57,9 @@ coverage.xml
 # UV
 .uv/
 
+# MCP publisher CLI (downloaded locally)
+mcp-publisher
+mcp-publisher.exe
 
 # Local configuration
 config/config.json
