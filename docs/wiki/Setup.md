@@ -68,6 +68,7 @@ Full checklist: [SETUP.md — SSH for LXC exec](https://github.com/hackmods/curs
 
 ## Next
 
+- [Example prompts](Example-prompts) — copy-paste starters + DevOps  
 - [Tools](Tools) — full inventory  
 - [Recipes](Recipes) — create / Docker / ACL playbooks  
 - [Troubleshooting](Troubleshooting)

@@ -2,6 +2,7 @@
 
 - [Home](Home)
 - [Setup](Setup)
+- [Example prompts](Example-prompts)
 - [Tools](Tools)
 - [Recipes](Recipes)
 - [Troubleshooting](Troubleshooting)

@@ -15,6 +15,7 @@ Covers QEMU VMs, LXC, unified guest power, storage, cluster/tasks, snapshots, ba
 | Page | What it’s for |
 |------|----------------|
 | [Setup](Setup) | Cursor `mcp.json`, auth/privsep, host SSH for `pct`, reload checklist |
+| [Example prompts](Example-prompts) | Copy-paste starters + DevOps prompts for Cursor workflows |
 | [Tools](Tools) | **Every** registered tool with description (generated from inventory) |
 | [Recipes](Recipes) | Agent playbooks (create → wait → start, Docker-in-LXC, VM ISO, ACL smoke) |
 | [Troubleshooting](Troubleshooting) | Symptom → fix table |

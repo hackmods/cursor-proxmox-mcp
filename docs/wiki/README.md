@@ -8,6 +8,7 @@ https://github.com/hackmods/cursor-proxmox-mcp/wiki
 |------|-----------|
 | `Home.md` | Home |
 | `Setup.md` | Setup |
+| `Example-prompts.md` | Example prompts |
 | `Tools.md` | Tools (full inventory; generated section) |
 | `Recipes.md` | Recipes |
 | `Troubleshooting.md` | Troubleshooting |

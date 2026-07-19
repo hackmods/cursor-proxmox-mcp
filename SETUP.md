@@ -419,7 +419,7 @@ Cursor caches the MCP process and tool list. After pulling new tools:
 
 ## 5. Try it — example prompts
 
-Once the green MCP indicator is on, ask in chat. Examples that map well to this server’s tools:
+Once the green MCP indicator is on, ask in chat. Wiki copy-paste starters (including DevOps prompts): [Example prompts](https://github.com/hackmods/cursor-proxmox-mcp/wiki/Example-prompts). Examples that map well to this server’s tools:
 
 ### Cluster health / discovery
 
