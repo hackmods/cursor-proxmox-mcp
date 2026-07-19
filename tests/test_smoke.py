@@ -43,11 +43,14 @@ def test_all_tool_modules_import():
 
 def test_console_script_entrypoints_registered():
     """Verify pyproject declares console scripts; soft-check installed eps."""
-    import tomllib
+    import re
     from pathlib import Path
 
-    data = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
-    scripts = data["project"]["scripts"]
+    text = Path("pyproject.toml").read_text(encoding="utf-8")
+    # Avoid tomllib (3.11+) / tomli so CI works on 3.10 without extra deps
+    block = re.search(r"\[project\.scripts\]\s*(.*?)(?:\n\[|\Z)", text, re.S)
+    assert block, "missing [project.scripts] in pyproject.toml"
+    scripts = dict(re.findall(r'^([A-Za-z0-9_-]+)\s*=\s*"([^"]+)"', block.group(1), re.M))
     assert "cursor-proxmox-mcp" in scripts
     assert "proxmox-mcp" in scripts
     assert "proxmox-mcp-server" in scripts

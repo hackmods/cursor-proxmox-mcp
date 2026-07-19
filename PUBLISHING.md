@@ -16,7 +16,7 @@ How to ship `cursor-proxmox-mcp` to PyPI, GHCR, the official MCP Registry, and G
 | PyPI project name | `cursor-proxmox-mcp` |
 | Owner | `hackmods` |
 | Repository | `cursor-proxmox-mcp` |
-| Workflow name | `publish.yml` |
+| Workflow name | `release.yml` (and optionally also `publish.yml` for retries) |
 | Environment name | `pypi` |
 
 3. In GitHub → **Settings → Environments → `pypi`**, create the environment (no secrets needed for OIDC).
@@ -26,10 +26,9 @@ How to ship `cursor-proxmox-mcp` to PyPI, GHCR, the official MCP Registry, and G
 1. Bump `version` in `pyproject.toml` and `server.json`.
 2. Update `CHANGELOG.md`.
 3. Tag and push: `git tag v1.0.1 && git push origin v1.0.1`.
-4. `release.yml` builds the wheel, pushes GHCR, and creates/updates the GitHub Release.
-5. Publishing the Release triggers `publish.yml` → PyPI upload.
+4. `release.yml` (with `environment: pypi`) builds the wheel, uploads to PyPI, pushes GHCR, and creates the GitHub Release.
 
-Manual retry: Actions → **Publish to PyPI** → **Run workflow**.
+> **Gotcha:** GitHub does not re-trigger `release: published` workflows when the Release is created by `GITHUB_TOKEN` inside Actions. That is why PyPI publish lives in `release.yml`, not only in `publish.yml`.
 
 Verify:
 

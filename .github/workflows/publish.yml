@@ -5,13 +5,14 @@ name: Publish to PyPI
 #   PyPI project name:  cursor-proxmox-mcp
 #   Owner:              hackmods
 #   Repository:         cursor-proxmox-mcp
-#   Workflow:           publish.yml
+#   Workflow name:      release.yml   (primary; tag push)
+#   Also register:      publish.yml   (manual retry / release-created-via-gh)
 #   Environment name:   pypi
 #
-# After Trusted Publishing is configured, publishing a GitHub Release (or
-# re-running this workflow) uploads the package. Then:
-#   uvx cursor-proxmox-mcp
-
+# Tag pushes run release.yml (PyPI + GHCR + GitHub Release).
+# workflow_dispatch here is for re-upload without retagging.
+# `release: published` only fires when the Release is created outside
+# Actions (e.g. `gh release create`), not by softprops + GITHUB_TOKEN.
 on:
   release:
     types: [published]
