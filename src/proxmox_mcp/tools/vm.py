@@ -11,7 +11,8 @@ This module provides tools for managing and interacting with Proxmox VMs:
 - Handling VM console operations
 - VM power management (start, stop, shutdown, reset)
 - VM creation with customizable specifications
-- LXC container creation with features support (e.g. nesting)
+
+LXC container lifecycle lives in container.ContainerTools.
 
 The tools implement fallback mechanisms for scenarios where
 detailed VM information might be temporarily unavailable.
@@ -23,7 +24,7 @@ from .definitions import GET_VMS_DESC, EXECUTE_VM_COMMAND_DESC
 from .console.manager import VMConsoleManager
 
 class VMTools(ProxmoxTool):
-    """Tools for managing Proxmox VMs.
+    """Tools for managing Proxmox QEMU VMs.
     
     Provides functionality for:
     - Retrieving cluster-wide VM information
@@ -32,7 +33,6 @@ class VMTools(ProxmoxTool):
     - Managing VM console operations
     - VM power management (start, stop, shutdown, reset)
     - VM creation with customizable specifications
-    - LXC container creation with features support (e.g. nesting)
     
     Implements fallback mechanisms for scenarios where detailed
     VM information might be temporarily unavailable. Integrates
@@ -260,136 +260,6 @@ class VMTools(ProxmoxTool):
             raise e
         except Exception as e:
             self._handle_error(f"create VM {vmid}", e)
-
-    def create_lxc(self, node: str, vmid: str, hostname: str, ostemplate: str,
-                   cpus: int, memory: int, disk_size: int,
-                   storage: Optional[str] = None, features: Optional[str] = None,
-                   password: Optional[str] = None,
-                   unprivileged: bool = True) -> List[Content]:
-        """Create a new LXC container with specified configuration.
-        
-        Args:
-            node: Host node name (e.g., 'pve')
-            vmid: New container ID number (e.g., '200')
-            hostname: Container hostname (e.g., 'my-lxc')
-            ostemplate: OS template path (e.g., 'local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst')
-            cpus: Number of CPU cores (e.g., 1, 2, 4)
-            memory: Memory size in MB (e.g., 2048 for 2GB)
-            disk_size: Root filesystem size in GB (e.g., 8, 10, 20)
-            storage: Storage name for rootfs (e.g., 'local-lvm'). If None, will auto-detect
-            features: Container features string (e.g., 'nesting=1', 'nesting=1,keyctl=1').
-                      Default: 'nesting=1'
-            password: Root password for the container. Optional.
-            unprivileged: Whether to create an unprivileged container. Default: True
-            
-        Returns:
-            List of Content objects containing creation result
-            
-        Raises:
-            ValueError: If container ID already exists or invalid parameters
-            RuntimeError: If container creation fails
-        """
-        try:
-            # Check if container ID already exists (LXC or QEMU)
-            try:
-                existing_lxc = self.proxmox.nodes(node).lxc(vmid).config.get()
-                raise ValueError(f"LXC container {vmid} already exists on node {node}")
-            except Exception as e:
-                if "does not exist" not in str(e).lower():
-                    raise e
-
-            try:
-                existing_vm = self.proxmox.nodes(node).qemu(vmid).config.get()
-                raise ValueError(f"VM ID {vmid} is already used by a QEMU VM on node {node}")
-            except Exception as e:
-                if "does not exist" not in str(e).lower():
-                    raise e
-            
-            # Get storage information
-            storage_list = self.proxmox.nodes(node).storage.get()
-            storage_info = {}
-            for s in storage_list:
-                storage_info[s["storage"]] = s
-            
-            # Auto-detect storage if not specified (LXC rootfs needs rootdir content type)
-            if storage is None:
-                for s in storage_list:
-                    if s["storage"] == "local-lvm" and "rootdir" in s.get("content", ""):
-                        storage = s["storage"]
-                        break
-                if storage is None:
-                    for s in storage_list:
-                        if s["storage"] == "vm-storage" and "rootdir" in s.get("content", ""):
-                            storage = s["storage"]
-                            break
-                if storage is None:
-                    for s in storage_list:
-                        if "rootdir" in s.get("content", ""):
-                            storage = s["storage"]
-                            break
-                    if storage is None:
-                        raise ValueError("No suitable storage found for LXC rootfs (rootdir)")
-            
-            # Validate storage exists and supports container rootfs
-            if storage not in storage_info:
-                raise ValueError(f"Storage '{storage}' not found on node {node}")
-            
-            if "rootdir" not in storage_info[storage].get("content", ""):
-                raise ValueError(f"Storage '{storage}' does not support LXC rootfs (rootdir)")
-            
-            storage_type = storage_info[storage]["type"]
-            
-            # Default features enable nesting (needed for Docker-in-LXC, systemd isolation, etc.)
-            if features is None:
-                features = "nesting=1"
-            
-            # Prepare LXC configuration for POST /nodes/{node}/lxc
-            lxc_config = {
-                "vmid": vmid,
-                "hostname": hostname,
-                "ostemplate": ostemplate,
-                "cores": cpus,
-                "memory": memory,
-                "rootfs": f"{storage}:{disk_size}",
-                "net0": "name=eth0,bridge=vmbr0,ip=dhcp",
-                "features": features,
-                "unprivileged": 1 if unprivileged else 0,
-            }
-            
-            if password is not None:
-                lxc_config["password"] = password
-            
-            # Create the LXC container
-            task_result = self.proxmox.nodes(node).lxc.create(**lxc_config)
-            
-            result_text = f"""🎉 LXC container {vmid} created successfully!
-
-📋 Container Configuration:
-  • Hostname: {hostname}
-  • Node: {node}
-  • Container ID: {vmid}
-  • CPU Cores: {cpus}
-  • Memory: {memory} MB ({memory/1024:.1f} GB)
-  • Rootfs: {disk_size} GB ({storage})
-  • Storage Type: {storage_type}
-  • OS Template: {ostemplate}
-  • Features: {features}
-  • Unprivileged: {unprivileged}
-  • Network: eth0 (bridge=vmbr0, dhcp)
-
-🔧 Task ID: {task_result}
-
-💡 Next steps:
-  1. Start the container using the Proxmox UI or pct start
-  2. Enter the container console to finish setup
-  3. Adjust networking or mount points as needed"""
-            
-            return [Content(type="text", text=result_text)]
-            
-        except ValueError as e:
-            raise e
-        except Exception as e:
-            self._handle_error(f"create LXC {vmid}", e)
 
     def start_vm(self, node: str, vmid: str) -> List[Content]:
         """Start a virtual machine.

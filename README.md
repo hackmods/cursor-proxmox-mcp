@@ -10,21 +10,23 @@ Cursor-focused Python MCP server for [Proxmox](https://www.proxmox.com/) — man
 |------|---------|
 | `get_nodes` | List cluster nodes |
 | `get_node_status` | Detailed status for one node |
-| `get_vms` | List VMs across the cluster |
+| `get_vms` | List QEMU VMs across the cluster |
 | `create_vm` | Create a QEMU VM |
+| `get_containers` | List LXC containers across the cluster |
 | `create_lxc` | Create an LXC container (`features` defaults to `nesting=1`) |
+| `start_lxc` / `stop_lxc` / `shutdown_lxc` / `reboot_lxc` | LXC power control |
+| `delete_lxc` | Delete an LXC container (optional force) |
+| `update_lxc_features` | Set LXC features (nesting/keyctl/fuse) after create |
 | `execute_vm_command` | Run a command via QEMU guest agent |
 | `start_vm` / `stop_vm` / `shutdown_vm` / `reset_vm` | VM power control |
 | `delete_vm` | Delete a VM (optional force) |
 | `get_storage` | List storage pools |
 | `get_cluster_status` | Cluster health / status |
 
-`get_containers` is planned but not registered yet.
-
 ## What's in this fork
 
 - VM lifecycle: `create_vm`, power controls, `delete_vm`, storage auto-detect
-- LXC creation: `create_lxc` via `POST /nodes/{node}/lxc`, with `features` (e.g. `nesting=1,keyctl=1`)
+- LXC lifecycle: `create_lxc`, `get_containers`, power controls, `delete_lxc`, `update_lxc_features`
 - Windows-friendly launch: prefer Cursor `mcp.json` → Python directly; `start.bat` is a manual fallback (no stdout noise)
 - OpenAPI/Open WebUI via `mcpo` (optional)
 - Tests fixed so they complete
@@ -42,7 +44,7 @@ Maintained for personal Proxmox + Cursor use; updates land here as needed.
 
 - Token auth to Proxmox
 - QEMU VM create / power / delete / guest-agent commands
-- LXC create with nesting and related features
+- LXC create / list / power / delete / feature updates (Docker-in-LXC friendly)
 - Storage type detection (LVM vs file-based)
 - Typed config, logging, formatted tool output
 - Optional OpenAPI REST proxy for Open WebUI
@@ -371,11 +373,60 @@ POST /delete_vm
 
 ### Container Management Tools
 
+#### get_containers
+List all LXC containers across the cluster (status, node, CPU, memory).
+
+**API Endpoint:** `POST /get_containers`
+
 #### create_lxc
 See full parameter docs above. Creates via Proxmox `POST /nodes/{node}/lxc` (proxmoxer).
 
-#### get_containers (planned)
-Not registered in `server.py` yet. When added, it will list LXC containers across the cluster.
+#### LXC Power Management
+
+Use these for containers — `start_vm` / etc. only target QEMU VMs.
+
+**start_lxc**: Start an LXC container
+```http
+POST /start_lxc
+{"node": "pve", "vmid": "121"}
+```
+
+**stop_lxc**: Force stop an LXC container
+```http
+POST /stop_lxc
+{"node": "pve", "vmid": "121"}
+```
+
+**shutdown_lxc**: Gracefully shut down an LXC container
+```http
+POST /shutdown_lxc
+{"node": "pve", "vmid": "121"}
+```
+
+**reboot_lxc**: Reboot an LXC container (counterpart to `reset_vm`; uses Proxmox `status/reboot`)
+```http
+POST /reboot_lxc
+{"node": "pve", "vmid": "121"}
+```
+
+**delete_lxc**: Permanently delete an LXC container
+```http
+POST /delete_lxc
+{"node": "pve", "vmid": "120", "force": false}
+```
+
+#### update_lxc_features
+Update LXC feature flags after create (e.g. add `keyctl` for Docker-in-LXC).
+
+**Parameters:**
+- `node` (string, required)
+- `vmid` (string, required)
+- `features` (string, required): e.g. `nesting=1,keyctl=1` or `nesting=1,keyctl=1,fuse=1`
+
+**Docker-in-LXC notes:**
+- Typical features: `nesting=1,keyctl=1` (optional `fuse=1`)
+- Proxmox often allows only `root@pam` to set features beyond `nesting` — API tokens may get 403 on `keyctl`
+- Suggested flow: `create_lxc` → `update_lxc_features` (if needed) → `start_lxc` → `get_containers`
 
 ### Monitoring Tools
 
@@ -622,7 +673,7 @@ docker logs proxmox-mcp-api -f
 
 - [x] `create_vm` / power tools / `delete_vm`
 - [x] `create_lxc` with nesting/features
-- [ ] `get_containers` registration
+- [x] `get_containers` + LXC power / `delete_lxc` / `update_lxc_features`
 - [x] LVM / file storage handling
 - [x] Optional OpenAPI (`mcpo`, port 8811)
 

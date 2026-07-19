@@ -125,7 +125,78 @@ Delete test VM with ID 998 on node pve"""
 GET_CONTAINERS_DESC = """List all LXC containers across the cluster with their status and configuration.
 
 Example:
-{"vmid": "200", "name": "nginx", "status": "running", "template": "ubuntu-20.04"}"""
+{"vmid": "200", "name": "nginx", "status": "running", "cpus": 2, "memory": {"used": 268435456, "total": 2147483648}}"""
+
+START_LXC_DESC = """Start an LXC container.
+
+Parameters:
+node* - Host node name (e.g. 'pve')
+vmid* - Container ID number (e.g. '121')
+
+Example:
+Start container 121 on node pve"""
+
+STOP_LXC_DESC = """Stop an LXC container (force stop).
+
+Parameters:
+node* - Host node name (e.g. 'pve')
+vmid* - Container ID number (e.g. '121')
+
+Example:
+Force stop container 121 on node pve"""
+
+SHUTDOWN_LXC_DESC = """Shutdown an LXC container gracefully.
+
+Parameters:
+node* - Host node name (e.g. 'pve')
+vmid* - Container ID number (e.g. '121')
+
+Example:
+Gracefully shutdown container 121 on node pve"""
+
+REBOOT_LXC_DESC = """Reboot an LXC container (LXC counterpart to reset_vm).
+
+Uses POST /nodes/{node}/lxc/{vmid}/status/reboot — applies pending config changes.
+
+Parameters:
+node* - Host node name (e.g. 'pve')
+vmid* - Container ID number (e.g. '121')
+
+Example:
+Reboot container 121 on node pve"""
+
+DELETE_LXC_DESC = """Delete/remove an LXC container completely.
+
+⚠️ WARNING: This operation permanently deletes the container and its rootfs!
+
+Parameters:
+node* - Host node name (e.g. 'pve')
+vmid* - Container ID number (e.g. '120')
+force - Force deletion even if container is running (optional, default: false)
+
+This will permanently remove:
+- Container configuration
+- Root filesystem
+- All snapshots
+- Cannot be undone!
+
+Example:
+Delete unused container 120 on node pve"""
+
+UPDATE_LXC_FEATURES_DESC = """Update LXC feature flags (nesting, keyctl, fuse, etc.).
+
+Needed for Docker-in-LXC when features were not set at create time, or to add keyctl after create.
+
+Parameters:
+node* - Host node name (e.g. 'pve')
+vmid* - Container ID number (e.g. '121')
+features* - Features string (e.g. 'nesting=1,keyctl=1' or 'nesting=1,keyctl=1,fuse=1')
+
+Note: Proxmox typically allows only root@pam to set features beyond nesting (e.g. keyctl).
+API tokens may get 403 when setting keyctl/fuse.
+
+Example:
+node='pve', vmid='121', features='nesting=1,keyctl=1'"""
 
 # Storage tool descriptions
 GET_STORAGE_DESC = """List storage pools across the cluster with their usage and configuration.

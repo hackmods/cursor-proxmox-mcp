@@ -30,6 +30,7 @@ from .core.logging import setup_logging
 from .core.proxmox import ProxmoxManager
 from .tools.node import NodeTools
 from .tools.vm import VMTools
+from .tools.container import ContainerTools
 from .tools.storage import StorageTools
 from .tools.cluster import ClusterTools
 from .tools.definitions import (
@@ -45,6 +46,12 @@ from .tools.definitions import (
     RESET_VM_DESC,
     DELETE_VM_DESC,
     GET_CONTAINERS_DESC,
+    START_LXC_DESC,
+    STOP_LXC_DESC,
+    SHUTDOWN_LXC_DESC,
+    REBOOT_LXC_DESC,
+    DELETE_LXC_DESC,
+    UPDATE_LXC_FEATURES_DESC,
     GET_STORAGE_DESC,
     GET_CLUSTER_STATUS_DESC
 )
@@ -68,6 +75,7 @@ class ProxmoxMCPServer:
         # Initialize tools
         self.node_tools = NodeTools(self.proxmox)
         self.vm_tools = VMTools(self.proxmox)
+        self.container_tools = ContainerTools(self.proxmox)
         self.storage_tools = StorageTools(self.proxmox)
         self.cluster_tools = ClusterTools(self.proxmox)
         
@@ -81,6 +89,7 @@ class ProxmoxMCPServer:
         Initializes and registers all available tools with the MCP server:
         - Node management tools (list nodes, get status)
         - VM operation tools (list VMs, execute commands, power management)
+        - LXC container tools (list, create, power, delete, feature updates)
         - Storage management tools (list storage)
         - Cluster tools (get cluster status)
         
@@ -131,10 +140,14 @@ class ProxmoxMCPServer:
             password: Annotated[Optional[str], Field(description="Root password (optional)", default=None)] = None,
             unprivileged: Annotated[bool, Field(description="Create as unprivileged container (optional, default: true)", default=True)] = True
         ):
-            return self.vm_tools.create_lxc(
+            return self.container_tools.create_lxc(
                 node, vmid, hostname, ostemplate, cpus, memory, disk_size,
                 storage, features, password, unprivileged
             )
+
+        @self.mcp.tool(description=GET_CONTAINERS_DESC)
+        def get_containers():
+            return self.container_tools.get_containers()
 
         @self.mcp.tool(description=EXECUTE_VM_COMMAND_DESC)
         async def execute_vm_command(
@@ -180,6 +193,51 @@ class ProxmoxMCPServer:
             force: Annotated[bool, Field(description="Force deletion even if VM is running", default=False)] = False
         ):
             return self.vm_tools.delete_vm(node, vmid, force)
+
+        # LXC Power Management tools
+        @self.mcp.tool(description=START_LXC_DESC)
+        def start_lxc(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '121')")]
+        ):
+            return self.container_tools.start_lxc(node, vmid)
+
+        @self.mcp.tool(description=STOP_LXC_DESC)
+        def stop_lxc(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '121')")]
+        ):
+            return self.container_tools.stop_lxc(node, vmid)
+
+        @self.mcp.tool(description=SHUTDOWN_LXC_DESC)
+        def shutdown_lxc(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '121')")]
+        ):
+            return self.container_tools.shutdown_lxc(node, vmid)
+
+        @self.mcp.tool(description=REBOOT_LXC_DESC)
+        def reboot_lxc(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '121')")]
+        ):
+            return self.container_tools.reboot_lxc(node, vmid)
+
+        @self.mcp.tool(description=DELETE_LXC_DESC)
+        def delete_lxc(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '120')")],
+            force: Annotated[bool, Field(description="Force deletion even if container is running", default=False)] = False
+        ):
+            return self.container_tools.delete_lxc(node, vmid, force)
+
+        @self.mcp.tool(description=UPDATE_LXC_FEATURES_DESC)
+        def update_lxc_features(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve')")],
+            vmid: Annotated[str, Field(description="Container ID number (e.g. '121')")],
+            features: Annotated[str, Field(description="Features string (e.g. 'nesting=1,keyctl=1')")]
+        ):
+            return self.container_tools.update_lxc_features(node, vmid, features)
 
         # Storage tools
         @self.mcp.tool(description=GET_STORAGE_DESC)

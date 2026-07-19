@@ -73,9 +73,28 @@ def mock_proxmox():
         
         # Mock containers
         mock_instance.nodes.return_value.lxc.get.return_value = [
-            {"vmid": "200", "name": "container1", "status": "running"},
-            {"vmid": "201", "name": "container2", "status": "stopped"}
+            {"vmid": "200", "name": "container1", "status": "running", "mem": 0, "maxmem": 2147483648},
+            {"vmid": "201", "name": "container2", "status": "stopped", "mem": 0, "maxmem": 2147483648}
         ]
+        mock_instance.nodes.return_value.lxc.return_value.config.get.return_value = {
+            "hostname": "container1",
+            "cores": 2,
+            "features": "nesting=1",
+        }
+        mock_instance.nodes.return_value.lxc.return_value.status.current.get.return_value = {
+            "status": "stopped",
+            "name": "container1",
+        }
+        mock_instance.nodes.return_value.lxc.return_value.status.start.post.return_value = (
+            "UPID:node1:000:000:start:200:"
+        )
+        mock_instance.nodes.return_value.lxc.return_value.status.stop.post.return_value = (
+            "UPID:node1:000:000:stop:200:"
+        )
+        mock_instance.nodes.return_value.lxc.return_value.delete.return_value = (
+            "UPID:node1:000:000:vzdestroy:200:"
+        )
+        mock_instance.nodes.return_value.lxc.return_value.config.put.return_value = None
         
         # Mock storage with proper numeric values
         mock_instance.storage.get.return_value = [
@@ -117,7 +136,7 @@ def mock_proxmox():
 def server(mock_config, mock_proxmox):
     """Fixture to create a ProxmoxMCPServer instance."""
     with patch("proxmox_mcp.server.load_config", return_value=mock_config):
-    return ProxmoxMCPServer()
+        return ProxmoxMCPServer()
 
 def test_server_initialization(server, mock_proxmox):
     """Test server initialization with environment variables."""
@@ -138,6 +157,14 @@ async def test_list_tools(server):
     tool_names = [tool.name for tool in tools]
     assert "get_nodes" in tool_names
     assert "get_vms" in tool_names
+    assert "get_containers" in tool_names
+    assert "create_lxc" in tool_names
+    assert "start_lxc" in tool_names
+    assert "stop_lxc" in tool_names
+    assert "shutdown_lxc" in tool_names
+    assert "reboot_lxc" in tool_names
+    assert "delete_lxc" in tool_names
+    assert "update_lxc_features" in tool_names
     assert "get_storage" in tool_names
     assert "execute_vm_command" in tool_names
 
@@ -178,6 +205,67 @@ async def test_get_vms(server, mock_proxmox):
     assert "vm1" in response[0].text
     assert "vm2" in response[0].text
     assert "Virtual Machines" in response[0].text
+
+@pytest.mark.asyncio
+async def test_get_containers(server, mock_proxmox):
+    """Test get_containers tool."""
+    response = await server.mcp.call_tool("get_containers", {})
+
+    assert len(response) == 1
+    assert response[0].type == "text"
+    assert "container1" in response[0].text
+    assert "Containers" in response[0].text
+
+@pytest.mark.asyncio
+async def test_start_lxc(server, mock_proxmox):
+    """Test start_lxc tool."""
+    response = await server.mcp.call_tool("start_lxc", {"node": "node1", "vmid": "200"})
+
+    assert len(response) == 1
+    assert response[0].type == "text"
+    assert "200" in response[0].text
+    assert "start" in response[0].text.lower()
+    mock_proxmox.return_value.nodes.return_value.lxc.return_value.status.start.post.assert_called()
+
+@pytest.mark.asyncio
+async def test_stop_lxc(server, mock_proxmox):
+    """Test stop_lxc tool when container is running."""
+    mock_proxmox.return_value.nodes.return_value.lxc.return_value.status.current.get.return_value = {
+        "status": "running",
+        "name": "container1",
+    }
+    response = await server.mcp.call_tool("stop_lxc", {"node": "node1", "vmid": "200"})
+
+    assert len(response) == 1
+    assert "stop" in response[0].text.lower()
+    mock_proxmox.return_value.nodes.return_value.lxc.return_value.status.stop.post.assert_called()
+
+@pytest.mark.asyncio
+async def test_delete_lxc(server, mock_proxmox):
+    """Test delete_lxc tool for a stopped container."""
+    mock_proxmox.return_value.nodes.return_value.lxc.return_value.status.current.get.return_value = {
+        "status": "stopped",
+        "name": "container1",
+    }
+    response = await server.mcp.call_tool("delete_lxc", {"node": "node1", "vmid": "200"})
+
+    assert len(response) == 1
+    assert "deletion" in response[0].text.lower() or "deleting" in response[0].text.lower()
+    mock_proxmox.return_value.nodes.return_value.lxc.return_value.delete.assert_called()
+
+@pytest.mark.asyncio
+async def test_update_lxc_features(server, mock_proxmox):
+    """Test update_lxc_features tool."""
+    response = await server.mcp.call_tool(
+        "update_lxc_features",
+        {"node": "node1", "vmid": "200", "features": "nesting=1,keyctl=1"},
+    )
+
+    assert len(response) == 1
+    assert "features updated" in response[0].text.lower()
+    mock_proxmox.return_value.nodes.return_value.lxc.return_value.config.put.assert_called_with(
+        features="nesting=1,keyctl=1"
+    )
 
 @pytest.mark.asyncio
 async def test_get_storage(server, mock_proxmox):
