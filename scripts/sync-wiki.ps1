@@ -1,6 +1,6 @@
 # Sync docs/wiki/*.md to the GitHub wiki for hackmods/cursor-proxmox-mcp.
-# Requires: gh auth, wiki enabled. First push initializes an empty wiki.
-$ErrorActionPreference = "Stop"
+# Requires: gh auth, wiki enabled. First page must exist in the GitHub UI.
+$ErrorActionPreference = "Continue"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $WikiSrc = Join-Path $RepoRoot "docs\wiki"
 $Tmp = Join-Path $env:TEMP ("cursor-proxmox-mcp-wiki-" + [guid]::NewGuid().ToString("n"))
@@ -9,7 +9,7 @@ $WikiRemote = "https://github.com/hackmods/cursor-proxmox-mcp.wiki.git"
 if (-not (Test-Path $WikiSrc)) { throw "Missing $WikiSrc" }
 
 Write-Host "Cloning wiki at $Tmp ..."
-git clone --depth 1 $WikiRemote $Tmp 2>&1 | Out-Null
+git clone --depth 1 $WikiRemote $Tmp
 if (-not (Test-Path (Join-Path $Tmp ".git"))) {
     Write-Host @"
 ERROR: Wiki remote not found ($WikiRemote).
@@ -24,20 +24,27 @@ Source markdown remains in docs/wiki/ in the main repo.
     exit 1
 }
 
-Copy-Item (Join-Path $WikiSrc "*.md") $Tmp -Force
+Get-ChildItem (Join-Path $WikiSrc "*.md") |
+    Where-Object { $_.Name -ne "README.md" } |
+    ForEach-Object { Copy-Item $_.FullName $Tmp -Force }
+
 Push-Location $Tmp
-git add *.md
-if (-not (git status --porcelain)) {
+# Drop repo-only README if it landed somehow
+if (Test-Path "README.md") { Remove-Item "README.md" -Force }
+git add -- *.md
+$status = git status --porcelain
+if (-not $status) {
     Write-Host "Wiki already up to date."
     Pop-Location
     Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
     exit 0
 }
 git -c user.email="wiki-bot@local" -c user.name="wiki-sync" commit -m "docs: sync wiki from docs/wiki"
-if (-not (git remote | Select-String -Pattern "^origin$")) {
-    git remote add origin $WikiRemote
+git -c credential.helper="!gh auth git-credential" push -u origin HEAD:master
+if ($LASTEXITCODE -ne 0) {
+    # Some wikis use main
+    git -c credential.helper="!gh auth git-credential" push -u origin HEAD:main
 }
-git push -u origin HEAD:master
 Pop-Location
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
 Write-Host "Wiki synced."

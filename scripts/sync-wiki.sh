@@ -23,14 +23,18 @@ EOF
 fi
 
 cp "$SRC"/*.md "$TMP"/
+# Repo-only readme — not a wiki page
+rm -f "$TMP/README.md"
 cd "$TMP"
-git add *.md
+git add -- *.md
 if git diff --cached --quiet; then
   echo "Wiki already up to date."
   rm -rf "$TMP"
   exit 0
 fi
 git -c user.email="wiki-bot@local" -c user.name="wiki-sync" commit -m "docs: sync wiki from docs/wiki"
-git push -u origin HEAD:master
+if ! git push -u origin HEAD:master; then
+  git push -u origin HEAD:main
+fi
 rm -rf "$TMP"
 echo "Wiki synced."
