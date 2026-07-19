@@ -6,7 +6,7 @@
 
 **Shipped:** `docs/community/` normalized drafts + README; `scripts/community_drafts.py` + `post-community.ps1`/`.sh` (`-Check` / `-Open` / `-CreateDiscussion`); PUBLISHING community section; D26.
 
-**Operator still required:** add PyPI Trusted Publisher row for workflow **`release.yml`** + environment **`pypi`** (claims in PUBLISHING.md). `publish.yml` already works.
+**Operator:** ~~add PyPI Trusted Publisher for `release.yml` + `pypi`~~ — **done** 2026-07-19. `publish.yml` remains registered for manual retry.
 
 ## 2026-07-19 — Phase F.1 VM parity + create wait (rev r9 / v1.4.0) — 163 tools
 
