@@ -13,7 +13,6 @@ cluster health and ensuring proper operation.
 from typing import List
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
-from .definitions import GET_CLUSTER_STATUS_DESC
 
 class ClusterTools(ProxmoxTool):
     """Tools for managing Proxmox cluster.
@@ -76,3 +75,11 @@ class ClusterTools(ProxmoxTool):
             return self._format_response(status, "cluster")
         except Exception as e:
             self._handle_error("get cluster status", e)
+
+    def get_next_vmid(self) -> List[Content]:
+        """Return the next free VM/CT ID from the cluster."""
+        try:
+            nextid = self.proxmox.cluster.nextid.get()
+            return [Content(type="text", text=f"Next free VMID: {nextid}")]
+        except Exception as e:
+            self._handle_error("get next VMID", e)

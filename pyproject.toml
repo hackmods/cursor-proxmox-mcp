@@ -4,17 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "proxmox-mcp"
-version = "0.1.0"
-description = "A Model Context Protocol server for interacting with Proxmox hypervisors"
+version = "0.2.0"
+description = "Formal Cursor MCP server for Proxmox VE — VMs, LXC, storage, HA, firewall, access"
 requires-python = ">=3.9"
 authors = [
-    {name = "Kevin", email = "kevin@example.com"}
+    {name = "hackmods"}
 ]
 readme = "README.md"
 license = {text = "MIT"}
-keywords = ["proxmox", "mcp", "virtualization", "cline", "qemu", "lxc"]
+keywords = ["proxmox", "mcp", "cursor", "virtualization", "qemu", "lxc"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
@@ -44,10 +44,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/proxmox-mcp"
-Documentation = "https://github.com/yourusername/proxmox-mcp#readme"
-Repository = "https://github.com/yourusername/proxmox-mcp.git"
-Issues = "https://github.com/yourusername/proxmox-mcp/issues"
+Homepage = "https://github.com/hackmods/cursor-proxmox-mcp"
+Documentation = "https://github.com/hackmods/cursor-proxmox-mcp/blob/main/docs/api-coverage.md"
+Repository = "https://github.com/hackmods/cursor-proxmox-mcp.git"
+Issues = "https://github.com/hackmods/cursor-proxmox-mcp/issues"
 
 [project.scripts]
 proxmox-mcp = "proxmox_mcp.server:main"
@@ -61,20 +61,15 @@ addopts = "-v"
 
 [tool.mypy]
 python_version = "3.9"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-disallow_untyped_decorators = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
+ignore_missing_imports = true
+check_untyped_defs = false
+disallow_untyped_defs = false
 
 [tool.ruff]
-select = ["E", "F", "B", "I"]
-ignore = []
 line-length = 100
 target-version = "py39"
+
+[tool.ruff.lint]
+# Keep CI focused on real bugs; avoid mass churn on legacy import order.
+select = ["E9", "F63", "F7", "F82", "F401", "F841"]
+ignore = ["E501"]

@@ -1,211 +1,134 @@
-"""
-Tool descriptions for Proxmox MCP tools.
-"""
+"""Tool descriptions for Proxmox MCP tools."""
 
-# Node tool descriptions
-GET_NODES_DESC = """List all nodes in the Proxmox cluster with their status, CPU, memory, and role information.
-
-Example:
-{"node": "pve1", "status": "online", "cpu_usage": 0.15, "memory": {"used": "8GB", "total": "32GB"}}"""
+# Node
+GET_NODES_DESC = """List all nodes in the Proxmox cluster with their status, CPU, memory, and role information."""
 
 GET_NODE_STATUS_DESC = """Get detailed status information for a specific Proxmox node.
 
 Parameters:
-node* - Name/ID of node to query (e.g. 'pve1')
+node* - Name/ID of node to query (e.g. 'pve1')"""
 
-Example:
-{"cpu": {"usage": 0.15}, "memory": {"used": "8GB", "total": "32GB"}}"""
+LIST_NODE_NETWORKS_DESC = """List network interfaces/bridges on a node (vmbr0, bonds, etc.).
 
-# VM tool descriptions
-GET_VMS_DESC = """List all virtual machines across the cluster with their status and resource usage.
+Parameters:
+node* - Host node name"""
 
-Example:
-{"vmid": "100", "name": "ubuntu", "status": "running", "cpu": 2, "memory": 4096}"""
+# VM
+GET_VMS_DESC = """List all virtual machines across the cluster with their status and resource usage."""
 
 CREATE_VM_DESC = """Create a new virtual machine with specified configuration.
 
 Parameters:
-node* - Host node name (e.g. 'pve')
-vmid* - New VM ID number (e.g. '200', '300')
-name* - VM name (e.g. 'my-new-vm', 'web-server')
-cpus* - Number of CPU cores (e.g. 1, 2, 4)
-memory* - Memory size in MB (e.g. 2048 for 2GB, 4096 for 4GB)
-disk_size* - Disk size in GB (e.g. 10, 20, 50)
-storage - Storage name (optional, will auto-detect if not specified)
-ostype - OS type (optional, default: 'l26' for Linux)
+node*, vmid*, name*, cpus*, memory* (MB), disk_size* (GB)
+storage - optional, auto-detect
+ostype - optional, default l26"""
 
-Examples:
-- Create VM with 1 CPU, 2GB RAM, 10GB disk: node='pve', vmid='200', name='test-vm', cpus=1, memory=2048, disk_size=10
-- Create VM with 2 CPUs, 4GB RAM, 20GB disk: node='pve', vmid='201', name='web-server', cpus=2, memory=4096, disk_size=20"""
+GET_VM_CONFIG_DESC = """Get full QEMU VM configuration.
 
-CREATE_LXC_DESC = """Create a new LXC container with specified configuration.
+Parameters: node*, vmid*"""
+
+UPDATE_VM_CONFIG_DESC = """Update QEMU VM config. Pass only fields to change.
 
 Parameters:
-node* - Host node name (e.g. 'pve')
-vmid* - New container ID number (e.g. '200', '300')
-hostname* - Container hostname (e.g. 'my-lxc', 'web-container')
-ostemplate* - OS template path (e.g. 'local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst')
-cpus* - Number of CPU cores (e.g. 1, 2, 4)
-memory* - Memory size in MB (e.g. 2048 for 2GB, 4096 for 4GB)
-disk_size* - Root filesystem size in GB (e.g. 8, 10, 20)
-storage - Storage name for rootfs (optional, will auto-detect if not specified)
-features - Container features string (optional, default: 'nesting=1'; e.g. 'nesting=1,keyctl=1,fuse=1')
-password - Root password (optional)
-unprivileged - Create as unprivileged container (optional, default: true)
+node*, vmid*
+cores, memory, name, net0, onboot, agent — optional strings/ints"""
 
-Examples:
-- Create LXC with nesting: node='pve', vmid='200', hostname='dev-lxc', ostemplate='local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst', cpus=1, memory=2048, disk_size=8, features='nesting=1'
-- Create LXC with nesting+keyctl: node='pve', vmid='201', hostname='docker-lxc', ostemplate='local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst', cpus=2, memory=4096, disk_size=16, features='nesting=1,keyctl=1'"""
 EXECUTE_VM_COMMAND_DESC = """Execute commands in a VM via QEMU guest agent.
 
-Parameters:
-node* - Host node name (e.g. 'pve1')
-vmid* - VM ID number (e.g. '100')
-command* - Shell command to run (e.g. 'uname -a')
+Parameters: node*, vmid*, command*"""
 
-Example:
-{"success": true, "output": "Linux vm1 5.4.0", "exit_code": 0}"""
+START_VM_DESC = """Start a virtual machine. Parameters: node*, vmid*"""
+STOP_VM_DESC = """Force-stop a virtual machine. Parameters: node*, vmid*"""
+SHUTDOWN_VM_DESC = """Gracefully shut down a VM. Parameters: node*, vmid*"""
+RESET_VM_DESC = """Hard-reset a VM. Parameters: node*, vmid*"""
+REBOOT_VM_DESC = """Graceful ACPI reboot (distinct from reset). Parameters: node*, vmid*"""
+SUSPEND_VM_DESC = """Suspend a VM. Parameters: node*, vmid*"""
+RESUME_VM_DESC = """Resume a suspended VM. Parameters: node*, vmid*"""
+DELETE_VM_DESC = """Permanently delete a VM. Parameters: node*, vmid*, force?=false"""
+CLONE_VM_DESC = """Clone a VM to a new ID. Parameters: node*, vmid*, newid*, name?, full?=true, target?, storage?"""
+RESIZE_VM_DISK_DESC = """Grow a VM disk. Parameters: node*, vmid*, disk* (e.g. scsi0), size* (e.g. +10G)"""
+CONVERT_VM_TEMPLATE_DESC = """Convert VM to template. Parameters: node*, vmid*"""
 
-# VM Power Management tool descriptions
-START_VM_DESC = """Start a virtual machine.
+# LXC
+GET_CONTAINERS_DESC = """List all LXC containers across the cluster."""
+CREATE_LXC_DESC = """Create an LXC container. Parameters: node*, vmid*, hostname*, ostemplate*, cpus*, memory*, disk_size*, storage?, features?, password?, unprivileged?=true"""
+GET_LXC_CONFIG_DESC = """Get full LXC configuration. Parameters: node*, vmid*"""
+UPDATE_LXC_CONFIG_DESC = """Update LXC config. Parameters: node*, vmid* plus cores/memory/hostname/net0/features etc."""
+START_LXC_DESC = """Start an LXC container. Parameters: node*, vmid*"""
+STOP_LXC_DESC = """Force-stop an LXC container. Parameters: node*, vmid*"""
+SHUTDOWN_LXC_DESC = """Gracefully shut down an LXC. Parameters: node*, vmid*"""
+REBOOT_LXC_DESC = """Reboot an LXC (applies pending config). Parameters: node*, vmid*"""
+DELETE_LXC_DESC = """Permanently delete an LXC. Parameters: node*, vmid*, force?=false"""
+UPDATE_LXC_FEATURES_DESC = """Update LXC features (nesting/keyctl/fuse). Parameters: node*, vmid*, features*"""
+CLONE_LXC_DESC = """Clone an LXC. Parameters: node*, vmid*, newid*, hostname?, full?=true, target?, storage?"""
+RESIZE_LXC_DISK_DESC = """Grow an LXC volume. Parameters: node*, vmid*, disk* (e.g. rootfs), size* (e.g. +5G)"""
+CONVERT_LXC_TEMPLATE_DESC = """Convert LXC to template. Parameters: node*, vmid*"""
+EXECUTE_LXC_COMMAND_DESC = """Execute a command inside a running LXC. Parameters: node*, vmid*, command*"""
 
-Parameters:
-node* - Host node name (e.g. 'pve')
-vmid* - VM ID number (e.g. '101')
+# Snapshots
+LIST_SNAPSHOTS_DESC = """List snapshots for a guest. Parameters: node*, vmid*, guest_type?=qemu|lxc"""
+CREATE_SNAPSHOT_DESC = """Create a snapshot. Parameters: node*, vmid*, snapname*, guest_type?, description?, vmstate?=false"""
+DELETE_SNAPSHOT_DESC = """Delete a snapshot. Parameters: node*, vmid*, snapname*, guest_type?"""
+ROLLBACK_SNAPSHOT_DESC = """Rollback to a snapshot. Parameters: node*, vmid*, snapname*, guest_type?"""
 
-Example:
-Power on VPN-Server with ID 101 on node pve"""
+# Backup
+CREATE_BACKUP_DESC = """Create a vzdump backup. Parameters: node*, vmid*, storage?, mode?=snapshot, compress?=zstd, notes?"""
+LIST_BACKUPS_DESC = """List backups on storage. Parameters: node*, storage*, vmid?"""
+RESTORE_BACKUP_DESC = """Restore a backup archive. Parameters: node*, archive*, vmid*, storage?, force?=false, guest_type?=qemu"""
+DELETE_BACKUP_DESC = """Delete a backup volume. Parameters: node*, storage*, volume*"""
 
-STOP_VM_DESC = """Stop a virtual machine (force stop).
+# Tasks / cluster
+GET_TASK_STATUS_DESC = """Get status for a task UPID. Parameters: node*, upid*"""
+LIST_TASKS_DESC = """List recent tasks on a node. Parameters: node*"""
+GET_NEXT_VMID_DESC = """Get the next free VM/CT ID from the cluster."""
+GET_CLUSTER_STATUS_DESC = """Get overall Proxmox cluster health and quorum status."""
 
-Parameters:
-node* - Host node name (e.g. 'pve')  
-vmid* - VM ID number (e.g. '101')
+# Storage
+GET_STORAGE_DESC = """List storage pools across the cluster with usage."""
+GET_STORAGE_CONTENT_DESC = """List storage content (iso/vztmpl/backup/images). Parameters: node*, storage*, content?"""
+DELETE_STORAGE_CONTENT_DESC = """Delete a storage volume. Parameters: node*, storage*, volume*"""
+DOWNLOAD_URL_TO_STORAGE_DESC = """Download URL into storage. Parameters: node*, storage*, url*, filename?, content?=iso"""
+CREATE_STORAGE_DESC = """Create cluster storage definition. Parameters: storage*, type*, content?, path?, server?, export?, vgname?, pool?, monhost?, username?, password?, nodes?, disable?"""
+UPDATE_STORAGE_DESC = """Update storage definition. Parameters: storage*, content?, nodes?, disable?"""
+DELETE_STORAGE_DESC = """Delete storage definition. Parameters: storage*"""
 
-Example:
-Force stop VPN-Server with ID 101 on node pve"""
+# Migrate
+MIGRATE_GUEST_DESC = """Migrate a VM or LXC to another node. Parameters: node*, vmid*, target*, guest_type?=qemu, online?=true, with_local_disks?=false"""
 
-SHUTDOWN_VM_DESC = """Shutdown a virtual machine gracefully.
+# HA
+GET_HA_STATUS_DESC = """Get current HA manager status."""
+LIST_HA_GROUPS_DESC = """List HA groups."""
+CREATE_HA_GROUP_DESC = """Create HA group. Parameters: group*, nodes*, comment?"""
+DELETE_HA_GROUP_DESC = """Delete HA group. Parameters: group*"""
+LIST_HA_RESOURCES_DESC = """List HA resources."""
+CREATE_HA_RESOURCE_DESC = """Create HA resource. Parameters: sid* (e.g. vm:100), group?, state?=started, comment?"""
+UPDATE_HA_RESOURCE_DESC = """Update HA resource. Parameters: sid*, group?, state?, comment?"""
+DELETE_HA_RESOURCE_DESC = """Delete HA resource. Parameters: sid*"""
 
-Parameters:
-node* - Host node name (e.g. 'pve')
-vmid* - VM ID number (e.g. '101')
+# Firewall
+GET_CLUSTER_FW_OPTIONS_DESC = """Get cluster firewall options."""
+SET_CLUSTER_FW_OPTIONS_DESC = """Set cluster firewall options. Parameters: enable?, policy_in?, policy_out?"""
+LIST_CLUSTER_FW_RULES_DESC = """List cluster firewall rules."""
+CREATE_CLUSTER_FW_RULE_DESC = """Create cluster firewall rule. Parameters: action*, type*, enable?, source?, dest?, proto?, dport?, sport?, comment?, pos?"""
+DELETE_CLUSTER_FW_RULE_DESC = """Delete cluster firewall rule. Parameters: pos*"""
+LIST_GUEST_FW_RULES_DESC = """List guest firewall rules. Parameters: node*, vmid*, guest_type?"""
+CREATE_GUEST_FW_RULE_DESC = """Create guest firewall rule. Parameters: node*, vmid*, action*, type*, guest_type?, enable?, source?, dest?, proto?, dport?, comment?"""
+DELETE_GUEST_FW_RULE_DESC = """Delete guest firewall rule. Parameters: node*, vmid*, pos*, guest_type?"""
+GET_GUEST_FW_OPTIONS_DESC = """Get guest firewall options. Parameters: node*, vmid*, guest_type?"""
+SET_GUEST_FW_OPTIONS_DESC = """Set guest firewall options. Parameters: node*, vmid*, guest_type?, enable?, dhcp?, ipfilter?"""
 
-Example:
-Gracefully shutdown VPN-Server with ID 101 on node pve"""
-
-RESET_VM_DESC = """Reset (restart) a virtual machine.
-
-Parameters:
-node* - Host node name (e.g. 'pve')
-vmid* - VM ID number (e.g. '101')
-
-Example:
-Reset VPN-Server with ID 101 on node pve"""
-
-DELETE_VM_DESC = """Delete/remove a virtual machine completely.
-
-⚠️ WARNING: This operation permanently deletes the VM and all its data!
-
-Parameters:
-node* - Host node name (e.g. 'pve')
-vmid* - VM ID number (e.g. '998')
-force - Force deletion even if VM is running (optional, default: false)
-
-This will permanently remove:
-- VM configuration
-- All virtual disks
-- All snapshots
-- Cannot be undone!
-
-Example:
-Delete test VM with ID 998 on node pve"""
-
-# Container tool descriptions
-GET_CONTAINERS_DESC = """List all LXC containers across the cluster with their status and configuration.
-
-Example:
-{"vmid": "200", "name": "nginx", "status": "running", "cpus": 2, "memory": {"used": 268435456, "total": 2147483648}}"""
-
-START_LXC_DESC = """Start an LXC container.
-
-Parameters:
-node* - Host node name (e.g. 'pve')
-vmid* - Container ID number (e.g. '121')
-
-Example:
-Start container 121 on node pve"""
-
-STOP_LXC_DESC = """Stop an LXC container (force stop).
-
-Parameters:
-node* - Host node name (e.g. 'pve')
-vmid* - Container ID number (e.g. '121')
-
-Example:
-Force stop container 121 on node pve"""
-
-SHUTDOWN_LXC_DESC = """Shutdown an LXC container gracefully.
-
-Parameters:
-node* - Host node name (e.g. 'pve')
-vmid* - Container ID number (e.g. '121')
-
-Example:
-Gracefully shutdown container 121 on node pve"""
-
-REBOOT_LXC_DESC = """Reboot an LXC container (LXC counterpart to reset_vm).
-
-Uses POST /nodes/{node}/lxc/{vmid}/status/reboot — applies pending config changes.
-
-Parameters:
-node* - Host node name (e.g. 'pve')
-vmid* - Container ID number (e.g. '121')
-
-Example:
-Reboot container 121 on node pve"""
-
-DELETE_LXC_DESC = """Delete/remove an LXC container completely.
-
-⚠️ WARNING: This operation permanently deletes the container and its rootfs!
-
-Parameters:
-node* - Host node name (e.g. 'pve')
-vmid* - Container ID number (e.g. '120')
-force - Force deletion even if container is running (optional, default: false)
-
-This will permanently remove:
-- Container configuration
-- Root filesystem
-- All snapshots
-- Cannot be undone!
-
-Example:
-Delete unused container 120 on node pve"""
-
-UPDATE_LXC_FEATURES_DESC = """Update LXC feature flags (nesting, keyctl, fuse, etc.).
-
-Needed for Docker-in-LXC when features were not set at create time, or to add keyctl after create.
-
-Parameters:
-node* - Host node name (e.g. 'pve')
-vmid* - Container ID number (e.g. '121')
-features* - Features string (e.g. 'nesting=1,keyctl=1' or 'nesting=1,keyctl=1,fuse=1')
-
-Note: Proxmox typically allows only root@pam to set features beyond nesting (e.g. keyctl).
-API tokens may get 403 when setting keyctl/fuse.
-
-Example:
-node='pve', vmid='121', features='nesting=1,keyctl=1'"""
-
-# Storage tool descriptions
-GET_STORAGE_DESC = """List storage pools across the cluster with their usage and configuration.
-
-Example:
-{"storage": "local-lvm", "type": "lvm", "used": "500GB", "total": "1TB"}"""
-
-# Cluster tool descriptions
-GET_CLUSTER_STATUS_DESC = """Get overall Proxmox cluster health and configuration status.
-
-Example:
-{"name": "proxmox", "quorum": "ok", "nodes": 3, "ha_status": "active"}"""
+# Access
+LIST_USERS_DESC = """List Proxmox users."""
+GET_USER_DESC = """Get a user. Parameters: userid*"""
+CREATE_USER_DESC = """Create a user. Parameters: userid*, password?, comment?, email?, enable?=true"""
+DELETE_USER_DESC = """Delete a user. Parameters: userid*"""
+LIST_GROUPS_DESC = """List groups."""
+CREATE_GROUP_DESC = """Create a group. Parameters: groupid*, comment?"""
+DELETE_GROUP_DESC = """Delete a group. Parameters: groupid*"""
+LIST_ROLES_DESC = """List roles."""
+LIST_ACL_DESC = """List ACL entries."""
+UPDATE_ACL_DESC = """Update ACL. Parameters: path*, roles*, users?, groups?, propagate?=true, delete?=false"""
+LIST_TOKENS_DESC = """List API tokens for a user. Parameters: userid*"""
+CREATE_TOKEN_DESC = """Create API token (secret shown once). Parameters: userid*, tokenid*, comment?, privsep?=true"""
+DELETE_TOKEN_DESC = """Delete API token. Parameters: userid*, tokenid*"""
+GET_PERMISSIONS_DESC = """Get effective permissions for the current auth identity."""

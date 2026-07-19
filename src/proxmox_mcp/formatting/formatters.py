@@ -1,7 +1,6 @@
 """
 Core formatting functions for Proxmox MCP output.
 """
-from typing import List, Union, Dict, Any
 from .theme import ProxmoxTheme
 from .colors import ProxmoxColors
 

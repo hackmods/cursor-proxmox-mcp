@@ -1,0 +1,15 @@
+---
+description: Keep API coverage matrix and research notes current when tools change
+globs: src/proxmox_mcp/**/*.py,README.md,docs/**/*.md,.cursor/research/**/*.md
+alwaysApply: true
+---
+
+# API coverage tracking
+
+When adding, renaming, or removing MCP tools:
+
+1. Update `.cursor/research/proxmox-api-coverage.md` status (done/planned/excluded).
+2. Note non-obvious API quirks in `.cursor/research/changelog-notes.md`.
+3. Record design choices in `.cursor/research/decisions.md` when changing patterns.
+4. Keep `tests/expected_tools.py` in sync with `server.py` `_setup_tools()`.
+5. Follow `keep-docs-aligned.mdc` for README / definitions.

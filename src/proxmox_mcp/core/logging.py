@@ -16,7 +16,6 @@ The logging system supports:
 """
 import logging
 import os
-from typing import Optional
 from ..config.models import LoggingConfig
 
 def setup_logging(config: LoggingConfig) -> logging.Logger:

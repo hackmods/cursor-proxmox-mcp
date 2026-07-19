@@ -114,7 +114,6 @@ class ProxmoxComponents:
             Formatted resource usage string
         """
         from .formatters import ProxmoxFormatters
-        percentage = (used / total * 100) if total > 0 else 0
         progress = ProxmoxComponents.create_progress_bar(used, total)
         
         return (

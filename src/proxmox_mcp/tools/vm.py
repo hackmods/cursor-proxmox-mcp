@@ -20,7 +20,6 @@ detailed VM information might be temporarily unavailable.
 from typing import List, Optional
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
-from .definitions import GET_VMS_DESC, EXECUTE_VM_COMMAND_DESC
 from .console.manager import VMConsoleManager
 
 class VMTools(ProxmoxTool):
@@ -141,7 +140,7 @@ class VMTools(ProxmoxTool):
         try:
             # Check if VM ID already exists
             try:
-                existing_vm = self.proxmox.nodes(node).qemu(vmid).config.get()
+                self.proxmox.nodes(node).qemu(vmid).config.get()
                 raise ValueError(f"VM {vmid} already exists on node {node}")
             except Exception as e:
                 if "does not exist" not in str(e).lower():
@@ -499,3 +498,135 @@ class VMTools(ProxmoxTool):
             raise e
         except Exception as e:
             self._handle_error(f"delete VM {vmid}", e)
+
+    def get_vm_config(self, node: str, vmid: str) -> List[Content]:
+        """Get full QEMU VM configuration."""
+        try:
+            config = self.proxmox.nodes(node).qemu(vmid).config.get()
+            return self._format_response(config)
+        except Exception as e:
+            self._handle_error(f"get VM {vmid} config", e)
+
+    def update_vm_config(self, node: str, vmid: str, **kwargs) -> List[Content]:
+        """Update QEMU VM configuration (cores, memory, net0, name, etc.)."""
+        try:
+            params = {k: v for k, v in kwargs.items() if v is not None}
+            if not params:
+                raise ValueError("No configuration parameters provided to update")
+            result = self.proxmox.nodes(node).qemu(vmid).config.put(**params)
+            return [
+                Content(
+                    type="text",
+                    text=f"VM {vmid} config updated\nParams: {params}\nResult: {result}",
+                )
+            ]
+        except ValueError:
+            raise
+        except Exception as e:
+            self._handle_error(f"update VM {vmid} config", e)
+
+    def reboot_vm(self, node: str, vmid: str) -> List[Content]:
+        """Gracefully reboot a VM (ACPI), distinct from hard reset."""
+        try:
+            vm_status = self.proxmox.nodes(node).qemu(vmid).status.current.get()
+            if vm_status.get("status") == "stopped":
+                return [
+                    Content(
+                        type="text",
+                        text=f"⚠️ Cannot reboot VM {vmid}: VM is stopped\nUse start_vm first",
+                    )
+                ]
+            task_result = self.proxmox.nodes(node).qemu(vmid).status.reboot.post()
+            return [
+                Content(
+                    type="text",
+                    text=f"🔄 VM {vmid} reboot initiated\nTask ID: {task_result}",
+                )
+            ]
+        except Exception as e:
+            if "does not exist" in str(e).lower() or "not found" in str(e).lower():
+                raise ValueError(f"VM {vmid} not found on node {node}")
+            self._handle_error(f"reboot VM {vmid}", e)
+
+    def suspend_vm(self, node: str, vmid: str) -> List[Content]:
+        """Suspend a VM."""
+        try:
+            task_result = self.proxmox.nodes(node).qemu(vmid).status.suspend.post()
+            return [
+                Content(
+                    type="text",
+                    text=f"VM {vmid} suspend initiated\nTask ID: {task_result}",
+                )
+            ]
+        except Exception as e:
+            self._handle_error(f"suspend VM {vmid}", e)
+
+    def resume_vm(self, node: str, vmid: str) -> List[Content]:
+        """Resume a suspended VM."""
+        try:
+            task_result = self.proxmox.nodes(node).qemu(vmid).status.resume.post()
+            return [
+                Content(
+                    type="text",
+                    text=f"VM {vmid} resume initiated\nTask ID: {task_result}",
+                )
+            ]
+        except Exception as e:
+            self._handle_error(f"resume VM {vmid}", e)
+
+    def clone_vm(
+        self,
+        node: str,
+        vmid: str,
+        newid: str,
+        name: Optional[str] = None,
+        full: bool = True,
+        target: Optional[str] = None,
+        storage: Optional[str] = None,
+    ) -> List[Content]:
+        """Clone a VM to a new ID."""
+        try:
+            params = {"newid": int(newid), "full": 1 if full else 0}
+            if name:
+                params["name"] = name
+            if target:
+                params["target"] = target
+            if storage:
+                params["storage"] = storage
+            result = self.proxmox.nodes(node).qemu(vmid).clone.post(**params)
+            return [
+                Content(
+                    type="text",
+                    text=f"Clone VM {vmid} → {newid} initiated\nTask ID: {result}",
+                )
+            ]
+        except Exception as e:
+            self._handle_error(f"clone VM {vmid}", e)
+
+    def resize_vm_disk(
+        self, node: str, vmid: str, disk: str, size: str
+    ) -> List[Content]:
+        """Grow a VM disk (e.g. disk='scsi0', size='+10G')."""
+        try:
+            result = self.proxmox.nodes(node).qemu(vmid).resize.put(disk=disk, size=size)
+            return [
+                Content(
+                    type="text",
+                    text=f"Resize {disk} on VM {vmid} to {size}\nResult: {result}",
+                )
+            ]
+        except Exception as e:
+            self._handle_error(f"resize disk on VM {vmid}", e)
+
+    def convert_vm_to_template(self, node: str, vmid: str) -> List[Content]:
+        """Convert a VM into a template."""
+        try:
+            result = self.proxmox.nodes(node).qemu(vmid).template.post()
+            return [
+                Content(
+                    type="text",
+                    text=f"VM {vmid} convert-to-template initiated\nResult: {result}",
+                )
+            ]
+        except Exception as e:
+            self._handle_error(f"convert VM {vmid} to template", e)

@@ -3,7 +3,7 @@ Authentication utilities for the Proxmox MCP server.
 """
 
 import os
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 from pydantic import BaseModel
 

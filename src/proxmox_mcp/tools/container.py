@@ -362,3 +362,112 @@ class ContainerTools(ProxmoxTool):
             raise e
         except Exception as e:
             self._handle_error(f"update LXC {vmid} features", e)
+
+    def get_lxc_config(self, node: str, vmid: str) -> List[Content]:
+        """Get full LXC container configuration."""
+        try:
+            config = self.proxmox.nodes(node).lxc(vmid).config.get()
+            return self._format_response(config)
+        except Exception as e:
+            self._handle_error(f"get LXC {vmid} config", e)
+
+    def update_lxc_config(self, node: str, vmid: str, **kwargs) -> List[Content]:
+        """Update LXC configuration (cores, memory, hostname, net0, features, etc.)."""
+        try:
+            params = {k: v for k, v in kwargs.items() if v is not None}
+            if not params:
+                raise ValueError("No configuration parameters provided to update")
+            result = self.proxmox.nodes(node).lxc(vmid).config.put(**params)
+            return [
+                Content(
+                    type="text",
+                    text=f"LXC {vmid} config updated\nParams: {params}\nResult: {result}",
+                )
+            ]
+        except ValueError:
+            raise
+        except Exception as e:
+            self._handle_error(f"update LXC {vmid} config", e)
+
+    def clone_lxc(
+        self,
+        node: str,
+        vmid: str,
+        newid: str,
+        hostname: Optional[str] = None,
+        full: bool = True,
+        target: Optional[str] = None,
+        storage: Optional[str] = None,
+    ) -> List[Content]:
+        """Clone an LXC container to a new ID."""
+        try:
+            params = {"newid": int(newid), "full": 1 if full else 0}
+            if hostname:
+                params["hostname"] = hostname
+            if target:
+                params["target"] = target
+            if storage:
+                params["storage"] = storage
+            result = self.proxmox.nodes(node).lxc(vmid).clone.post(**params)
+            return [
+                Content(
+                    type="text",
+                    text=f"Clone LXC {vmid} → {newid} initiated\nTask ID: {result}",
+                )
+            ]
+        except Exception as e:
+            self._handle_error(f"clone LXC {vmid}", e)
+
+    def resize_lxc_disk(
+        self, node: str, vmid: str, disk: str, size: str
+    ) -> List[Content]:
+        """Grow an LXC disk/volume (e.g. disk='rootfs', size='+5G')."""
+        try:
+            result = self.proxmox.nodes(node).lxc(vmid).resize.put(disk=disk, size=size)
+            return [
+                Content(
+                    type="text",
+                    text=f"Resize {disk} on LXC {vmid} to {size}\nResult: {result}",
+                )
+            ]
+        except Exception as e:
+            self._handle_error(f"resize disk on LXC {vmid}", e)
+
+    def convert_lxc_to_template(self, node: str, vmid: str) -> List[Content]:
+        """Convert an LXC container into a template."""
+        try:
+            result = self.proxmox.nodes(node).lxc(vmid).template.post()
+            return [
+                Content(
+                    type="text",
+                    text=f"LXC {vmid} convert-to-template initiated\nResult: {result}",
+                )
+            ]
+        except Exception as e:
+            self._handle_error(f"convert LXC {vmid} to template", e)
+
+    def execute_lxc_command(self, node: str, vmid: str, command: str) -> List[Content]:
+        """Execute a command inside a running LXC via the Proxmox exec API.
+
+        Uses POST /nodes/{node}/lxc/{vmid}/exec when available on the cluster.
+        """
+        try:
+            status = self.proxmox.nodes(node).lxc(vmid).status.current.get()
+            if status.get("status") != "running":
+                raise ValueError(f"LXC {vmid} is not running on node {node}")
+
+            # Proxmox exposes guest exec as a callable subpath on some versions
+            endpoint = self.proxmox.nodes(node).lxc(vmid)
+            try:
+                result = endpoint("exec").post(command=command)
+            except Exception:
+                # Fallback: some builds expect command as a list-like string
+                result = endpoint.post("exec", command=command)
+
+            return self._format_response(
+                {"success": True, "command": command, "result": result}
+            )
+        except ValueError:
+            raise
+        except Exception as e:
+            self._handle_error(f"execute command on LXC {vmid}", e)

@@ -11,7 +11,6 @@ The module ensures that all required configuration is present
 and valid before the server starts operation.
 """
 import json
-import os
 from typing import Optional
 from .models import Config
 

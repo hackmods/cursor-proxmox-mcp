@@ -3,14 +3,13 @@ Tests for the Proxmox MCP server.
 """
 
 import os
-import json
 import pytest
 from unittest.mock import Mock, patch
 
-from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
 from proxmox_mcp.server import ProxmoxMCPServer
 from proxmox_mcp.config.models import Config, ProxmoxConfig, AuthConfig, LoggingConfig
+from tests.expected_tools import EXPECTED_TOOLS
 
 @pytest.fixture
 def mock_config():
@@ -113,6 +112,26 @@ def mock_proxmox():
         mock_instance.cluster.status.get.return_value = [
             {"name": "test-cluster", "quorate": 1, "nodes": 2}
         ]
+        mock_instance.cluster.nextid.get.return_value = 300
+        mock_instance.nodes.return_value.network.get.return_value = [
+            {"iface": "vmbr0", "type": "bridge"}
+        ]
+        mock_instance.nodes.return_value.storage.return_value.content.get.return_value = []
+        mock_instance.nodes.return_value.tasks.get.return_value = []
+        mock_instance.nodes.return_value.tasks.return_value.status.get.return_value = {
+            "status": "stopped",
+            "exitstatus": "OK",
+        }
+        mock_instance.cluster.ha.status.current.get.return_value = []
+        mock_instance.cluster.ha.groups.get.return_value = []
+        mock_instance.cluster.ha.resources.get.return_value = []
+        mock_instance.cluster.firewall.options.get.return_value = {"enable": 0}
+        mock_instance.cluster.firewall.rules.get.return_value = []
+        mock_instance.access.users.get.return_value = []
+        mock_instance.access.groups.get.return_value = []
+        mock_instance.access.roles.get.return_value = []
+        mock_instance.access.acl.get.return_value = []
+        mock_instance.access.permissions.get.return_value = {}
         
         # Mock VM status for command execution
         mock_instance.nodes.return_value.qemu.return_value.status.current.get.return_value = {
@@ -150,23 +169,15 @@ def test_server_initialization(server, mock_proxmox):
 
 @pytest.mark.asyncio
 async def test_list_tools(server):
-    """Test listing available tools."""
+    """Test listing available tools — must match EXPECTED_TOOLS inventory."""
     tools = await server.mcp.list_tools()
+    tool_names = {tool.name for tool in tools}
 
-    assert len(tools) > 0
-    tool_names = [tool.name for tool in tools]
-    assert "get_nodes" in tool_names
-    assert "get_vms" in tool_names
-    assert "get_containers" in tool_names
-    assert "create_lxc" in tool_names
-    assert "start_lxc" in tool_names
-    assert "stop_lxc" in tool_names
-    assert "shutdown_lxc" in tool_names
-    assert "reboot_lxc" in tool_names
-    assert "delete_lxc" in tool_names
-    assert "update_lxc_features" in tool_names
-    assert "get_storage" in tool_names
-    assert "execute_vm_command" in tool_names
+    missing = EXPECTED_TOOLS - tool_names
+    extra = tool_names - EXPECTED_TOOLS
+    assert not missing, f"Missing registered tools: {sorted(missing)}"
+    assert not extra, f"Unexpected registered tools (update EXPECTED_TOOLS): {sorted(extra)}"
+    assert len(tool_names) == len(EXPECTED_TOOLS)
 
 @pytest.mark.asyncio
 async def test_get_nodes(server, mock_proxmox):
