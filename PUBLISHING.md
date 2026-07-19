@@ -16,8 +16,10 @@ How to ship `cursor-proxmox-mcp` to PyPI, GHCR, the official MCP Registry, and G
 | PyPI project name | `cursor-proxmox-mcp` |
 | Owner | `hackmods` |
 | Repository | `cursor-proxmox-mcp` |
-| Workflow name | `release.yml` (and optionally also `publish.yml` for retries) |
+| Workflow name | `release.yml` **and** a second publisher for `publish.yml` (manual retry) |
 | Environment name | `pypi` |
+
+If tag-push `release.yml` fails with `invalid-publisher` while `publish.yml` succeeds, the Trusted Publisher is missing for `release.yml` — add/update that entry. PyPI can still ship via Actions → **Publish to PyPI** → Run workflow. GHCR continues from `release.yml` even when the PyPI step fails (`continue-on-error`).
 
 3. In GitHub → **Settings → Environments → `pypi`**, create the environment (no secrets needed for OIDC).
 
@@ -55,6 +57,16 @@ docker run --rm -v /path/to/config.json:/config/config.json:ro \
 ## Official MCP Registry
 
 Prerequisites: package on PyPI (README must contain `<!-- mcp-name: io.github.hackmods/cursor-proxmox-mcp -->`).
+OCI images need label `io.modelcontextprotocol.server.name=io.github.hackmods/cursor-proxmox-mcp` (set in `release.yml`).
+
+### Automated (preferred)
+
+`publish-mcp.yml` runs on `v*` tags (and `workflow_dispatch`) using GitHub OIDC:
+
+1. Ensure `server.json` version + package identifiers match artifacts already on PyPI/GHCR.
+2. Push a release tag (or **Actions → Publish to MCP Registry → Run workflow**).
+
+### Manual
 
 ```bash
 # Install publisher (see https://modelcontextprotocol.io/registry/quickstart)
@@ -63,6 +75,12 @@ mcp-publisher publish   # uses ./server.json
 ```
 
 Namespace must be `io.github.hackmods/...` when authenticating as GitHub user/org `hackmods`.
+
+Verify:
+
+```bash
+curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.hackmods/cursor-proxmox-mcp"
+```
 
 ## Glama.ai
 

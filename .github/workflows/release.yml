@@ -10,6 +10,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Git tag to build/push (e.g. v1.1.0). Leave empty to use the triggering tag."
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -21,7 +27,18 @@ jobs:
     runs-on: ubuntu-latest
     environment: pypi
     steps:
+      - name: Resolve checkout ref
+        id: ref
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            echo "ref=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${GITHUB_REF}" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.ref.outputs.ref }}
 
       - uses: actions/setup-python@v5
         with:
@@ -32,7 +49,10 @@ jobs:
           python -m pip install --upgrade pip build
           python -m build
 
+      # Primary PyPI path is also publish.yml (Trusted Publisher). Keep this step
+      # non-blocking so GHCR + Release assets still ship if release.yml claims drift.
       - name: Publish to PyPI
+        continue-on-error: true
         uses: pypa/gh-action-pypi-publish@release/v1
 
       - name: Log in to GHCR
@@ -48,7 +68,10 @@ jobs:
       - name: Extract version
         id: meta
         run: |
-          TAG="${GITHUB_REF_NAME}"
+          REF="${{ steps.ref.outputs.ref }}"
+          TAG="${REF##*/}"
+          TAG="${TAG#refs/tags/}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push Docker image
@@ -57,7 +80,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.tag }}
+            ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }}
             ghcr.io/${{ github.repository }}:v${{ steps.meta.outputs.version }}
             ghcr.io/${{ github.repository }}:latest
           labels: |
@@ -67,9 +91,10 @@ jobs:
             org.opencontainers.image.version=${{ steps.meta.outputs.version }}
             io.modelcontextprotocol.server.name=io.github.hackmods/cursor-proxmox-mcp
 
-      - name: Create GitHub Release
+      - name: Create or update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.meta.outputs.tag }}
           generate_release_notes: true
           files: |
             dist/*
