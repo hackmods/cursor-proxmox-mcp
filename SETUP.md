@@ -2,7 +2,7 @@
 
 Connect Cursor (or another MCP client) to your Proxmox VE cluster so you can query and manage infrastructure in natural language.
 
-This guide walks through a home-lab style setup for **[hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)** — a formal Cursor ↔ Proxmox integration with **120+ tools** (VMs, LXC, storage, HA, firewall, access, replication, SDN, and more).
+This guide walks through a home-lab style setup for **[hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)** — a formal Cursor ↔ Proxmox integration with **128 tools** (VMs, LXC, storage, HA, firewall, access, replication, SDN, and more).
 
 Inspired by Brandon Lee’s walkthrough on [Virtualization Howto](https://www.virtualizationhowto.com/2026/07/i-connected-ai-to-my-proxmox-cluster-using-mcp-and-it-was-better-than-i-expected/) (July 2026). That article used an earlier PyPI package with env-var config; this repo uses a **JSON config file** and a much broader tool surface. Steps below match **this** project.
 
