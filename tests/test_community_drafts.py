@@ -16,7 +16,13 @@ from scripts.community_drafts import (  # noqa: E402
 
 
 def test_package_version_matches_pyproject():
-    assert package_version() == "1.4.0"
+    try:
+        import tomllib
+    except ImportError:
+        import tomli as tomllib  # type: ignore
+
+    data = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    assert package_version() == data["project"]["version"]
 
 
 def test_all_channels_parse():
