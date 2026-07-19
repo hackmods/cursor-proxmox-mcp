@@ -1,5 +1,9 @@
 # Changelog / research notes
 
+## 2026-07-19 — Release v1.1.0
+
+Tagged release: 152-tool Phase E + wiki/docs polish. PyPI Trusted Publisher + MCP/Glama submissions already in place.
+
 ## 2026-07-19 — Polish for next version bump (docs/wiki + QOL)
 
 **Why:** Prepare repo surface for a user-cut 1.1.0 without bumping `pyproject.toml` yet.

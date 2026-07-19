@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Ready for the next version bump (e.g. **1.1.0**) — leave `pyproject.toml` / `server.json` at `1.0.1` until you cut the release.
+## [1.1.0] - 2026-07-19
 
 ### Added
 
