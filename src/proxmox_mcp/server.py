@@ -37,6 +37,7 @@ from .tools.definitions import (
     GET_NODE_STATUS_DESC,
     GET_VMS_DESC,
     CREATE_VM_DESC,
+    CREATE_LXC_DESC,
     EXECUTE_VM_COMMAND_DESC,
     START_VM_DESC,
     STOP_VM_DESC,
@@ -115,6 +116,25 @@ class ProxmoxMCPServer:
             ostype: Annotated[Optional[str], Field(description="OS type (optional, default: 'l26' for Linux)", default=None)] = None
         ):
             return self.vm_tools.create_vm(node, vmid, name, cpus, memory, disk_size, storage, ostype)
+
+        @self.mcp.tool(description=CREATE_LXC_DESC)
+        def create_lxc(
+            node: Annotated[str, Field(description="Host node name (e.g. 'pve')")],
+            vmid: Annotated[str, Field(description="New container ID number (e.g. '200', '300')")],
+            hostname: Annotated[str, Field(description="Container hostname (e.g. 'my-lxc', 'web-container')")],
+            ostemplate: Annotated[str, Field(description="OS template path (e.g. 'local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst')")],
+            cpus: Annotated[int, Field(description="Number of CPU cores (e.g. 1, 2, 4)", ge=1, le=32)],
+            memory: Annotated[int, Field(description="Memory size in MB (e.g. 2048 for 2GB)", ge=512, le=131072)],
+            disk_size: Annotated[int, Field(description="Root filesystem size in GB (e.g. 8, 10, 20)", ge=4, le=1000)],
+            storage: Annotated[Optional[str], Field(description="Storage name for rootfs (optional, will auto-detect)", default=None)] = None,
+            features: Annotated[Optional[str], Field(description="Container features (optional, default: 'nesting=1'; e.g. 'nesting=1,keyctl=1')", default=None)] = None,
+            password: Annotated[Optional[str], Field(description="Root password (optional)", default=None)] = None,
+            unprivileged: Annotated[bool, Field(description="Create as unprivileged container (optional, default: true)", default=True)] = True
+        ):
+            return self.vm_tools.create_lxc(
+                node, vmid, hostname, ostemplate, cpus, memory, disk_size,
+                storage, features, password, unprivileged
+            )
 
         @self.mcp.tool(description=EXECUTE_VM_COMMAND_DESC)
         async def execute_vm_command(

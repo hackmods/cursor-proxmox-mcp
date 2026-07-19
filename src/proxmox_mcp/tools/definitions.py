@@ -38,6 +38,24 @@ Examples:
 - Create VM with 1 CPU, 2GB RAM, 10GB disk: node='pve', vmid='200', name='test-vm', cpus=1, memory=2048, disk_size=10
 - Create VM with 2 CPUs, 4GB RAM, 20GB disk: node='pve', vmid='201', name='web-server', cpus=2, memory=4096, disk_size=20"""
 
+CREATE_LXC_DESC = """Create a new LXC container with specified configuration.
+
+Parameters:
+node* - Host node name (e.g. 'pve')
+vmid* - New container ID number (e.g. '200', '300')
+hostname* - Container hostname (e.g. 'my-lxc', 'web-container')
+ostemplate* - OS template path (e.g. 'local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst')
+cpus* - Number of CPU cores (e.g. 1, 2, 4)
+memory* - Memory size in MB (e.g. 2048 for 2GB, 4096 for 4GB)
+disk_size* - Root filesystem size in GB (e.g. 8, 10, 20)
+storage - Storage name for rootfs (optional, will auto-detect if not specified)
+features - Container features string (optional, default: 'nesting=1'; e.g. 'nesting=1,keyctl=1,fuse=1')
+password - Root password (optional)
+unprivileged - Create as unprivileged container (optional, default: true)
+
+Examples:
+- Create LXC with nesting: node='pve', vmid='200', hostname='dev-lxc', ostemplate='local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst', cpus=1, memory=2048, disk_size=8, features='nesting=1'
+- Create LXC with nesting+keyctl: node='pve', vmid='201', hostname='docker-lxc', ostemplate='local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst', cpus=2, memory=4096, disk_size=16, features='nesting=1,keyctl=1'"""
 EXECUTE_VM_COMMAND_DESC = """Execute commands in a VM via QEMU guest agent.
 
 Parameters:
