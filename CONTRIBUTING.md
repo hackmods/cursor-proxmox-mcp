@@ -30,8 +30,17 @@ Runs ruff, pytest (with coverage ≥80% on package logic; registration/UI chrome
 5. Update README Available Tools table.
 6. Add/extend unit tests (every public method should be reachable from tests).
 7. Update `.cursor/research/proxmox-api-coverage.md` if API coverage changes.
+8. If the change is user-facing, update [`docs/wiki/`](docs/wiki/) (Home / Setup / Tools / Troubleshooting) and sync the GitHub wiki:
 
-Design invariants in `tests/test_design_invariants.py` must stay green.
+```powershell
+.\scripts\sync-wiki.ps1
+```
+
+```bash
+./scripts/sync-wiki.sh
+```
+
+Design invariants in `tests/test_design_invariants.py` must stay green. Keep community drafts under `docs/community/` aligned with the tool count in README.
 
 ## Security
 

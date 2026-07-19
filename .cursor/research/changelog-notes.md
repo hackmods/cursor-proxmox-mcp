@@ -1,5 +1,18 @@
 # Changelog / research notes
 
+## 2026-07-19 — Polish for next version bump (docs/wiki + QOL)
+
+**Why:** Prepare repo surface for a user-cut 1.1.0 without bumping `pyproject.toml` yet.
+
+**Shipped:**
+- `docs/wiki/` Home/Setup/Tools/Troubleshooting/_Sidebar + sync scripts
+- Community drafts + Cursor MCP example + GitHub repo description → 152 tools
+- Config-update responses hint `get_guest_pending` + reboot
+- README guest-type guidance; CONTRIBUTING/PUBLISHING wiki sync steps
+- Extra formatter / guest_power unit tests
+
+**Operator:** Create first GitHub wiki page in the UI once, then `scripts/sync-wiki.ps1`.
+
 ## 2026-07-19 — Phase E LXC parity + guest power + ops APIs (152 tools)
 
 **Why:** Cursor’s live MCP catalog was stuck at ~14 tools while the checkout already had full LXC lifecycle; agents also lacked LXC RRD/SPICE, unified `guest_type` power aliases, pending config, pool membership, IPSet CIDRs, disk move, replication update, and scheduled backup jobs.

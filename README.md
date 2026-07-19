@@ -9,7 +9,7 @@
 
 **Repo:** [hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)
 
-Docs: [**Setup guide**](SETUP.md) · [Publishing](PUBLISHING.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [API coverage](docs/api-coverage.md) · [Changelog](CHANGELOG.md)
+Docs: [**Setup guide**](SETUP.md) · [Wiki](https://github.com/hackmods/cursor-proxmox-mcp/wiki) ([`docs/wiki/`](docs/wiki/)) · [Publishing](PUBLISHING.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [API coverage](docs/api-coverage.md) · [Changelog](CHANGELOG.md)
 
 <!-- mcp-name: io.github.hackmods/cursor-proxmox-mcp -->
 
@@ -38,8 +38,10 @@ Registered via `tools/register.py` (called from `ProxmoxMCPServer._setup_tools()
 
 1. `get_next_vmid` → `list_os_templates` / `list_isos` → `list_node_networks`
 2. `create_lxc` / `create_vm` → `wait_for_task` → start
-3. `create_snapshot` before risky changes → `update_*_config` / power tools
+3. `create_snapshot` before risky changes → `update_*_config` → `get_guest_pending` → reboot if needed
 4. `migrate_guest` / HA / firewall / access / replication as needed
+
+**Guest type unknown?** Prefer unified tools (`start_guest`, `stop_guest`, `shutdown_guest`, `reboot_guest`, `delete_guest`, `get_guest_status`) with `guest_type=qemu|lxc`. Parallel `*_vm` / `*_lxc` names stay for existing prompts.
 
 ## Installation
 

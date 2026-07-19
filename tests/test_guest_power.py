@@ -32,6 +32,20 @@ def test_stop_shutdown_reboot_guest():
     assert "reboot initiated" in tools.reboot_guest("pve", "100")[0].text
 
 
+def test_stop_shutdown_already_stopped():
+    api = make_fake_proxmox(qemu={"100": {"name": "vm", "status": "stopped"}})
+    tools = GuestPowerTools(api)
+    assert "already stopped" in tools.stop_guest("pve", "100")[0].text
+    assert "already stopped" in tools.shutdown_guest("pve", "100")[0].text
+
+
+def test_delete_guest_when_stopped():
+    api = make_fake_proxmox(lxc={"200": {"hostname": "ct", "status": "stopped"}})
+    tools = GuestPowerTools(api)
+    text = tools.delete_guest("pve", "200", "lxc")[0].text
+    assert "deletion initiated" in text
+
+
 def test_reboot_guest_when_stopped():
     api = make_fake_proxmox(qemu={"100": {"name": "vm", "status": "stopped"}})
     tools = GuestPowerTools(api)

@@ -509,7 +509,11 @@ class VMTools(ProxmoxTool):
             return [
                 Content(
                     type="text",
-                    text=f"VM {vmid} config updated\nParams: {params}\nResult: {result}",
+                    text=(
+                        f"VM {vmid} config updated\nParams: {params}\nResult: {result}\n"
+                        f"💡 Next: get_guest_pending (guest_type=qemu) — reboot_vm / reboot_guest "
+                        f"if keys are pending and not hot-pluggable."
+                    ),
                 )
             ]
         except ValueError:

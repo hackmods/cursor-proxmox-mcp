@@ -423,7 +423,11 @@ class ContainerTools(ProxmoxTool):
             return [
                 Content(
                     type="text",
-                    text=f"LXC {vmid} config updated\nParams: {params}\nResult: {result}",
+                    text=(
+                        f"LXC {vmid} config updated\nParams: {params}\nResult: {result}\n"
+                        f"💡 Next: get_guest_pending (guest_type=lxc) — reboot_lxc / reboot_guest "
+                        f"if keys are pending and not hot-pluggable."
+                    ),
                 )
             ]
         except ValueError:

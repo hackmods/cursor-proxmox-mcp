@@ -23,10 +23,11 @@ How to ship `cursor-proxmox-mcp` to PyPI, GHCR, the official MCP Registry, and G
 
 ### Publish a version
 
-1. Bump `version` in `pyproject.toml` and `server.json`.
-2. Update `CHANGELOG.md`.
-3. Tag and push: `git tag v1.0.1 && git push origin v1.0.1`.
-4. `release.yml` (with `environment: pypi`) builds the wheel, uploads to PyPI, pushes GHCR, and creates the GitHub Release.
+1. Bump `version` in `pyproject.toml` and `server.json` (and GHCR identifier in `server.json` if present).
+2. Move `[Unreleased]` notes in `CHANGELOG.md` under the new version heading; keep tool count / community drafts (`docs/community/`) aligned.
+3. Sync GitHub wiki from `docs/wiki/`: `./scripts/sync-wiki.sh` or `.\scripts\sync-wiki.ps1`.
+4. Tag and push: `git tag v1.1.0 && git push fork v1.1.0` (use your release remote).
+5. `release.yml` (with `environment: pypi`) builds the wheel, uploads to PyPI, pushes GHCR, and creates the GitHub Release.
 
 > **Gotcha:** GitHub does not re-trigger `release: published` workflows when the Release is created by `GITHUB_TOKEN` inside Actions. That is why PyPI publish lives in `release.yml`, not only in `publish.yml`.
 

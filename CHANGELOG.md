@@ -7,17 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Ready for the next version bump (e.g. **1.1.0**) — leave `pyproject.toml` / `server.json` at `1.0.1` until you cut the release.
+
 ### Added
 
 - LXC parity: `suspend_lxc` / `resume_lxc` (CRIU warnings), `get_lxc_rrd_data`, `create_spice_ticket_lxc`
 - Unified guest tools: `start_guest`, `stop_guest`, `shutdown_guest`, `reboot_guest`, `delete_guest`, `get_guest_status`, `get_guest_pending`, `move_guest_disk`
 - Ops completeness: `update_pool`, firewall IPSet CIDR CRUD, `update_replication_job`, `list_backup_jobs` / `create_backup_job` / `delete_backup_job`
 - Inventory baseline now **152 tools**
+- GitHub wiki source under `docs/wiki/` + `scripts/sync-wiki.{ps1,sh}`
 
 ### Changed
 
 - SETUP reload checklist documents stale ~14-tool Cursor catalog + wrong `uvx proxmox-mcp-server` package pitfall
 - Decision D1: additive `*_guest` aliases alongside parallel `*_vm` / `*_lxc`
+- `update_vm_config` / `update_lxc_config` hint agents to call `get_guest_pending` + reboot when needed
+- Community drafts, Cursor MCP example, repo description aligned to 152 tools
 
 ## [1.0.1] - 2026-07-19
 

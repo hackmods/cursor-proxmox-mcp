@@ -25,3 +25,29 @@ def test_format_command_output():
     assert "echo" in text or "hi" in text
     err = ProxmoxFormatters.format_command_output(False, "bad", "", "oops")
     assert "oops" in err or "bad" in err
+
+
+def test_formatters_bytes_uptime_status_pct():
+    assert "KB" in ProxmoxFormatters.format_bytes(2048) or "B" in ProxmoxFormatters.format_bytes(100)
+    assert ProxmoxFormatters.format_bytes(0)
+    up = ProxmoxFormatters.format_uptime(90061)
+    assert isinstance(up, str) and len(up) > 0
+    assert "0m" in ProxmoxFormatters.format_uptime(0)
+    assert "RUNNING" in ProxmoxFormatters.format_status("running").upper() or "running" in ProxmoxFormatters.format_status("running").lower()
+    assert "%" in ProxmoxFormatters.format_percentage(12.5)
+    assert ProxmoxFormatters.format_section_header("Test")
+    assert ProxmoxFormatters.format_key_value("k", "v")
+
+
+def test_container_list_template():
+    cts = [
+        {
+            "vmid": 200,
+            "name": "ct",
+            "status": "running",
+            "node": "pve",
+            "cpus": 1,
+            "memory": {"used": 1, "total": 2},
+        }
+    ]
+    assert "200" in ProxmoxTemplates.container_list(cts) or "ct" in ProxmoxTemplates.container_list(cts)
