@@ -217,3 +217,29 @@ Privsep tokens often cannot set keyctl; nesting alone is insufficient for stock 
 
 - Full `bootstrap_docker_lxc` orchestrator
 - Free-form `execute_host_command`
+
+---
+
+## 2026-07-19 — CT110 small LXC end-to-end (provision UX)
+
+**Session context:** Agent provisioned Debian CT **110** at `192.168.0.174` — discovery → create → wait → start → network → nginx → git deploy. MCP usable as-is; friction was round-trips + password SSH + missing create knobs. Cursor was on a **stale** catalog (pre–Phase F tools).
+
+### What worked
+
+Discovery stack; UPID/`wait_for_task`; `get_lxc_network` runtime IPs; `execute_lxc_command` for apt/nginx/git.
+
+### Friction → fix (rev r13)
+
+| Gap | Impact | Fix |
+|-----|--------|-----|
+| Password at create ≠ SSH login | Second `set_lxc_password(enable_password_ssh=true)` + Cursor auto-review stall | `provision_lxc` → `configure_lxc_ssh` after start; prefer keys |
+| ~8 calls for routine small CT | Agent round-trips | `provision_lxc` returns `{vmid,ip,hostname,ssh_hint}` |
+| No tags/onboot/description on create | Fleet parity | `create_lxc` knobs |
+| curl missing on Debian | First health check failed | Doc: prefer `wget -qO-` on `execute_lxc_command` |
+| No push helper (session on old build) | Would use git clone | Already shipped `push_to_lxc` (v1.3+) — reload MCP |
+
+### Out of scope
+
+- Auto-install nginx/Docker in create
+- Dropping `wait_for_task` / sync-blocking create by default
+- Returning create password in tool output

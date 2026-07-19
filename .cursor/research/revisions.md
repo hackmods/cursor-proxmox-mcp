@@ -18,6 +18,7 @@ Pair with [changelog-notes.md](changelog-notes.md) (research “why”) and root
 | 2026-07-19 | r10 | Community post tooling + D26 skip Phase C; release.yml Trusted Publisher docs | **163** | scripts/post-community.*; docs/community/; PUBLISHING |
 | 2026-07-19 | r11 | Docker LXC Path B: crun fallback, feature_acl_denied, configure_lxc_dns, pct_set_lxc | **165** | D24 revised; prepare docker_mode=auto\|keyctl\|crun |
 | 2026-07-19 | r12 | Post-r11: ACL UX, bootstrap_docker_lxc, SSH/status helpers, qm_set_vm, VM tags | **169** | Slices 1–5 roadmap |
+| 2026-07-19 | r13 | provision_lxc + create_lxc onboot/tags/description; wget note | **170** | D27; CT110 agent feedback |
 
 ## How to update
 

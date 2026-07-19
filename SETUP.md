@@ -431,13 +431,15 @@ Useful tools behind the scenes: `get_cluster_status`, `get_nodes`, `get_node_sta
 
 > Download the Ubuntu LXC template if needed, then create a new container on node `pve1` on bridge `vmbr0` with 2GB RAM, set the root password, and start it.
 
-Typical tool flow:
+**Prefer `provision_lxc`** when host SSH is configured (one call: create→start→optional SSH bootstrap→IP). Manual flow:
 
 1. `get_next_vmid`
 2. `list_os_templates` (or `download_url_to_storage` with `content=vztmpl` if missing)
 3. `list_node_networks`
-4. `create_lxc` (optional `ostemplate_filter=ubuntu` to auto-pick)
-5. `wait_for_task` → `start_lxc`
+4. `create_lxc` (optional `ostemplate_filter=ubuntu`; prefer `ssh_public_keys`; optional `onboot`/`description`/`tags`)
+5. `wait_for_task` → `start_lxc` → `get_lxc_network`
+
+Note: create-time `password` alone often does **not** enable guest password SSH on Debian templates — use `provision_lxc` / `configure_lxc_ssh` or keys. For HTTP checks, prefer `wget -qO-` (curl often missing).
 
 ### Provision a nested Docker LXC (end-to-end)
 
@@ -486,7 +488,7 @@ Not everything the model *suggests* is available via the Proxmox API (host packa
 For create / change tasks, steer the agent toward this order:
 
 1. `get_next_vmid` → `list_os_templates` / `list_isos` → `list_node_networks`
-2. `create_lxc` / `create_vm` → `wait_for_task` → start
+2. `provision_lxc` (preferred one-shot small CT) or `create_lxc` / `create_vm` → `wait_for_task` → start
 3. `create_snapshot` before risky config changes → then update / power tools
 4. Migrate, HA, firewall, access, and replication only when you explicitly need them
 

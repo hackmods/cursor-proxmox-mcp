@@ -16,10 +16,98 @@ def test_new_tools_in_inventory():
         "configure_lxc_ssh",
         "get_docker_lxc_status",
         "bootstrap_docker_lxc",
+        "provision_lxc",
         "qm_set_vm",
     ):
         assert name in ALL_TOOL_NAMES
-    assert len(ALL_TOOL_NAMES) == 169
+    assert len(ALL_TOOL_NAMES) == 170
+
+
+def test_create_lxc_with_tags_description_onboot():
+    proxmox = MagicMock()
+    proxmox.nodes.get.return_value = [{"node": "pve"}]
+    proxmox.nodes.return_value.lxc.get.return_value = []
+    proxmox.nodes.return_value.storage.get.return_value = [
+        {"storage": "local-lvm", "type": "lvmthin", "content": "images,rootdir"},
+        {"storage": "local", "type": "dir", "content": "iso,vztmpl,backup"},
+    ]
+    create = MagicMock(return_value="UPID:lxc")
+    proxmox.nodes.return_value.lxc.create = create
+    with patch("proxmox_mcp.tools.container.assert_id_absent"):
+        text = ContainerTools(proxmox).create_lxc(
+            "pve",
+            "110",
+            "lab-ct",
+            ostemplate="local:vztmpl/debian.tar.zst",
+            onboot=True,
+            description="helper scripts host",
+            tags="proxmox-helper-scripts",
+        )[0].text
+    assert create.call_args.kwargs["onboot"] == 1
+    assert create.call_args.kwargs["tags"] == "proxmox-helper-scripts"
+    assert create.call_args.kwargs["description"] == "helper scripts host"
+    assert "Onboot: 1" in text
+    assert "proxmox-helper-scripts" in text
+
+
+def test_provision_lxc_happy_path_mocked():
+    proxmox = MagicMock()
+    ssh = MagicMock(
+        enabled=True,
+        timeout=30,
+        user="root",
+        private_key_path="/k",
+        host_overrides={},
+        pct_path="/usr/sbin/pct",
+    )
+    tools = ContainerTools(proxmox, ssh_config=ssh, proxmox_host="h")
+    proxmox.nodes.return_value.lxc.return_value.status.current.get.return_value = {
+        "status": "stopped"
+    }
+    proxmox.nodes.return_value.lxc.return_value.status.start.post.return_value = (
+        "UPID:start"
+    )
+    with patch.object(
+        tools, "create_lxc", return_value=[MagicMock(text="created")]
+    ):
+        with patch(
+            "proxmox_mcp.tools.container.wait_for_upid",
+            return_value={"status": "stopped", "exitstatus": "OK"},
+        ):
+            with patch.object(
+                tools,
+                "configure_lxc_ssh",
+                return_value=[MagicMock(text="ssh ok")],
+            ) as mock_ssh:
+                with patch.object(
+                    tools,
+                    "get_lxc_network",
+                    return_value=[
+                        MagicMock(
+                            text=json.dumps({"runtime_ips": ["192.168.0.174"]})
+                        )
+                    ],
+                ):
+                    text = tools.provision_lxc(
+                        "pve",
+                        "ct110",
+                        vmid="110",
+                        ssh_public_keys="ssh-ed25519 AAAA",
+                        tags="lab",
+                        onboot=True,
+                    )[0].text
+    assert "provision_lxc complete" in text
+    assert "192.168.0.174" in text
+    assert "110" in text
+    assert "ssh root@192.168.0.174" in text
+    mock_ssh.assert_called_once()
+    assert "Secret" not in text
+
+
+def test_provision_lxc_requires_ssh():
+    tools = ContainerTools(MagicMock())
+    with pytest.raises(ValueError, match="opt-in SSH"):
+        tools.provision_lxc("pve", "ct")
 
 
 def test_get_docker_lxc_status_stopped():

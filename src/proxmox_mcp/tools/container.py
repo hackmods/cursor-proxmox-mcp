@@ -12,6 +12,7 @@ from typing import Any, List, Optional
 import base64
 import json
 import shlex
+import time
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
 from .helpers import (
@@ -61,6 +62,7 @@ TOOL_SPECS = [
     ToolSpec("configure_lxc_ssh", D.CONFIGURE_LXC_SSH_DESC),
     ToolSpec("get_docker_lxc_status", D.GET_DOCKER_LXC_STATUS_DESC),
     ToolSpec("bootstrap_docker_lxc", D.BOOTSTRAP_DOCKER_LXC_DESC),
+    ToolSpec("provision_lxc", D.PROVISION_LXC_DESC),
     ToolSpec("push_to_lxc", D.PUSH_TO_LXC_DESC),
     ToolSpec("pull_from_lxc", D.PULL_FROM_LXC_DESC),
     ToolSpec("deploy_static_nginx", D.DEPLOY_STATIC_NGINX_DESC),
@@ -213,6 +215,9 @@ class ContainerTools(ProxmoxTool):
         wait: bool = False,
         nameserver: Optional[str] = None,
         searchdomain: Optional[str] = None,
+        onboot: Optional[bool] = None,
+        description: Optional[str] = None,
+        tags: Optional[str] = None,
     ) -> List[Content]:
         """Create an LXC container. If ostemplate is omitted, auto-picks from storage (optional filter).
 
@@ -222,6 +227,7 @@ class ContainerTools(ProxmoxTool):
         ``docker_ready`` sets nesting+keyctl features and tips ``prepare_lxc_for_docker``;
         it does not install Docker or claim runtime readiness (D21).
         When ``wait=True``, poll the create UPID until stopped (D25; default remains false).
+        Optional ``onboot`` / ``description`` / ``tags`` match create_vm knobs.
         """
         try:
             assert_id_absent(self.proxmox, node, vmid, "lxc")
@@ -276,6 +282,12 @@ class ContainerTools(ProxmoxTool):
                 lxc_config["nameserver"] = str(nameserver).strip()
             if searchdomain is not None and str(searchdomain).strip():
                 lxc_config["searchdomain"] = str(searchdomain).strip()
+            if onboot is not None:
+                lxc_config["onboot"] = 1 if onboot else 0
+            if description is not None and str(description).strip():
+                lxc_config["description"] = str(description).strip()
+            if tags is not None and str(tags).strip():
+                lxc_config["tags"] = str(tags).strip()
 
             hostname_warn = self._hostname_collision_warning(hostname, exclude_vmid=None)
 
@@ -304,8 +316,8 @@ class ContainerTools(ProxmoxTool):
                 auth_lines.append(
                     "  • Note: many templates block root *password* SSH "
                     "(PermitRootLogin prohibit-password). Prefer ssh_public_keys, "
-                    "or after start use set_lxc_password(enable_password_ssh=true) "
-                    "when host SSH/pct is configured."
+                    "or after start use set_lxc_password(enable_password_ssh=true) / "
+                    "configure_lxc_ssh / provision_lxc when host SSH/pct is configured."
                 )
             else:
                 auth_lines.append("  • Root password: not set")
@@ -319,7 +331,7 @@ class ContainerTools(ProxmoxTool):
 
             ssh_pct = (
                 "configured — execute_lxc_command / set_lxc_password / prepare_lxc_for_docker / "
-                "configure_lxc_dns / pct_set_lxc / push_to_lxc available after start"
+                "configure_lxc_dns / pct_set_lxc / push_to_lxc / provision_lxc available after start"
                 if self._pct
                 else "NOT configured — enable config ssh + reload MCP for pct "
                 "(Proxmox has no REST LXC shell; 501 /exec means stale MCP build)"
@@ -345,6 +357,13 @@ class ContainerTools(ProxmoxTool):
                 ns_line = f"  • Nameserver: {nameserver}\n"
             if searchdomain:
                 ns_line += f"  • Searchdomain: {searchdomain}\n"
+            meta_line = ""
+            if onboot is not None:
+                meta_line += f"  • Onboot: {1 if onboot else 0}\n"
+            if description is not None and str(description).strip():
+                meta_line += f"  • Description: {str(description).strip()}\n"
+            if tags is not None and str(tags).strip():
+                meta_line += f"  • Tags: {str(tags).strip()}\n"
 
             if wait:
                 final = wait_for_upid(self.proxmox, node, task_result, timeout=600)
@@ -383,17 +402,19 @@ class ContainerTools(ProxmoxTool):
   • Features: {features}
   • Unprivileged: {unprivileged}
   • Network: {net0_value}
-{docker_line}{ns_line}{chr(10).join(auth_lines)}
+{docker_line}{ns_line}{meta_line}{chr(10).join(auth_lines)}
   • Host SSH/pct for MCP: {ssh_pct}
 {warn_block}{task_block}
 
 💡 Next (bootstrap):
+  0. Prefer provision_lxc for one-shot create→start→IP→SSH (requires host SSH)
   {next_step_1}
   2. start_lxc → get_lxc_network (configured/runtime IP)
-  3. Guest access: prefer ssh_public_keys at create; or set_lxc_password / set_lxc_ssh_keys / execute_lxc_command (all need config ssh)
-  4. For Docker: prepare_lxc_for_docker(docker_mode=auto) → stop/start if needed → verify with docker run (nesting-only + stock runc ≠ Docker-ready; use crun fallback)
+  3. Guest access: prefer ssh_public_keys at create; or set_lxc_password / set_lxc_ssh_keys / configure_lxc_ssh / execute_lxc_command (all need config ssh)
+  4. For Docker: bootstrap_docker_lxc or prepare_lxc_for_docker(docker_mode=auto) → stop/start if needed → verify with docker run (nesting-only + stock runc ≠ Docker-ready; use crun fallback)
   5. Static site without Docker: deploy_static_nginx
-  6. keyctl often needs elevated role / root@pam; else pct_set_lxc or prepare crun path"""
+  6. HTTP health on Debian templates: prefer wget -qO- (curl often missing)
+  7. keyctl often needs elevated role / root@pam; else pct_set_lxc or prepare crun path"""
 
             return [Content(type="text", text=result_text)]
 
@@ -1681,6 +1702,145 @@ Known limitations (D24):
             raise RuntimeError(str(e)) from e
         except Exception as e:
             self._handle_error(f"bootstrap docker LXC {hostname}", e)
+
+    def provision_lxc(
+        self,
+        node: str,
+        hostname: str,
+        vmid: Optional[str] = None,
+        cpus: int = 1,
+        memory: int = 2048,
+        disk_size: int = 8,
+        storage: Optional[str] = None,
+        bridge: Optional[str] = None,
+        ip: Optional[str] = None,
+        gw: Optional[str] = None,
+        ostemplate: Optional[str] = None,
+        ostemplate_filter: Optional[str] = None,
+        nameserver: Optional[str] = None,
+        password: Optional[str] = None,
+        ssh_public_keys: Optional[str] = None,
+        enable_password_ssh: bool = True,
+        onboot: Optional[bool] = None,
+        description: Optional[str] = None,
+        tags: Optional[str] = None,
+        timeout: Optional[int] = None,
+    ) -> List[Content]:
+        """One-shot small LXC: create→start→optional SSH bootstrap→IP (D27)."""
+        try:
+            self._require_pct()
+            warnings: List[str] = []
+            steps: List[str] = []
+            settle_timeout = float(timeout or 90)
+
+            if not vmid:
+                vmid = str(self.proxmox.cluster.nextid.get())
+                steps.append(f"allocated vmid={vmid}")
+            else:
+                vmid = str(vmid)
+
+            self.create_lxc(
+                node=node,
+                vmid=vmid,
+                hostname=hostname,
+                ostemplate=ostemplate,
+                cpus=cpus,
+                memory=memory,
+                disk_size=disk_size,
+                storage=storage,
+                bridge=bridge,
+                ip=ip,
+                gw=gw,
+                ostemplate_filter=ostemplate_filter,
+                nameserver=nameserver,
+                ssh_public_keys=ssh_public_keys,
+                password=password,
+                docker_ready=False,
+                wait=True,
+                onboot=onboot,
+                description=description,
+                tags=tags,
+            )
+            steps.append("create_lxc wait=true finished")
+
+            ct_status = self.proxmox.nodes(node).lxc(vmid).status.current.get()
+            if (ct_status or {}).get("status") == "running":
+                steps.append("already running")
+            else:
+                start_upid = self.proxmox.nodes(node).lxc(vmid).status.start.post()
+                wait_for_upid(
+                    self.proxmox,
+                    node,
+                    start_upid,
+                    timeout=min(settle_timeout, 180.0),
+                )
+                steps.append("start_lxc wait finished")
+
+            if ssh_public_keys or password:
+                self.configure_lxc_ssh(
+                    node,
+                    vmid,
+                    ssh_public_keys=ssh_public_keys,
+                    password=password,
+                    enable_password_ssh=bool(password) and enable_password_ssh,
+                )
+                steps.append("configure_lxc_ssh")
+            else:
+                warnings.append(
+                    "no ssh_public_keys or password — guest SSH not bootstrapped"
+                )
+
+            ip_str: Optional[str] = None
+            deadline = time.time() + settle_timeout
+            while time.time() < deadline:
+                net = self.get_lxc_network(node, vmid, resolve_runtime=True)
+                try:
+                    net_obj = json.loads(net[0].text)
+                except Exception:
+                    net_obj = {}
+                ips = net_obj.get("runtime_ips") or []
+                if ips:
+                    ip_str = str(ips[0]).split("/")[0]
+                    break
+                configured = net_obj.get("configured_ip")
+                if configured and str(configured).lower() != "dhcp":
+                    ip_str = str(configured).split("/")[0]
+                    break
+                time.sleep(2.0)
+            if not ip_str:
+                warnings.append("runtime_ip_unavailable")
+            else:
+                steps.append(f"resolved ip={ip_str}")
+
+            ssh_hint = f"ssh root@{ip_str}" if ip_str else None
+            if password and enable_password_ssh:
+                guest_auth = "password_ssh_enabled"
+            elif ssh_public_keys:
+                guest_auth = "ssh_keys"
+            else:
+                guest_auth = "none"
+
+            final = {
+                "vmid": str(vmid),
+                "hostname": hostname,
+                "ip": ip_str,
+                "ssh_hint": ssh_hint,
+                "guest_auth": guest_auth,
+                "warnings": warnings,
+                "steps": steps,
+            }
+            return [
+                Content(
+                    type="text",
+                    text="provision_lxc complete\n" + json.dumps(final, indent=2),
+                )
+            ]
+        except ValueError:
+            raise
+        except PctExecError as e:
+            raise RuntimeError(str(e)) from e
+        except Exception as e:
+            self._handle_error(f"provision LXC {hostname}", e)
 
     def push_to_lxc(
         self,

@@ -1,5 +1,13 @@
 # Changelog / research notes
 
+## 2026-07-19 — provision_lxc + create knobs (rev r13) — 170 tools
+
+**Why:** CT110 lab feedback — create→start→SSH→IP took ~8 tool calls; password at create ≠ SSH login (Debian `prohibit-password`); create lacked tags/onboot/description; curl missing on stock Debian.
+
+**Shipped:** `provision_lxc` (create wait → start wait → optional `configure_lxc_ssh` → runtime IP JSON); `create_lxc` `onboot`/`description`/`tags`; execute_lxc_command wget tip; D27.
+
+**Out of scope:** Returning create password in output; folding Docker into provision; default-on create wait; `http_check_lxc` tool.
+
 ## 2026-07-19 — Post-r11 expansion slices 1–5 (rev r12) — 169 tools
 
 **Why:** Close remaining FeedForge-style agent gaps after crun Path B: structured ACL UX everywhere mutations fail, one-shot Docker LXC orchestrator, SSH/status helpers, QEMU host escape hatch, VM tag/description/onboot parity.

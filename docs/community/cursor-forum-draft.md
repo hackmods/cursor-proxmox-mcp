@@ -1,17 +1,17 @@
 <!-- channel: cursor-forum -->
 <!-- version: 1.4.0 -->
-<!-- tools: 169 -->
+<!-- tools: 170 -->
 
 # Cursor forum — draft post
 
-**Title:** Formal Proxmox VE MCP for Cursor — 169 tools (QEMU, LXC day-2, storage, HA, firewall)
+**Title:** Formal Proxmox VE MCP for Cursor — 170 tools (QEMU, LXC day-2, storage, HA, firewall)
 
 **Body:**
 
 Hi — sharing [hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp), a production-oriented MCP server that wires Cursor agents to Proxmox VE.
 
 **Highlights**
-- 169 tools (v1.4.0+): VMs/LXC lifecycle + config, guest-agent network/file push, LXC bootstrap_docker_lxc / crun Path B / pct set / DNS / SSH helpers, unified `*_guest` power tools, snapshots/backups (incl. scheduled jobs), migrate/HA, firewall (IPSet CIDRs), access/ACL, replication, SDN/ACME (read), pools, console tickets
+- 170 tools (v1.4.0+): VMs/LXC lifecycle + config, guest-agent network/file push, LXC `provision_lxc` / `bootstrap_docker_lxc` / crun Path B / pct set / DNS / SSH helpers, unified `*_guest` power tools, snapshots/backups (incl. scheduled jobs), migrate/HA, firewall (IPSet CIDRs), access/ACL, replication, SDN/ACME (read), pools, console tickets
 - Install: `uvx cursor-proxmox-mcp` (PyPI) or `uvx --from <checkout> cursor-proxmox-mcp` / Docker from GHCR
 - Config via `PROXMOX_MCP_CONFIG` JSON; secrets via `${ENV}` interpolation; opt-in host SSH for LXC `pct` day-2
 - Security hardening in 1.x: log redaction, typed errors, optional exec allowlist, SSL defaults on

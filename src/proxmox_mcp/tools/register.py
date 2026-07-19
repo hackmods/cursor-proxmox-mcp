@@ -297,6 +297,9 @@ def register_all(server: ProxmoxMCPServer) -> None:
         wait: Annotated[bool, Field(description="Poll create UPID until stopped (default false)", default=False)] = False,
         nameserver: Annotated[Optional[str], Field(description="CT DNS nameservers (space-separated)", default=None)] = None,
         searchdomain: Annotated[Optional[str], Field(description="CT DNS search domain", default=None)] = None,
+        onboot: Annotated[Optional[bool], Field(description="Start on boot", default=None)] = None,
+        description: Annotated[Optional[str], Field(description="Description", default=None)] = None,
+        tags: Annotated[Optional[str], Field(description="Tags (; separated)", default=None)] = None,
     ):
         return server.container_tools.create_lxc(
             node=node,
@@ -320,6 +323,9 @@ def register_all(server: ProxmoxMCPServer) -> None:
             wait=wait,
             nameserver=nameserver,
             searchdomain=searchdomain,
+            onboot=onboot,
+            description=description,
+            tags=tags,
         )
 
     @server.mcp.tool(description=D.GET_LXC_CONFIG_DESC)
@@ -588,6 +594,54 @@ def register_all(server: ProxmoxMCPServer) -> None:
             ssh_public_keys=ssh_public_keys,
             password=password,
             docker_mode=docker_mode,
+            timeout=timeout,
+        )
+
+    @server.mcp.tool(description=D.PROVISION_LXC_DESC)
+    def provision_lxc(
+        node: Annotated[str, Field(description="Node")],
+        hostname: Annotated[str, Field(description="Hostname")],
+        vmid: Annotated[Optional[str], Field(description="CT ID (auto nextid if omitted)", default=None)] = None,
+        cpus: Annotated[int, Field(description="Cores", ge=1, le=32, default=1)] = 1,
+        memory: Annotated[int, Field(description="Memory MB", ge=512, le=131072, default=2048)] = 2048,
+        disk_size: Annotated[int, Field(description="Disk GB", ge=4, le=1000, default=8)] = 8,
+        storage: Annotated[Optional[str], Field(description="Storage", default=None)] = None,
+        bridge: Annotated[Optional[str], Field(description="Bridge", default=None)] = None,
+        ip: Annotated[Optional[str], Field(description="dhcp or CIDR", default=None)] = None,
+        gw: Annotated[Optional[str], Field(description="Gateway", default=None)] = None,
+        ostemplate: Annotated[Optional[str], Field(description="OS template volid", default=None)] = None,
+        ostemplate_filter: Annotated[Optional[str], Field(description="Template filter e.g. debian", default=None)] = None,
+        nameserver: Annotated[Optional[str], Field(description="CT DNS nameservers", default=None)] = None,
+        password: Annotated[Optional[str], Field(description="Root password (not echoed)", default=None)] = None,
+        ssh_public_keys: Annotated[Optional[str], Field(description="SSH public keys", default=None)] = None,
+        enable_password_ssh: Annotated[
+            bool, Field(description="Enable password SSH after start when password set", default=True)
+        ] = True,
+        onboot: Annotated[Optional[bool], Field(description="Start on boot", default=None)] = None,
+        description: Annotated[Optional[str], Field(description="Description", default=None)] = None,
+        tags: Annotated[Optional[str], Field(description="Tags (; separated)", default=None)] = None,
+        timeout: Annotated[Optional[int], Field(description="IP settle / start wait seconds", default=None)] = None,
+    ):
+        return server.container_tools.provision_lxc(
+            node=node,
+            hostname=hostname,
+            vmid=vmid,
+            cpus=cpus,
+            memory=memory,
+            disk_size=disk_size,
+            storage=storage,
+            bridge=bridge,
+            ip=ip,
+            gw=gw,
+            ostemplate=ostemplate,
+            ostemplate_filter=ostemplate_filter,
+            nameserver=nameserver,
+            password=password,
+            ssh_public_keys=ssh_public_keys,
+            enable_password_ssh=enable_password_ssh,
+            onboot=onboot,
+            description=description,
+            tags=tags,
             timeout=timeout,
         )
 

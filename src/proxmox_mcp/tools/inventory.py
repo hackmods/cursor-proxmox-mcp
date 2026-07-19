@@ -77,6 +77,7 @@ ALL_TOOL_NAMES = frozenset(
         "configure_lxc_ssh",
         "get_docker_lxc_status",
         "bootstrap_docker_lxc",
+        "provision_lxc",
         "push_to_lxc",
         "pull_from_lxc",
         "deploy_static_nginx",

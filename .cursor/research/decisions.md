@@ -131,3 +131,14 @@ D10 keeps create tools UPID-first. `create_vm` / `create_lxc` accept optional `w
 ## D26 — Community announce tooling before Phase C
 
 Ship operator tooling for `docs/community/` drafts (`scripts/post-community.*`) and keep Phase C (SDN/ACME/Ceph/cluster join/VNC proxy/PBS/node power) **deferred** until a concrete lab demand appears. F/F.1 already cover the day-2 path that unblocked Cursor↔Proxmox agents.
+
+## D27 — provision_lxc composite (non-Docker)
+
+Agents routinely need a small CT without Docker. `bootstrap_docker_lxc` is the right orchestrator for Docker; adding Docker install to `create_lxc` stays out of scope (D21).
+
+MCP stance:
+- Add `provision_lxc`: create(`wait=true`) → start + wait UPID → optional `configure_lxc_ssh` (when keys/password) → resolve runtime IP → return `{vmid, hostname, ip, ssh_hint}`.
+- Requires host SSH (`_require_pct`) — same gate as other day-2 tools; do not half-provision without IP/SSH bootstrap.
+- Keep primitives (`create_lxc`, `wait_for_task`, `start_lxc`, `get_lxc_network`, `configure_lxc_ssh`).
+- Never echo password in tool output; prefer `ssh_public_keys`.
+- `create_lxc` gains `onboot` / `description` / `tags` (parity with `create_vm`); password SSH enablement stays post-start (`configure_lxc_ssh` / `provision_lxc`), not on async create.
