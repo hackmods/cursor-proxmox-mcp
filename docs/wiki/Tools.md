@@ -1,6 +1,6 @@
 # Tools overview
 
-Inventory is locked at **153** tools (`tools/inventory.py`). Domain summary:
+Inventory is locked at **155** tools (`tools/inventory.py`). Domain summary:
 
 | Domain | Highlights |
 |--------|------------|

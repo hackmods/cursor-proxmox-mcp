@@ -233,7 +233,8 @@ def register_all(server: ProxmoxMCPServer) -> None:
         disk_size: Annotated[int, Field(description="Disk GB", ge=4, le=1000, default=8)] = 8,
         storage: Annotated[Optional[str], Field(description="Storage", default=None)] = None,
         features: Annotated[Optional[str], Field(description="Features", default=None)] = None,
-        password: Annotated[Optional[str], Field(description="Root password", default=None)] = None,
+        password: Annotated[Optional[str], Field(description="Root password (create-time only; templates may still block password SSH)", default=None)] = None,
+        ssh_public_keys: Annotated[Optional[str], Field(description="OpenSSH public keys (one per line) → API ssh-public-keys", default=None)] = None,
         unprivileged: Annotated[bool, Field(description="Unprivileged", default=True)] = True,
         bridge: Annotated[Optional[str], Field(description="Bridge e.g. vmbr0", default=None)] = None,
         ip: Annotated[Optional[str], Field(description="dhcp or CIDR", default=None)] = None,
@@ -252,6 +253,7 @@ def register_all(server: ProxmoxMCPServer) -> None:
             storage=storage,
             features=features,
             password=password,
+            ssh_public_keys=ssh_public_keys,
             unprivileged=unprivileged,
             bridge=bridge,
             ip=ip,
@@ -365,6 +367,28 @@ def register_all(server: ProxmoxMCPServer) -> None:
         command: Annotated[str, Field(description="Command")],
     ):
         return server.container_tools.execute_lxc_command(node, vmid, command)
+
+    @server.mcp.tool(description=D.SET_LXC_PASSWORD_DESC)
+    def set_lxc_password(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="CT ID")],
+        password: Annotated[str, Field(description="New root password")],
+        enable_password_ssh: Annotated[
+            bool, Field(description="Enable PermitRootLogin + PasswordAuthentication", default=True)
+        ] = True,
+    ):
+        return server.container_tools.set_lxc_password(
+            node, vmid, password, enable_password_ssh
+        )
+
+    @server.mcp.tool(description=D.SET_LXC_SSH_KEYS_DESC)
+    def set_lxc_ssh_keys(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="CT ID")],
+        ssh_public_keys: Annotated[str, Field(description="OpenSSH public key(s), one per line")],
+        mode: Annotated[str, Field(description="replace or append", default="replace")] = "replace",
+    ):
+        return server.container_tools.set_lxc_ssh_keys(node, vmid, ssh_public_keys, mode)
 
     # --- Unified guest power (additive) ---
     @server.mcp.tool(description=D.START_GUEST_DESC)

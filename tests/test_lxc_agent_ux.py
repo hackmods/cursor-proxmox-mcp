@@ -139,3 +139,88 @@ def test_load_config_with_ssh(tmp_path, monkeypatch):
     assert loaded.ssh is not None
     assert loaded.ssh.enabled is True
     assert loaded.ssh.private_key_path == "/keys/id"
+
+
+def test_create_lxc_passes_ssh_public_keys_and_password():
+    from unittest.mock import Mock
+
+    api = Mock()
+    api.nodes.get.return_value = [{"node": "pve"}]
+    api.nodes.return_value.lxc.get.return_value = []
+    api.nodes.return_value.storage.get.return_value = [
+        {"storage": "local-lvm", "type": "lvmthin", "content": "images,rootdir"},
+        {"storage": "local", "type": "dir", "content": "iso,vztmpl,backup"},
+    ]
+    api.nodes.return_value.lxc.create.return_value = "UPID:lxc"
+    # qemu/lxc config miss for assert_id_absent
+    api.nodes.return_value.qemu.return_value.config.get.side_effect = Exception(
+        "does not exist"
+    )
+    api.nodes.return_value.lxc.return_value.config.get.side_effect = Exception(
+        "does not exist"
+    )
+    tools = ContainerTools(api)
+    out = tools.create_lxc(
+        "pve",
+        "301",
+        "app1",
+        ostemplate="local:vztmpl/ubuntu.tar.zst",
+        password="SecretPass1",
+        ssh_public_keys="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITest comment",
+    )
+    kwargs = api.nodes.return_value.lxc.create.call_args.kwargs
+    assert kwargs["password"] == "SecretPass1"
+    assert "ssh-public-keys" in kwargs
+    assert "ssh-ed25519" in kwargs["ssh-public-keys"]
+    text = out[0].text
+    assert "SecretPass1" not in text
+    assert "SSH public keys" in text
+    assert "wait_for_task" in text
+
+
+def test_create_lxc_hostname_collision_warning():
+    api = make_fake_proxmox(
+        lxc={"121": {"hostname": "lumon-docker", "status": "running"}}
+    )
+    tools = ContainerTools(api)
+    out = tools.create_lxc(
+        "pve",
+        "122",
+        "lumon-docker",
+        ostemplate="local:vztmpl/ubuntu.tar.zst",
+    )
+    assert "already used" in out[0].text
+    assert "121" in out[0].text
+
+
+def test_set_lxc_password_requires_ssh():
+    api = make_fake_proxmox(lxc={"122": {"hostname": "ct", "status": "running"}})
+    tools = ContainerTools(api)
+    with pytest.raises(ValueError, match="opt-in SSH"):
+        tools.set_lxc_password("pve", "122", "NewPass123")
+
+
+def test_set_lxc_password_via_pct():
+    api = make_fake_proxmox(lxc={"122": {"hostname": "ct", "status": "running"}})
+    ssh = SSHConfig(enabled=True, user="root", private_key_path="/tmp/key")
+    tools = ContainerTools(api, ssh_config=ssh, proxmox_host="10.0.0.1")
+    fake = MagicMock(success=True, exit_code=0, stdout="", stderr="", command="x")
+    with patch.object(tools._pct, "execute", return_value=fake) as mock_exec:
+        out = tools.set_lxc_password("pve", "122", "NewPass123", enable_password_ssh=True)
+    assert mock_exec.called
+    cmd = mock_exec.call_args[0][2]
+    assert "chpasswd" in cmd
+    assert "PermitRootLogin yes" in cmd
+    assert "NewPass123" not in out[0].text
+
+
+def test_set_lxc_ssh_keys_via_pct():
+    api = make_fake_proxmox(lxc={"122": {"hostname": "ct", "status": "running"}})
+    ssh = SSHConfig(enabled=True, user="root", private_key_path="/tmp/key")
+    tools = ContainerTools(api, ssh_config=ssh, proxmox_host="10.0.0.1")
+    fake = MagicMock(success=True, exit_code=0, stdout="", stderr="", command="x")
+    key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITest"
+    with patch.object(tools._pct, "execute", return_value=fake) as mock_exec:
+        out = tools.set_lxc_ssh_keys("pve", "122", key, mode="replace")
+    assert "authorized_keys" in mock_exec.call_args[0][2]
+    assert "1 SSH public key" in out[0].text

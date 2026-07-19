@@ -34,7 +34,10 @@ def test_create_lxc(ct_tools):
     out = ct_tools.create_lxc(
         "pve", "300", "newct", ostemplate="local:vztmpl/ubuntu.tar.zst", cpus=1, memory=512, disk_size=4
     )
-    assert "created" in out[0].text.lower() or "successfully" in out[0].text.lower()
+    text = out[0].text.lower()
+    assert "300" in text
+    assert "wait_for_task" in text
+    assert "not a deployed app" in text or "os template" in text
 
 
 def test_create_lxc_duplicate(ct_stopped):

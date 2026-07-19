@@ -18,9 +18,20 @@ Delete VM/LXC/storage/backup/snapshot/user require clear warning text in tool de
 
 Proxmox has **no REST API** for LXC guest shell (unlike QEMU guest-agent `/agent/exec`). Official mechanism is host-side `pct exec` (lxc-attach).
 
-`execute_lxc_command` requires **opt-in** config `ssh` (`enabled`, user, key) and the `paramiko` optional extra (`cursor-proxmox-mcp[ssh]`). Without SSH, the tool returns a clear actionable error — it must **not** call a fake `/lxc/{vmid}/exec` path (that yields 501 Not Implemented on real clusters).
+`execute_lxc_command` requires **opt-in** config `ssh` (`enabled`, user, key) and the `paramiko` optional extra (`cursor-proxmox-mcp[ssh]`). Without SSH, the tool returns a clear actionable error — it must **not** call a fake `/lxc/{vmid}/exec` path (that yields 501 Not Implemented on real clusters). HTTP 501 from agents usually means Cursor is still on a pre-1.1.1 MCP build — reload/`uvx --from` checkout.
 
 Runtime IP discovery in `get_lxc_network` uses the same SSH/`pct` path when configured; otherwise only configured `netN` (static CIDR or `dhcp`) is returned.
+
+## D21 — LXC guest auth (password / SSH keys)
+
+Proxmox applies `password` and `ssh-public-keys` **only at create** (rootfs provisioning). There is **no** REST API to change LXC root password or authorized_keys afterward.
+
+MCP stance:
+- Expose `password` + `ssh_public_keys` on `create_lxc`.
+- Post-create: `set_lxc_password` / `set_lxc_ssh_keys` via host SSH + `pct exec` (same gate as D4).
+- Many stock templates set `PermitRootLogin prohibit-password` — create-time password alone often fails guest SSH. Prefer keys at create, or `set_lxc_password(enable_password_ssh=true)` after start.
+- `update_lxc_config` must not pretend to set password/keys.
+- `create_lxc` success text must not claim Docker/app readiness; nesting ≠ installed runtime.
 
 ## D5 — Docs / inventory lockstep
 

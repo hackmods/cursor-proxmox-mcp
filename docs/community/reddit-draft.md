@@ -2,11 +2,11 @@
 
 Suggested subs: `r/Proxmox`, `r/homelab`, `r/mcp` (and Cursor-related communities if appropriate). Keep one primary post; cross-post sparingly.
 
-**Title:** Open-source Cursor MCP for Proxmox VE (153 tools) — uvx install
+**Title:** Open-source Cursor MCP for Proxmox VE (155 tools) — uvx install
 
 **Body:**
 
-I maintain [cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp) — an MCP server so Cursor (and other MCP clients) can manage Proxmox VE: QEMU/LXC (plus unified guest tools), storage, snapshots/backups, HA, firewall, ACLs, replication, and more (~153 tools).
+I maintain [cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp) — an MCP server so Cursor (and other MCP clients) can manage Proxmox VE: QEMU/LXC (plus unified guest tools), storage, snapshots/backups, HA, firewall, ACLs, replication, and more (~155 tools).
 
 ```bash
 uvx cursor-proxmox-mcp

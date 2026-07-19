@@ -59,3 +59,34 @@ Use this to avoid re-learning the same failures across sessions.
 - DHCP CT without SSH: set static `ip=` at create/update, or enable SSH for `get_lxc_network` / exec.
 - Docker-in-LXC: `nesting=1` default; `keyctl=1` needs elevated privileges — expect failures on narrow tokens.
 - Stale Cursor catalog (~14 tools / missing `*_guest`): reload MCP / quit Cursor; prefer `uvx --from <checkout>`.
+
+---
+
+## 2026-07-19 — Guest password SSH + empty Docker host (day-2 deploy)
+
+### Symptoms
+
+| Symptom | Impact |
+|---------|--------|
+| `password=` on create but `ssh root@ct` → Authentication failed | Cannot bootstrap without console |
+| `execute_lxc_command` still 501 `/exec` | Stale MCP pre-1.1.1 and/or ssh not enabled |
+| Nesting LXC up but nothing on :80 / no Docker | Agent treated create as “app deployed” |
+| No post-create password or SSH key tools | Stuck after bad/missing auth |
+| Duplicate hostname `lumon-docker` on 121+122 | Confusing listings |
+
+### Root causes / fixes (rev r3 / v1.1.2)
+
+| Item | Cause | Fix |
+|------|--------|-----|
+| Password SSH fails | Template `PermitRootLogin prohibit-password` (password may still be in shadow) | Prefer `ssh_public_keys` at create; `set_lxc_password(enable_password_ssh=true)` via pct |
+| No post-create password API | Proxmox limitation | `set_lxc_password` / `set_lxc_ssh_keys` via pct |
+| No key injection | Missing MCP param | `ssh_public_keys` → API `ssh-public-keys` |
+| Create ≠ deploy | Product gap | Honest messaging + SETUP Docker recipe |
+| Duplicate hostname | Allowed by PVE | Soft warning on create |
+| Persistent 501 | Stale Cursor MCP build | Document reload; current code never POSTs `/exec` |
+
+### Out of scope
+
+- Baking Docker into `create_lxc`
+- REST password change (does not exist upstream)
+- Guest SSH without keys/pct when host ssh config is off

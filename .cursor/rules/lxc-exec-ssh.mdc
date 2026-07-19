@@ -17,4 +17,6 @@ alwaysApply: false
 ## When changing this area
 
 - Update D4, `agent-feedback-log.md`, `revisions.md`, SETUP SSH section, SECURITY.
-- Keep `PROXMOX_MCP_EXEC_ALLOWLIST` parity for LXC and QEMU exec.
+- Prefer keys at create (`ssh_public_keys`), or `set_lxc_password(enable_password_ssh=true)` after start when host SSH/pct is on.
+- `update_lxc_config` does not set password/keys.
+- Create ≠ Docker/app deploy; keep success messaging honest.

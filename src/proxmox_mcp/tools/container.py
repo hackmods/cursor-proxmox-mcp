@@ -9,6 +9,8 @@ Provides lifecycle management for LXC containers:
 - Post-create feature updates (nesting, keyctl, fuse)
 """
 from typing import Any, List, Optional
+import base64
+import shlex
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
 from .helpers import (
@@ -38,6 +40,8 @@ TOOL_SPECS = [
     ToolSpec("resize_lxc_disk", D.RESIZE_LXC_DISK_DESC),
     ToolSpec("convert_lxc_to_template", D.CONVERT_LXC_TEMPLATE_DESC),
     ToolSpec("execute_lxc_command", D.EXECUTE_LXC_COMMAND_DESC),
+    ToolSpec("set_lxc_password", D.SET_LXC_PASSWORD_DESC),
+    ToolSpec("set_lxc_ssh_keys", D.SET_LXC_SSH_KEYS_DESC),
     ToolSpec("suspend_lxc", D.SUSPEND_LXC_DESC),
     ToolSpec("resume_lxc", D.RESUME_LXC_DESC),
     ToolSpec("get_lxc_status", D.GET_LXC_STATUS_DESC),
@@ -128,6 +132,7 @@ class ContainerTools(ProxmoxTool):
         storage: Optional[str] = None,
         features: Optional[str] = None,
         password: Optional[str] = None,
+        ssh_public_keys: Optional[str] = None,
         unprivileged: bool = True,
         bridge: Optional[str] = None,
         ip: Optional[str] = None,
@@ -135,7 +140,12 @@ class ContainerTools(ProxmoxTool):
         net0: Optional[str] = None,
         ostemplate_filter: Optional[str] = None,
     ) -> List[Content]:
-        """Create an LXC container. If ostemplate is omitted, auto-picks from storage (optional filter)."""
+        """Create an LXC container. If ostemplate is omitted, auto-picks from storage (optional filter).
+
+        ``password`` and ``ssh_public_keys`` are applied only at create time by Proxmox
+        (rootfs provisioning). Many templates still block root password SSH
+        (PermitRootLogin prohibit-password) — prefer ``ssh_public_keys`` for guest SSH.
+        """
         try:
             assert_id_absent(self.proxmox, node, vmid, "lxc")
             assert_id_absent(self.proxmox, node, vmid, "qemu")
@@ -180,10 +190,45 @@ class ContainerTools(ProxmoxTool):
             }
             if password is not None:
                 lxc_config["password"] = password
+            if ssh_public_keys is not None and str(ssh_public_keys).strip():
+                # Proxmox API key is hyphenated (create-time only)
+                lxc_config["ssh-public-keys"] = str(ssh_public_keys).strip()
+
+            hostname_warn = self._hostname_collision_warning(hostname, exclude_vmid=None)
 
             task_result = self.proxmox.nodes(node).lxc.create(**lxc_config)
 
-            result_text = f"""🎉 LXC container {vmid} created successfully!
+            auth_lines = []
+            if password is not None:
+                auth_lines.append(
+                    "  • Root password: set at create (API password=) — NOT echoed here"
+                )
+                auth_lines.append(
+                    "  • Note: many templates block root *password* SSH "
+                    "(PermitRootLogin prohibit-password). Prefer ssh_public_keys, "
+                    "or after start use set_lxc_password(enable_password_ssh=true) "
+                    "when host SSH/pct is configured."
+                )
+            else:
+                auth_lines.append("  • Root password: not set")
+            if ssh_public_keys is not None and str(ssh_public_keys).strip():
+                key_count = len(
+                    [ln for ln in str(ssh_public_keys).splitlines() if ln.strip()]
+                )
+                auth_lines.append(f"  • SSH public keys: {key_count} key(s) injected at create")
+            else:
+                auth_lines.append("  • SSH public keys: none (pass ssh_public_keys for guest SSH)")
+
+            ssh_pct = (
+                "configured — execute_lxc_command / set_lxc_password available after start"
+                if self._pct
+                else "NOT configured — enable config ssh + paramiko for pct exec "
+                "(Proxmox has no REST LXC shell; 501 /exec means stale MCP build)"
+            )
+
+            warn_block = f"\n⚠️ {hostname_warn}\n" if hostname_warn else "\n"
+
+            result_text = f"""🎉 LXC container {vmid} create task started (OS template only — not a deployed app).
 
 📋 Container Configuration:
   • Hostname: {hostname}
@@ -196,10 +241,16 @@ class ContainerTools(ProxmoxTool):
   • Features: {features}
   • Unprivileged: {unprivileged}
   • Network: {net0_value}
+{chr(10).join(auth_lines)}
+  • Host SSH/pct for MCP: {ssh_pct}
+{warn_block}🔧 Task ID: {task_result}
 
-🔧 Task ID: {task_result}
-
-💡 Next: wait_for_task(node, upid) until stopped (create is async — CT not usable yet; failures like missing template appear on the task). Then update_lxc_features (if Docker needs keyctl; elevated role/root@pam often required) → start_lxc."""
+💡 Next (bootstrap):
+  1. wait_for_task(node, upid) until stopped — create ≠ ready; task errors (missing template) surface here
+  2. start_lxc → get_lxc_network (configured/runtime IP)
+  3. Guest access: prefer ssh_public_keys at create; or set_lxc_password / set_lxc_ssh_keys / execute_lxc_command (all need config ssh)
+  4. Nesting alone ≠ Docker installed — install via execute_lxc_command or guest SSH after access works
+  5. keyctl for Docker-in-LXC often needs elevated role / root@pam (update_lxc_features)"""
 
             return [Content(type="text", text=result_text)]
 
@@ -207,6 +258,59 @@ class ContainerTools(ProxmoxTool):
             raise e
         except Exception as e:
             self._handle_error(f"create LXC {vmid}", e)
+
+    def _hostname_collision_warning(
+        self, hostname: str, exclude_vmid: Optional[str] = None
+    ) -> Optional[str]:
+        """Warn if another LXC already uses this hostname (Proxmox allows duplicates)."""
+        try:
+            hits = []
+            nodes = self.proxmox.nodes.get()
+            if not isinstance(nodes, list):
+                return None
+            for node in nodes:
+                if not isinstance(node, dict):
+                    continue
+                node_name = node.get("node")
+                if not node_name:
+                    continue
+                containers = self.proxmox.nodes(node_name).lxc.get()
+                if not isinstance(containers, list):
+                    continue
+                for ct in containers:
+                    if not isinstance(ct, dict):
+                        continue
+                    vmid = str(ct.get("vmid", ""))
+                    if exclude_vmid is not None and vmid == str(exclude_vmid):
+                        continue
+                    name = ct.get("name") or ct.get("hostname") or ""
+                    try:
+                        cfg = self.proxmox.nodes(node_name).lxc(vmid).config.get()
+                        if isinstance(cfg, dict):
+                            name = cfg.get("hostname") or name
+                    except Exception:
+                        pass
+                    if str(name).lower() == str(hostname).lower():
+                        hits.append(f"{vmid}@{node_name}")
+            if hits:
+                return (
+                    f"Hostname '{hostname}' already used by LXC {', '.join(hits)}. "
+                    "Proxmox allows this; prefer unique names for agent listings."
+                )
+        except Exception:
+            return None
+        return None
+
+    def _require_pct(self) -> PctExecutor:
+        if not self._pct:
+            raise ValueError(
+                "This operation requires opt-in SSH config for host-side `pct exec` "
+                "(Proxmox has no REST API to set LXC password/keys after create, and no "
+                "LXC /exec endpoint). Add `ssh` to PROXMOX_MCP_CONFIG with enabled=true, "
+                "install paramiko (`pip install 'cursor-proxmox-mcp[ssh]'`), reload MCP. "
+                "If you still see HTTP 501 on /lxc/.../exec, Cursor is running a pre-1.1.1 build."
+            )
+        return self._pct
 
     def _resolve_ostemplate(self, node: str, filter: Optional[str] = None) -> str:
         """Pick first matching vztmpl from node storage."""
@@ -522,26 +626,18 @@ class ContainerTools(ProxmoxTool):
     def execute_lxc_command(self, node: str, vmid: str, command: str) -> List[Content]:
         """Execute a command inside a running LXC via host-side ``pct exec`` over SSH.
 
-        Proxmox has no REST ``/lxc/{{vmid}}/exec`` endpoint. Requires opt-in
+        Proxmox has no REST ``/lxc/{vmid}/exec`` endpoint. Requires opt-in
         ``ssh`` config (and the ``paramiko`` extra). See SETUP.md / D4.
         """
         try:
             check_exec_allowlist(command)
-
-            if not self._pct:
-                raise ValueError(
-                    "execute_lxc_command requires opt-in SSH config for host-side "
-                    "`pct exec` (Proxmox has no REST LXC exec API). Add an `ssh` "
-                    "section to PROXMOX_MCP_CONFIG with enabled=true, user, and "
-                    "private_key_path; install paramiko (`pip install "
-                    "'cursor-proxmox-mcp[ssh]'`). See SETUP.md."
-                )
+            pct = self._require_pct()
 
             status = self.proxmox.nodes(node).lxc(vmid).status.current.get()
             if status.get("status") != "running":
                 raise ValueError(f"LXC {vmid} is not running on node {node}")
 
-            result = self._pct.execute(node, vmid, command)
+            result = pct.execute(node, vmid, command)
             return self._format_response(
                 {
                     "success": result.success,
@@ -557,6 +653,140 @@ class ContainerTools(ProxmoxTool):
             raise RuntimeError(str(e)) from e
         except Exception as e:
             self._handle_error(f"execute command on LXC {vmid}", e)
+
+    def set_lxc_password(
+        self,
+        node: str,
+        vmid: str,
+        password: str,
+        enable_password_ssh: bool = True,
+    ) -> List[Content]:
+        """Set/reset root password inside a running LXC via ``pct exec``.
+
+        Proxmox has no REST API to change LXC password after create. Optionally
+        enables PermitRootLogin + PasswordAuthentication (many templates block
+        root password SSH even when the password is correct).
+        """
+        try:
+            if not password:
+                raise ValueError("password must be non-empty")
+            check_exec_allowlist("chpasswd")
+            pct = self._require_pct()
+
+            status = self.proxmox.nodes(node).lxc(vmid).status.current.get()
+            if status.get("status") != "running":
+                raise ValueError(
+                    f"LXC {vmid} is not running on node {node} — start_lxc first"
+                )
+
+            # Avoid putting the raw password in logs; chpasswd via printf.
+            pw_q = shlex.quote(f"root:{password}")
+            steps = [f"printf '%s\\n' {pw_q} | chpasswd"]
+            if enable_password_ssh:
+                steps.extend(
+                    [
+                        "mkdir -p /etc/ssh/sshd_config.d",
+                        "printf '%s\\n' 'PermitRootLogin yes' "
+                        "'PasswordAuthentication yes' > /etc/ssh/sshd_config.d/99-proxmox-mcp.conf",
+                        "(command -v systemctl >/dev/null && systemctl restart ssh) "
+                        "|| (command -v systemctl >/dev/null && systemctl restart sshd) "
+                        "|| service ssh restart || service sshd restart || true",
+                    ]
+                )
+            cmd = " && ".join(steps)
+            result = pct.execute(node, vmid, cmd)
+            if not result.success:
+                raise RuntimeError(
+                    f"set_lxc_password failed (exit {result.exit_code}): "
+                    f"{result.stderr or result.stdout}"
+                )
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"Root password updated on LXC {vmid} via pct exec "
+                        f"(password not logged).\n"
+                        f"enable_password_ssh={enable_password_ssh}\n"
+                        f"💡 Next: get_lxc_network → SSH as root@<ip> "
+                        f"or continue with execute_lxc_command."
+                    ),
+                )
+            ]
+        except ValueError:
+            raise
+        except PctExecError as e:
+            raise RuntimeError(str(e)) from e
+        except Exception as e:
+            self._handle_error(f"set password on LXC {vmid}", e)
+
+    def set_lxc_ssh_keys(
+        self,
+        node: str,
+        vmid: str,
+        ssh_public_keys: str,
+        mode: str = "replace",
+    ) -> List[Content]:
+        """Install root authorized_keys inside a running LXC via ``pct exec``.
+
+        Prefer passing ``ssh_public_keys`` on create_lxc when possible (native API).
+        Post-create injection requires host SSH/pct (no REST equivalent for update).
+        """
+        try:
+            keys = str(ssh_public_keys or "").strip()
+            if not keys:
+                raise ValueError("ssh_public_keys must be non-empty OpenSSH public key(s)")
+            mode_norm = (mode or "replace").lower().strip()
+            if mode_norm not in ("replace", "append"):
+                raise ValueError("mode must be 'replace' or 'append'")
+
+            check_exec_allowlist("authorized_keys")
+            pct = self._require_pct()
+
+            status = self.proxmox.nodes(node).lxc(vmid).status.current.get()
+            if status.get("status") != "running":
+                raise ValueError(
+                    f"LXC {vmid} is not running on node {node} — start_lxc first"
+                )
+
+            # Transport keys as base64 to avoid shell-metacharacter issues
+            b64 = base64.b64encode((keys + "\n").encode("utf-8")).decode("ascii")
+            b64_q = shlex.quote(b64)
+            if mode_norm == "replace":
+                write = (
+                    f"echo {b64_q} | base64 -d > /root/.ssh/authorized_keys"
+                )
+            else:
+                write = (
+                    f"echo {b64_q} | base64 -d >> /root/.ssh/authorized_keys"
+                )
+            cmd = (
+                "mkdir -p /root/.ssh && chmod 700 /root/.ssh && "
+                f"{write} && chmod 600 /root/.ssh/authorized_keys && "
+                "chown -R root:root /root/.ssh"
+            )
+            result = pct.execute(node, vmid, cmd)
+            if not result.success:
+                raise RuntimeError(
+                    f"set_lxc_ssh_keys failed (exit {result.exit_code}): "
+                    f"{result.stderr or result.stdout}"
+                )
+            key_count = len([ln for ln in keys.splitlines() if ln.strip()])
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"Installed {key_count} SSH public key(s) for root on LXC {vmid} "
+                        f"(mode={mode_norm}) via pct exec.\n"
+                        f"💡 Next: get_lxc_network → ssh -i <key> root@<ip>"
+                    ),
+                )
+            ]
+        except ValueError:
+            raise
+        except PctExecError as e:
+            raise RuntimeError(str(e)) from e
+        except Exception as e:
+            self._handle_error(f"set SSH keys on LXC {vmid}", e)
 
     def create_vnc_ticket(self, node: str, vmid: str, websocket: bool = True) -> List[Content]:
         """Mint a VNC proxy ticket for an LXC (no websocket proxy)."""

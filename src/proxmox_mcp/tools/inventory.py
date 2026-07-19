@@ -64,6 +64,8 @@ ALL_TOOL_NAMES = frozenset(
         "resize_lxc_disk",
         "convert_lxc_to_template",
         "execute_lxc_command",
+        "set_lxc_password",
+        "set_lxc_ssh_keys",
         "get_lxc_status",
         "get_lxc_network",
         "get_lxc_rrd_data",

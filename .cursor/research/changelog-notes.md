@@ -1,5 +1,19 @@
 # Changelog / research notes
 
+## 2026-07-19 — LXC guest auth + honest bootstrap (rev r3 / v1.1.2) — 155 tools
+
+**Why:** Agents set `password=` on create but guest SSH still failed; still saw 501 `/exec`; empty nesting CT mistaken for deployed Docker host; no post-create password/key path.
+
+**Root causes:**
+- Create-time password is applied by Proxmox, but stock templates often use `PermitRootLogin prohibit-password` — password SSH fails even when password is correct
+- No REST to reset password/keys after create; no `ssh-public-keys` on MCP create before this rev
+- 501 = Cursor still on pre-1.1.1 REST `/exec` client OR misunderstanding; current code never calls that path
+- Create success text oversold Docker readiness
+
+**Shipped:** `ssh_public_keys` on create; `set_lxc_password` / `set_lxc_ssh_keys`; hostname collision warning; honest Next steps; D21; Docker recipe in SETUP; agent-feedback + revisions updates
+
+**Out of scope:** Auto-install Docker on create; auto-wait on create; guest SSH without host pct when keys weren’t injected at create and ssh config is off
+
 ## 2026-07-19 — Agent LXC UX (rev r2 / v1.1.1) — 153 tools
 
 **Why:** Lab agent hit 501 on `execute_lxc_command`, could not discover DHCP IP, confused `get_vms` vs LXC, raced create UPID, and misused `*_vm` on CT IDs.

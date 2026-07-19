@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-07-19
+
+### Fixed
+
+- Document why create-time `password` often fails guest SSH: many templates use `PermitRootLogin prohibit-password`. Prefer `ssh_public_keys` at create, or `set_lxc_password(enable_password_ssh=true)` after start (needs host SSH/pct).
+- Honest `create_lxc` messaging: OS create ≠ Docker/app deploy; warns on duplicate hostnames; surfaces whether host SSH/pct is configured (HTTP 501 on `/lxc/.../exec` = stale MCP pre-1.1.1).
+
+### Added
+
+- `ssh_public_keys` on `create_lxc` → Proxmox API `ssh-public-keys`
+- `set_lxc_password` / `set_lxc_ssh_keys` via pct exec (**155 tools**)
+- SETUP Docker-host bootstrap recipe
+
 ## [1.1.1] - 2026-07-19
 
 ### Fixed

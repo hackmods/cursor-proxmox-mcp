@@ -14,7 +14,7 @@ Source of truth for registered names: `ProxmoxMCPServer._setup_tools()` and `tes
 | Cluster | get_cluster_status, get_next_vmid, get_version, get_cluster_resources, get_cluster_log, get_cluster_options | /cluster..., /version |
 | Tasks | get_task_status, list_tasks, wait_for_task | /nodes/{n}/tasks... |
 | QEMU | full lifecycle + config (ISO/cloud-init/net) + status + rrd + console tickets | /nodes/{n}/qemu... |
-| LXC | full lifecycle + config + suspend/resume (CRIU warn) + status + **get_lxc_network** + rrd + VNC/SPICE/termproxy + **exec via SSH/pct** | /nodes/{n}/lxc... + host pct (opt-in ssh) |
+| LXC | full lifecycle + config + suspend/resume (CRIU warn) + status + **get_lxc_network** + rrd + VNC/SPICE/termproxy + **exec/password/keys via SSH/pct** + **ssh_public_keys on create** | /nodes/{n}/lxc... + host pct (opt-in ssh) |
 | Guest unified | start/stop/shutdown/reboot/delete_guest, get_guest_status/pending, move_guest_disk | qemu\|lxc status + pending + move_disk/move_volume |
 | Snapshots | list/create/delete/rollback | .../snapshot |
 | Backups | one-shot create/list/restore/delete + scheduled list/create/delete_backup_job | vzdump + /cluster/backup |
