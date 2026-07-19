@@ -14,6 +14,6 @@ if not exist "%PROXMOX_MCP_CONFIG%" (
     exit /b 1
 )
 
-:: Set python path and run the server
-set PYTHONPATH=C:\Users\Ryan\Projects\cursor-proxmox-mcp
+:: Set python path to src so local create_lxc and other tools are loaded
+set PYTHONPATH=C:\Users\Ryan\Projects\cursor-proxmox-mcp\src
 C:\Python314\python.exe -m proxmox_mcp.server
