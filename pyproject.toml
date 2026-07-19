@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "proxmox-mcp"
-version = "0.2.0"
+name = "proxmox-mcp-server"
+version = "0.3.0"
 description = "Formal Cursor MCP server for Proxmox VE — VMs, LXC, storage, HA, firewall, access"
 requires-python = ">=3.9"
 authors = [
@@ -77,3 +77,6 @@ target-version = "py39"
 # Keep CI focused on real bugs; avoid mass churn on legacy import order.
 select = ["E9", "F63", "F7", "F82", "F401", "F841"]
 ignore = ["E501"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

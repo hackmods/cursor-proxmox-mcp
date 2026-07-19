@@ -46,4 +46,8 @@ After the 128-tool baseline, expand create/wait paths before exotic admin APIs. 
 
 ## D11 — Create tools should not hardcode lab assumptions forever
 
-`create_vm` / `create_lxc` currently assume `vmbr0` and DHCP-style net. Treat bridge/IP/ISO/cloud-init as first-class optional params in Phase D so multi-bridge labs work without post-create config edits.
+`create_vm` / `create_lxc` default to `vmbr0` / DHCP when omitted, but accept bridge/IP/`net0`, ISO/boot, and cloud-init params. Prefer discovery tools (`list_os_templates`, `list_isos`) over guessing volids.
+
+## D12 — PyPI package name matches uvx entrypoint
+
+Publish as `proxmox-mcp-server` (not only `proxmox-mcp`) so `uvx proxmox-mcp-server` resolves without `--from`. Import package remains `proxmox_mcp`. Release via `.github/workflows/publish.yml` + PyPI Trusted Publishing.

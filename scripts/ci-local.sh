@@ -26,4 +26,8 @@ assert len(EXPECTED_TOOLS) >= 100, 'inventory too small'
 print('OK')
 "
 
+echo "==> Optional OpenAPI (mcpo) smoke"
+python -m pip install -e ".[openapi]" -q
+python -c "import mcpo; print('mcpo import ok')"
+
 echo "==> Local CI passed"

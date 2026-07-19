@@ -110,6 +110,15 @@ class ProxmoxMCPServer:
         ):
             return self.task_tools.list_tasks(node)
 
+        @self.mcp.tool(description=D.WAIT_FOR_TASK_DESC)
+        def wait_for_task(
+            node: Annotated[str, Field(description="Node name")],
+            upid: Annotated[str, Field(description="Task UPID")],
+            timeout: Annotated[int, Field(description="Timeout seconds", default=300)] = 300,
+            poll_interval: Annotated[float, Field(description="Poll interval seconds", default=2.0)] = 2.0,
+        ):
+            return self.task_tools.wait_for_task(node, upid, timeout, poll_interval)
+
         # --- QEMU VMs ---
         @self.mcp.tool(description=D.GET_VMS_DESC)
         def get_vms():
@@ -125,8 +134,19 @@ class ProxmoxMCPServer:
             disk_size: Annotated[int, Field(description="Disk GB", ge=5, le=1000)],
             storage: Annotated[Optional[str], Field(description="Storage", default=None)] = None,
             ostype: Annotated[Optional[str], Field(description="OS type", default=None)] = None,
+            bridge: Annotated[Optional[str], Field(description="Bridge e.g. vmbr0", default=None)] = None,
+            net0: Annotated[Optional[str], Field(description="Full net0 string override", default=None)] = None,
+            iso: Annotated[Optional[str], Field(description="ISO volid e.g. local:iso/ubuntu.iso", default=None)] = None,
+            boot: Annotated[Optional[str], Field(description="Boot order e.g. order=ide2;scsi0", default=None)] = None,
+            ciuser: Annotated[Optional[str], Field(description="Cloud-init user", default=None)] = None,
+            cipassword: Annotated[Optional[str], Field(description="Cloud-init password", default=None)] = None,
+            sshkeys: Annotated[Optional[str], Field(description="Cloud-init SSH public keys", default=None)] = None,
+            ipconfig0: Annotated[Optional[str], Field(description="Cloud-init ipconfig0", default=None)] = None,
         ):
-            return self.vm_tools.create_vm(node, vmid, name, cpus, memory, disk_size, storage, ostype)
+            return self.vm_tools.create_vm(
+                node, vmid, name, cpus, memory, disk_size, storage, ostype,
+                bridge, net0, iso, boot, ciuser, cipassword, sshkeys, ipconfig0,
+            )
 
         @self.mcp.tool(description=D.GET_VM_CONFIG_DESC)
         def get_vm_config(
@@ -145,6 +165,13 @@ class ProxmoxMCPServer:
             net0: Annotated[Optional[str], Field(description="net0 config", default=None)] = None,
             onboot: Annotated[Optional[bool], Field(description="Start on boot", default=None)] = None,
             agent: Annotated[Optional[str], Field(description="QEMU agent", default=None)] = None,
+            iso: Annotated[Optional[str], Field(description="ISO volid → ide2 cdrom", default=None)] = None,
+            boot: Annotated[Optional[str], Field(description="Boot order", default=None)] = None,
+            ciuser: Annotated[Optional[str], Field(description="Cloud-init user", default=None)] = None,
+            cipassword: Annotated[Optional[str], Field(description="Cloud-init password", default=None)] = None,
+            sshkeys: Annotated[Optional[str], Field(description="SSH keys", default=None)] = None,
+            ipconfig0: Annotated[Optional[str], Field(description="ipconfig0", default=None)] = None,
+            ide2: Annotated[Optional[str], Field(description="Raw ide2 string", default=None)] = None,
         ):
             kwargs = {}
             if cores is not None:
@@ -159,6 +186,22 @@ class ProxmoxMCPServer:
                 kwargs["onboot"] = 1 if onboot else 0
             if agent is not None:
                 kwargs["agent"] = agent
+            if boot is not None:
+                kwargs["boot"] = boot
+            if ciuser is not None:
+                kwargs["ciuser"] = ciuser
+            if cipassword is not None:
+                kwargs["cipassword"] = cipassword
+            if sshkeys is not None:
+                kwargs["sshkeys"] = sshkeys
+            if ipconfig0 is not None:
+                kwargs["ipconfig0"] = ipconfig0
+            if ide2 is not None:
+                kwargs["ide2"] = ide2
+            elif iso is not None:
+                kwargs["ide2"] = f"{iso},media=cdrom"
+                if boot is None:
+                    kwargs["boot"] = "order=ide2;scsi0"
             return self.vm_tools.update_vm_config(node, vmid, **kwargs)
 
         @self.mcp.tool(description=D.EXECUTE_VM_COMMAND_DESC)
@@ -243,18 +286,37 @@ class ProxmoxMCPServer:
             node: Annotated[str, Field(description="Node")],
             vmid: Annotated[str, Field(description="New CT ID")],
             hostname: Annotated[str, Field(description="Hostname")],
-            ostemplate: Annotated[str, Field(description="OS template path")],
-            cpus: Annotated[int, Field(description="Cores", ge=1, le=32)],
-            memory: Annotated[int, Field(description="Memory MB", ge=512, le=131072)],
-            disk_size: Annotated[int, Field(description="Disk GB", ge=4, le=1000)],
+            ostemplate: Annotated[Optional[str], Field(description="OS template volid; auto-pick if omitted", default=None)] = None,
+            cpus: Annotated[int, Field(description="Cores", ge=1, le=32, default=1)] = 1,
+            memory: Annotated[int, Field(description="Memory MB", ge=512, le=131072, default=2048)] = 2048,
+            disk_size: Annotated[int, Field(description="Disk GB", ge=4, le=1000, default=8)] = 8,
             storage: Annotated[Optional[str], Field(description="Storage", default=None)] = None,
             features: Annotated[Optional[str], Field(description="Features", default=None)] = None,
             password: Annotated[Optional[str], Field(description="Root password", default=None)] = None,
             unprivileged: Annotated[bool, Field(description="Unprivileged", default=True)] = True,
+            bridge: Annotated[Optional[str], Field(description="Bridge e.g. vmbr0", default=None)] = None,
+            ip: Annotated[Optional[str], Field(description="dhcp or CIDR", default=None)] = None,
+            gw: Annotated[Optional[str], Field(description="Gateway", default=None)] = None,
+            net0: Annotated[Optional[str], Field(description="Full net0 override", default=None)] = None,
+            ostemplate_filter: Annotated[Optional[str], Field(description="Auto-pick filter e.g. ubuntu", default=None)] = None,
         ):
             return self.container_tools.create_lxc(
-                node, vmid, hostname, ostemplate, cpus, memory, disk_size,
-                storage, features, password, unprivileged,
+                node=node,
+                vmid=vmid,
+                hostname=hostname,
+                ostemplate=ostemplate,
+                cpus=cpus,
+                memory=memory,
+                disk_size=disk_size,
+                storage=storage,
+                features=features,
+                password=password,
+                unprivileged=unprivileged,
+                bridge=bridge,
+                ip=ip,
+                gw=gw,
+                net0=net0,
+                ostemplate_filter=ostemplate_filter,
             )
 
         @self.mcp.tool(description=D.GET_LXC_CONFIG_DESC)
@@ -446,6 +508,22 @@ class ProxmoxMCPServer:
             content: Annotated[Optional[str], Field(description="iso|vztmpl|backup|images", default=None)] = None,
         ):
             return self.storage_tools.get_storage_content(node, storage, content)
+
+        @self.mcp.tool(description=D.LIST_OS_TEMPLATES_DESC)
+        def list_os_templates(
+            node: Annotated[str, Field(description="Node")],
+            storage: Annotated[Optional[str], Field(description="Limit to storage", default=None)] = None,
+            filter: Annotated[Optional[str], Field(description="Substring filter e.g. ubuntu", default=None)] = None,
+        ):
+            return self.storage_tools.list_os_templates(node, storage, filter)
+
+        @self.mcp.tool(description=D.LIST_ISOS_DESC)
+        def list_isos(
+            node: Annotated[str, Field(description="Node")],
+            storage: Annotated[Optional[str], Field(description="Limit to storage", default=None)] = None,
+            filter: Annotated[Optional[str], Field(description="Substring filter", default=None)] = None,
+        ):
+            return self.storage_tools.list_isos(node, storage, filter)
 
         @self.mcp.tool(description=D.DELETE_STORAGE_CONTENT_DESC)
         def delete_storage_content(
@@ -734,6 +812,13 @@ class ProxmoxMCPServer:
         @self.mcp.tool(description=D.GET_PERMISSIONS_DESC)
         def get_permissions():
             return self.access_tools.get_permissions()
+
+        @self.mcp.tool(description=D.GET_TOKEN_PERMISSIONS_DESC)
+        def get_token_permissions(
+            userid: Annotated[str, Field(description="user@realm e.g. mcp@pve")],
+            tokenid: Annotated[str, Field(description="Token name")],
+        ):
+            return self.access_tools.get_token_permissions(userid, tokenid)
 
         # --- Cluster extras ---
         @self.mcp.tool(description=D.GET_VERSION_DESC)

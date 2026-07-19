@@ -2,7 +2,7 @@
 
 Connect Cursor (or another MCP client) to your Proxmox VE cluster so you can query and manage infrastructure in natural language.
 
-This guide walks through a home-lab style setup for **[hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)** — a formal Cursor ↔ Proxmox integration with **128 tools** (VMs, LXC, storage, HA, firewall, access, replication, SDN, and more).
+This guide walks through a home-lab style setup for **[hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)** — a formal Cursor ↔ Proxmox integration with **132 tools** (VMs, LXC, storage, HA, firewall, access, replication, SDN, and more).
 
 Inspired by Brandon Lee’s walkthrough on [Virtualization Howto](https://www.virtualizationhowto.com/2026/07/i-connected-ai-to-my-proxmox-cluster-using-mcp-and-it-was-better-than-i-expected/) (July 2026). That article used an earlier PyPI package with env-var config; this repo uses a **JSON config file** and a much broader tool surface. Steps below match **this** project.
 
@@ -141,7 +141,7 @@ After creation (and after wiring MCP), confirm permissions three ways:
 
 1. **UI:** Datacenter → Permissions — you should see rows for both the **user** and (if privsep=Yes) the **API Token** `user@realm!tokenid`.
 2. **CLI:** `pveum user token permissions mcp@pve cursor` and `pveum acl list | grep mcp`
-3. **In Cursor (once MCP is up):** ask *“Call `get_permissions` and summarize what this token can do.”* Empty or tiny permission maps usually mean privsep=Yes with no token ACL.
+3. **In Cursor (once MCP is up):** ask *“Call `get_token_permissions` for userid `mcp@pve` and tokenid `cursor`, and also `get_permissions` for the current identity.”* Empty or tiny maps usually mean privsep=Yes with no ACL on `user@realm!tokenid`.
 
 ### Rotate / revoke
 
@@ -180,7 +180,17 @@ uv --version
 
 ## 3. Get the server and write config
 
-### Clone (recommended while developing / before PyPI publish)
+### Option A — PyPI + uvx (no clone)
+
+After a GitHub Release publishes the package:
+
+```bash
+uvx proxmox-mcp-server
+```
+
+You still need a `config.json` somewhere (copy from [`proxmox-config/config.example.json`](proxmox-config/config.example.json) in the repo or the gist you keep for the lab). Point Cursor’s `PROXMOX_MCP_CONFIG` at that absolute path.
+
+### Option B — Clone (developing / offline)
 
 ```bash
 git clone https://github.com/hackmods/cursor-proxmox-mcp.git
@@ -318,9 +328,18 @@ uv pip install -e ".[dev]"
 }
 ```
 
-Restart the MCP server in Cursor after `git pull` so new tools appear.
-
 > **Note vs older articles:** some guides set `PROXMOX_HOST`, `PROXMOX_TOKEN_VALUE`, etc. directly in `mcp.json`. This project expects **`PROXMOX_MCP_CONFIG`** pointing at the JSON file above.
+
+### After `git pull` — live Cursor MCP reload checklist
+
+Cursor caches the MCP process and tool list. After pulling new tools:
+
+1. Save any open work; note your `mcp.json` still points at this checkout (or at `uvx proxmox-mcp-server` if you switched to PyPI).
+2. Open **Cursor Settings → MCP**.
+3. Find the **proxmox** server → **Disable** → wait until it shows disconnected → **Enable** (or use Restart if shown).
+4. Confirm the tool count matches the README inventory (~132) — if the count is stale, fully quit Cursor and reopen.
+5. Smoke in chat: *“Call `get_nodes` and `get_version`.”* Then *“Call `get_token_permissions` for my MCP user/token.”*
+6. If you use `uvx --from <checkout>`, a restart is enough (uvx rebuilds the env). If you use an editable `pip install -e .`, reinstall after large dependency changes: `uv pip install -e ".[dev]"`.
 
 ### Other MCP clients
 
@@ -351,10 +370,33 @@ Useful tools behind the scenes: `get_cluster_status`, `get_nodes`, `get_node_sta
 Typical tool flow:
 
 1. `get_next_vmid`
-2. `get_storage_content` / download template if missing
+2. `list_os_templates` (or `download_url_to_storage` with `content=vztmpl` if missing)
 3. `list_node_networks`
-4. `create_lxc`
-5. `get_task_status` → `start_lxc` (or equivalent power tool)
+4. `create_lxc` (optional `ostemplate_filter=ubuntu` to auto-pick)
+5. `wait_for_task` → `start_lxc`
+
+### Provision a nested Docker LXC (end-to-end)
+
+Use this when you want an unprivileged CT that can run Docker (nesting + keyctl):
+
+> Using Proxmox MCP tools only: on node `pve1`, pick the next free VMID, list OS templates and prefer Ubuntu if available (download a vztmpl if none exist), create an unprivileged LXC named `docker-lab` with 2 cores, 4GB RAM, 16GB disk, features `nesting=1,keyctl=1`, bridge `vmbr0` and DHCP. Wait for the create task to finish with `wait_for_task`, start the container, then run `execute_lxc_command` to install Docker (or confirm nesting works with `docker --version` if already present). Summarize the CT ID, template used, and any errors.
+
+Expected tool sequence:
+
+1. `get_nodes` / `get_next_vmid`
+2. `list_os_templates` (`filter=ubuntu`) → optional `download_url_to_storage`
+3. `create_lxc` with `features=nesting=1,keyctl=1` (and optional `ostemplate_filter`)
+4. `wait_for_task` on the create UPID
+5. `start_lxc` → `wait_for_task` if start returns a UPID
+6. `execute_lxc_command` for install/verify
+
+If create succeeds but Docker cannot use keyctl, call `update_lxc_features` then reboot/start again. Privilege Separation tokens often need elevated roles for `keyctl`.
+
+### Create a blank VM with ISO + cloud-init
+
+> List ISOs on the cluster, create VM with the Ubuntu ISO attached, boot order CDROM first, cloud-init user `ubuntu` + my SSH public key, bridge `vmbr0`, then `wait_for_task` and report the UPID result.
+
+Tools: `list_isos` → `get_next_vmid` → `create_vm` (`iso`, `ciuser`, `sshkeys`, `bridge`) → `wait_for_task`.
 
 ### Ops beyond “list stuff”
 
@@ -370,8 +412,8 @@ Not everything the model *suggests* is available via the Proxmox API (host packa
 
 For create / change tasks, steer the agent toward this order:
 
-1. `get_next_vmid` → `get_storage_content` (templates / ISOs) → `list_node_networks`
-2. `create_lxc` / `create_vm` → `get_task_status`
+1. `get_next_vmid` → `list_os_templates` / `list_isos` → `list_node_networks`
+2. `create_lxc` / `create_vm` → `wait_for_task` → start
 3. `create_snapshot` before risky config changes → then update / power tools
 4. Migrate, HA, firewall, access, and replication only when you explicitly need them
 
@@ -405,12 +447,12 @@ Home labs are ideal for learning where AI+MCP helps (health checks, template clo
 | `PROXMOX_MCP_CONFIG ... must be set` | Set `env.PROXMOX_MCP_CONFIG` to the absolute path of `config.json` |
 | Auth / 401 | Check `user`, `token_name`, and `token_value`; confirm token isn’t disabled |
 | Auth works but empty data / odd 403 | Privilege Separation is **Yes** but the **token** has no ACL — grant roles to `user@realm!tokenid`, or (lab only) set Privilege Separation to **No** |
-| `get_permissions` nearly empty | Same as above — fix token ACL / privsep |
+| `get_permissions` / `get_token_permissions` nearly empty | Same as above — fix token ACL / privsep (ACL must target `user@realm!tokenid`) |
 | 403 on HA / firewall / privileged ops | Token/user need a stronger role |
 | SSL / connection errors | Ping `:8006`; set `verify_ssl` correctly; check host firewall / VPN |
-| Tools missing after pull | Restart the **proxmox** MCP server in Cursor |
-| `ModuleNotFoundError: proxmox_mcp` | Prefer `uvx --from <repo>`; or set `PYTHONPATH` to `.../src` |
-| Green MCP but agent never calls tools | Explicitly say “use the Proxmox MCP tools”; confirm tool list is long (~128) in Cursor MCP settings |
+| Tools missing after pull | Follow [MCP reload checklist](#after-git-pull--live-cursor-mcp-reload-checklist) |
+| `ModuleNotFoundError: proxmox_mcp` | Prefer `uvx proxmox-mcp-server` or `uvx --from <repo>`; or set `PYTHONPATH` to `.../src` |
+| Green MCP but agent never calls tools | Explicitly say “use the Proxmox MCP tools”; confirm tool list is long (~132) in Cursor MCP settings |
 
 Local verification:
 

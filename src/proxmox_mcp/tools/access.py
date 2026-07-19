@@ -160,3 +160,26 @@ class AccessTools(ProxmoxTool):
             return self._format_response(perms)
         except Exception as e:
             self._handle_error("get permissions", e)
+
+    def get_token_permissions(self, userid: str, tokenid: str) -> List[Content]:
+        """Get effective permissions for a privilege-separated API token.
+
+        Pass userid as user@realm (e.g. mcp@pve) and tokenid as the token name.
+        Proxmox identity becomes user@realm!tokenid — required when privsep=Yes (D8).
+        """
+        try:
+            token_userid = f"{userid}!{tokenid}"
+            perms = self.proxmox.access.permissions.get(userid=token_userid)
+            meta = {
+                "userid": userid,
+                "tokenid": tokenid,
+                "token_identity": token_userid,
+                "hint": (
+                    "If this map is empty/near-empty with Privilege Separation=Yes, "
+                    "grant ACLs to the token identity (user@realm!tokenid), not only the user."
+                ),
+                "permissions": perms,
+            }
+            return self._format_response(meta)
+        except Exception as e:
+            self._handle_error(f"get token permissions for {userid}!{tokenid}", e)

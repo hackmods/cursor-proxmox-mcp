@@ -17,6 +17,7 @@ EXPECTED_TOOLS = frozenset(
         "get_next_vmid",
         "get_task_status",
         "list_tasks",
+        "wait_for_task",
         "get_version",
         "get_cluster_resources",
         "get_cluster_log",
@@ -74,6 +75,8 @@ EXPECTED_TOOLS = frozenset(
         # Storage
         "get_storage",
         "get_storage_content",
+        "list_os_templates",
+        "list_isos",
         "delete_storage_content",
         "download_url_to_storage",
         "create_storage",
@@ -123,6 +126,7 @@ EXPECTED_TOOLS = frozenset(
         "create_token",
         "delete_token",
         "get_permissions",
+        "get_token_permissions",
         # Replication
         "list_replication_jobs",
         "get_replication_status",

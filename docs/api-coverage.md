@@ -15,17 +15,18 @@ Configure `proxmox-config/config.json` with host + API token. Full first-run gui
 
 Many HA/firewall/access and `keyctl` feature changes need privileges beyond a limited token — often `PVEAdmin` / `Sys.Modify` or a carefully scoped dedicated user (prefer that over a `root@pam` token).
 
-After connect, use `get_permissions` to sanity-check what the token can actually do.
+After connect, use `get_token_permissions` / `get_permissions` to sanity-check what the token can actually do (privsep empty-map trap).
 
 ## Install (uvx)
 
-Recommended: use the `proxmox-mcp-server` console script via uv so Cursor does not need a hand-managed venv:
+Recommended: PyPI package / console script `proxmox-mcp-server`:
 
 ```bash
-uvx --from /path/to/cursor-proxmox-mcp proxmox-mcp-server
+uvx proxmox-mcp-server                                          # after PyPI publish
+uvx --from /path/to/cursor-proxmox-mcp proxmox-mcp-server      # local checkout
 ```
 
-Set `PROXMOX_MCP_CONFIG` to your `proxmox-config/config.json`. See [SETUP.md](../SETUP.md) for Cursor JSON snippets, Privilege Separation, and pip/uvx fallbacks.
+Set `PROXMOX_MCP_CONFIG` to your `config.json`. See [SETUP.md](../SETUP.md).
 
 ## Domains
 
@@ -36,9 +37,10 @@ Quick map:
 | Need | Start with |
 |------|------------|
 | Pick free ID | `get_next_vmid` |
-| Find templates/ISOs | `get_storage_content` |
-| Create guest | `create_vm` / `create_lxc` |
-| Wait for job | `get_task_status` |
+| Find templates/ISOs | `list_os_templates` / `list_isos` |
+| Create guest | `create_vm` / `create_lxc` (ISO, cloud-init, bridge/net) |
+| Wait for job | `wait_for_task` (or `get_task_status`) |
+| Token ACL smoke | `get_token_permissions` |
 | Inspect config | `get_vm_config` / `get_lxc_config` |
 | Safety net | `create_snapshot` / `create_backup` |
 | Move node | `migrate_guest` |
@@ -52,7 +54,7 @@ Quick map:
 
 ## Exclusions / planned
 
-**Phase D (next — agent QOL):** `wait_for_task`, richer `create_vm`/`create_lxc` (ISO, cloud-init, net/bridge), token permission smoke, optional PyPI publish. Full table: [next-expansion.md](../.cursor/research/next-expansion.md).
+**Phase D (done):** `wait_for_task`, richer create (ISO/cloud-init/net), `list_os_templates`/`list_isos`, `get_token_permissions`, PyPI publish workflow. See [next-expansion.md](../.cursor/research/next-expansion.md).
 
 **Phase C (deferred):** SDN write, ACME order/renew, Ceph OSD, cluster join, websocket console proxy, PBS direct admin, node reboot/shutdown — documented as planned, **not** registered as available tools. See [coverage matrix](../.cursor/research/proxmox-api-coverage.md).
 
@@ -76,4 +78,4 @@ Quick map:
 ./scripts/ci-local.sh
 ```
 
-Runs ruff + pytest + entrypoint smoke. Tool registration must match `tests/expected_tools.py` (≥100 tools).
+Runs ruff + pytest + entrypoint smoke + optional mcpo import. Tool registration must match `tests/expected_tools.py` (≥100 tools).

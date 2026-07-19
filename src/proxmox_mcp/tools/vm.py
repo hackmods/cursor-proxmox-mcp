@@ -116,99 +116,71 @@ class VMTools(ProxmoxTool):
         except Exception as e:
             self._handle_error("get VMs", e)
 
-    def create_vm(self, node: str, vmid: str, name: str, cpus: int, memory: int, 
-                  disk_size: int, storage: Optional[str] = None, ostype: Optional[str] = None) -> List[Content]:
-        """Create a new virtual machine with specified configuration.
-        
-        Args:
-            node: Host node name (e.g., 'pve')
-            vmid: New VM ID number (e.g., '200')
-            name: VM name (e.g., 'my-new-vm')
-            cpus: Number of CPU cores (e.g., 1, 2, 4)
-            memory: Memory size in MB (e.g., 2048 for 2GB)
-            disk_size: Disk size in GB (e.g., 10, 20, 50)
-            storage: Storage name (e.g., 'local-lvm', 'vm-storage'). If None, will auto-detect
-            ostype: OS type (e.g., 'l26' for Linux, 'win10' for Windows). Default: 'l26'
-            
-        Returns:
-            List of Content objects containing creation result
-            
-        Raises:
-            ValueError: If VM ID already exists or invalid parameters
-            RuntimeError: If VM creation fails
-        """
+    def create_vm(
+        self,
+        node: str,
+        vmid: str,
+        name: str,
+        cpus: int,
+        memory: int,
+        disk_size: int,
+        storage: Optional[str] = None,
+        ostype: Optional[str] = None,
+        bridge: Optional[str] = None,
+        net0: Optional[str] = None,
+        iso: Optional[str] = None,
+        boot: Optional[str] = None,
+        ciuser: Optional[str] = None,
+        cipassword: Optional[str] = None,
+        sshkeys: Optional[str] = None,
+        ipconfig0: Optional[str] = None,
+    ) -> List[Content]:
+        """Create a new virtual machine with optional ISO, cloud-init, and network overrides."""
         try:
-            # Check if VM ID already exists
             try:
                 self.proxmox.nodes(node).qemu(vmid).config.get()
                 raise ValueError(f"VM {vmid} already exists on node {node}")
             except Exception as e:
                 if "does not exist" not in str(e).lower():
                     raise e
-            
-            # Get storage information
+
             storage_list = self.proxmox.nodes(node).storage.get()
-            storage_info = {}
-            for s in storage_list:
-                storage_info[s["storage"]] = s
-            
-            # Auto-detect storage if not specified
+            storage_info = {s["storage"]: s for s in storage_list}
+
             if storage is None:
-                # Prefer local-lvm for VM images first
-                for s in storage_list:
-                    if s["storage"] == "local-lvm" and "images" in s.get("content", ""):
-                        storage = s["storage"]
-                        break
-                if storage is None:
-                    # Then try vm-storage 
+                for preferred in ("local-lvm", "vm-storage"):
                     for s in storage_list:
-                        if s["storage"] == "vm-storage" and "images" in s.get("content", ""):
+                        if s["storage"] == preferred and "images" in s.get("content", ""):
                             storage = s["storage"]
                             break
+                    if storage:
+                        break
                 if storage is None:
-                    # Fallback to any storage that supports images
                     for s in storage_list:
                         if "images" in s.get("content", ""):
                             storage = s["storage"]
                             break
-                    if storage is None:
-                        raise ValueError("No suitable storage found for VM images")
-            
-            # Validate storage exists and supports images
+                if storage is None:
+                    raise ValueError("No suitable storage found for VM images")
+
             if storage not in storage_info:
                 raise ValueError(f"Storage '{storage}' not found on node {node}")
-            
             if "images" not in storage_info[storage].get("content", ""):
                 raise ValueError(f"Storage '{storage}' does not support VM images")
-            
-            # Determine appropriate disk format based on storage type
+
             storage_type = storage_info[storage]["type"]
-            
-            if storage_type in ["lvm", "lvmthin"]:
-                # LVM storages use raw format and no cloudinit
-                disk_format = "raw"
-                vm_config_storage = {
-                    "scsi0": f"{storage}:{disk_size},format={disk_format}",
-                }
-            elif storage_type in ["dir", "nfs", "cifs"]:
-                # File-based storages can use qcow2
-                disk_format = "qcow2"
-                vm_config_storage = {
-                    "scsi0": f"{storage}:{disk_size},format={disk_format}",
-                    "ide2": f"{storage}:cloudinit",
-                }
-            else:
-                # Default to raw for unknown storage types
-                disk_format = "raw"
-                vm_config_storage = {
-                    "scsi0": f"{storage}:{disk_size},format={disk_format}",
-                }
-            
-            # Set default OS type
+            disk_format = "raw" if storage_type in ["lvm", "lvmthin"] else "qcow2"
             if ostype is None:
-                ostype = "l26"  # Linux 2.6+ kernel
-            
-            # Prepare VM configuration
+                ostype = "l26"
+
+            bridge = bridge or "vmbr0"
+            net0_value = net0 or f"virtio,bridge={bridge}"
+
+            want_cloudinit = any([ciuser, cipassword, sshkeys, ipconfig0])
+            if storage_type in ["lvm", "lvmthin"] and want_cloudinit and not iso:
+                # cloud-init drive often unsupported on pure LVM; still pass ci* keys for API
+                pass
+
             vm_config = {
                 "vmid": vmid,
                 "name": name,
@@ -216,22 +188,35 @@ class VMTools(ProxmoxTool):
                 "memory": memory,
                 "ostype": ostype,
                 "scsihw": "virtio-scsi-pci",
-                "boot": "order=scsi0",
-                "agent": "1",  # Enable QEMU guest agent
+                "scsi0": f"{storage}:{disk_size},format={disk_format}",
+                "agent": "1",
                 "vga": "std",
-                "net0": "virtio,bridge=vmbr0",
+                "net0": net0_value,
             }
-            
-            # Add storage configuration
-            vm_config.update(vm_config_storage)
-            
-            # Create the VM
+
+            if iso:
+                vm_config["ide2"] = f"{iso},media=cdrom"
+                vm_config["boot"] = boot or "order=ide2;scsi0"
+                if want_cloudinit:
+                    vm_config["ide3"] = f"{storage}:cloudinit"
+            elif want_cloudinit or storage_type in ["dir", "nfs", "cifs"]:
+                if storage_type in ["dir", "nfs", "cifs"] or want_cloudinit:
+                    vm_config["ide2"] = f"{storage}:cloudinit"
+                vm_config["boot"] = boot or "order=scsi0"
+            else:
+                vm_config["boot"] = boot or "order=scsi0"
+
+            if ciuser is not None:
+                vm_config["ciuser"] = ciuser
+            if cipassword is not None:
+                vm_config["cipassword"] = cipassword
+            if sshkeys is not None:
+                vm_config["sshkeys"] = sshkeys
+            if ipconfig0 is not None:
+                vm_config["ipconfig0"] = ipconfig0
+
             task_result = self.proxmox.nodes(node).qemu.create(**vm_config)
-            
-            cloudinit_note = ""
-            if storage_type in ["lvm", "lvmthin"]:
-                cloudinit_note = "\n  ⚠️  Note: LVM storage doesn't support cloud-init image"
-            
+
             result_text = f"""🎉 VM {vmid} created successfully!
 
 📋 VM Configuration:
@@ -240,21 +225,19 @@ class VMTools(ProxmoxTool):
   • VM ID: {vmid}
   • CPU Cores: {cpus}
   • Memory: {memory} MB ({memory/1024:.1f} GB)
-  • Disk: {disk_size} GB ({storage}, {disk_format} format)
-  • Storage Type: {storage_type}
+  • Disk: {disk_size} GB ({storage}, {disk_format})
   • OS Type: {ostype}
-  • Network: virtio (bridge=vmbr0)
-  • QEMU Agent: Enabled{cloudinit_note}
+  • Network: {net0_value}
+  • ISO: {iso or '(none)'}
+  • Cloud-init: {'yes' if want_cloudinit else 'drive/defaults only'}
+  • Boot: {vm_config.get('boot')}
 
 🔧 Task ID: {task_result}
 
-💡 Next steps:
-  1. Upload an ISO to install the operating system
-  2. Start the VM using start_vm tool
-  3. Access the console to complete OS installation"""
-            
+💡 Next: wait_for_task → start_vm (or install from ISO console)."""
+
             return [Content(type="text", text=result_text)]
-            
+
         except ValueError as e:
             raise e
         except Exception as e:

@@ -1,6 +1,6 @@
 # cursor-proxmox-mcp
 
-**Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 128 tools covering QEMU VMs, LXC, storage admin, cluster/tasks, snapshots, backups, migration, HA, firewall, access control, replication, SDN (read), ACME (read), pools, and console tickets.
+**Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 132 tools covering QEMU VMs, LXC, storage admin, cluster/tasks, snapshots, backups, migration, HA, firewall, access control, replication, SDN (read), ACME (read), pools, and console tickets.
 
 **Repo:** [hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)
 
@@ -13,14 +13,14 @@ Registered in `ProxmoxMCPServer._setup_tools()` — inventory locked by `tests/e
 | Domain | Tools |
 |--------|--------|
 | **Nodes** | `get_nodes`, `get_node_status`, `list_node_networks`, `get_node_subscription`, `list_node_certificates`, `get_node_report`, `list_node_services`, `get_node_time`, `wake_node` |
-| **Cluster / tasks** | `get_cluster_status`, `get_next_vmid`, `get_task_status`, `list_tasks`, `get_version`, `get_cluster_resources`, `get_cluster_log`, `get_cluster_options` |
-| **QEMU** | lifecycle + config + `get_vm_status`, `get_vm_rrd_data`, `create_vnc_ticket_vm`, `create_spice_ticket_vm`, `create_termproxy_ticket_vm` |
-| **LXC** | lifecycle + config + `get_lxc_status`, `create_vnc_ticket_lxc`, `create_termproxy_ticket_lxc` |
+| **Cluster / tasks** | `get_cluster_status`, `get_next_vmid`, `get_task_status`, `list_tasks`, `wait_for_task`, `get_version`, `get_cluster_resources`, `get_cluster_log`, `get_cluster_options` |
+| **QEMU** | lifecycle + config (ISO/cloud-init/net on create/update) + `get_vm_status`, `get_vm_rrd_data`, console tickets |
+| **LXC** | lifecycle + config (auto ostemplate, bridge/ip/net0) + `get_lxc_status`, console tickets |
 | **Snapshots / Backups** | list/create/delete/rollback snapshot; create/list/restore/delete backup |
-| **Storage** | list, content, download-url, definition CRUD |
+| **Storage** | list, content, `list_os_templates`, `list_isos`, download-url, definition CRUD |
 | **Migrate / HA** | `migrate_guest`; HA groups + resources CRUD |
 | **Firewall** | cluster + guest rules/options; aliases, IP sets, macros |
-| **Access** | users, groups, roles, ACL, tokens, permissions |
+| **Access** | users, groups, roles, ACL, tokens, `get_permissions`, `get_token_permissions` |
 | **Replication** | list/status/run/create/delete jobs |
 | **SDN** | list zones/vnets/controllers/ipams/dns + `apply_sdn` |
 | **ACME** | list plugins/accounts/directories (read) |
@@ -28,8 +28,8 @@ Registered in `ProxmoxMCPServer._setup_tools()` — inventory locked by `tests/e
 
 ### Suggested agent flow
 
-1. `get_next_vmid` → `get_storage_content` (templates/ISOs) → `list_node_networks`
-2. `create_lxc` / `create_vm` → `get_task_status`
+1. `get_next_vmid` → `list_os_templates` / `list_isos` → `list_node_networks`
+2. `create_lxc` / `create_vm` → `wait_for_task` → start
 3. `create_snapshot` before risky changes → `update_*_config` / power tools
 4. `migrate_guest` / HA / firewall / access / replication as needed
 
@@ -40,33 +40,39 @@ Registered in `ProxmoxMCPServer._setup_tools()` — inventory locked by `tests/e
 - [uv](https://github.com/astral-sh/uv) (recommended) **or** Python 3.10+
 - Proxmox API token
 
-### Path 1 — uvx (recommended, no clone)
+### Path 1 — uvx (recommended)
 
-Once the package is installed (or published), the console script is `proxmox-mcp-server` (alias of `proxmox-mcp`).
+PyPI package name is **`proxmox-mcp-server`** (console scripts: `proxmox-mcp-server` and `proxmox-mcp`).
 
 ```bash
 # Install uv if needed:  pip install uv   OR   winget install astral-sh.uv
-uvx --from . proxmox-mcp-server   # from a local checkout
-# after publish:  uvx proxmox-mcp-server
+
+# After PyPI publish (GitHub Release → publish.yml):
+uvx proxmox-mcp-server
+
+# From a local checkout (dev / before first publish):
+uvx --from . proxmox-mcp-server
 ```
 
-Cursor MCP (uvx + config file):
+Cursor MCP (published package — no checkout):
 
 ```json
 {
   "mcpServers": {
     "proxmox": {
       "command": "uvx",
-      "args": ["--from", "C:/Users/YOU/Projects/cursor-proxmox-mcp", "proxmox-mcp-server"],
+      "args": ["proxmox-mcp-server"],
       "env": {
-        "PROXMOX_MCP_CONFIG": "C:/Users/YOU/Projects/cursor-proxmox-mcp/proxmox-config/config.json"
+        "PROXMOX_MCP_CONFIG": "C:/Users/YOU/proxmox-config/config.json"
       }
     }
   }
 }
 ```
 
-Why uvx: it resolves dependencies into an isolated ephemeral env so Cursor does not depend on a hand-managed venv/`PYTHONPATH`. That is what made local MCP startup reliable when a system Python alone was incomplete.
+From a local checkout, use `"args": ["--from", "C:/Users/YOU/Projects/cursor-proxmox-mcp", "proxmox-mcp-server"]` instead.
+
+Why uvx: it resolves dependencies into an isolated ephemeral env so Cursor does not depend on a hand-managed venv/`PYTHONPATH`.
 
 ### Path 2 — uv from source
 
@@ -180,9 +186,7 @@ Create the token in Proxmox UI: Datacenter → Permissions → API Tokens. See *
 
 ### Planned (not implemented yet)
 
-**Phase D — agent QOL (next):** `wait_for_task`, ISO/cloud-init/net on create, token ACL smoke, optional PyPI publish — see [next-expansion.md](.cursor/research/next-expansion.md).
-
-**Phase C — heavy:** SDN write CRUD, ACME order/renew, Ceph OSD/MON admin, cluster join/bootstrap, full VNC/SPICE websocket proxy, PBS direct admin, node reboot/shutdown — see [coverage matrix](.cursor/research/proxmox-api-coverage.md).
+**Phase C — heavy:** SDN write CRUD, ACME order/renew, Ceph OSD/MON admin, cluster join/bootstrap, full VNC/SPICE websocket proxy, PBS direct admin, node reboot/shutdown — see [coverage matrix](.cursor/research/proxmox-api-coverage.md) and [next-expansion.md](.cursor/research/next-expansion.md).
 
 ## Development
 
@@ -194,11 +198,11 @@ After adding a tool: update `definitions.py`, README table, `.cursor/research/pr
 
 ## Status
 
-- [x] Formal multi-domain Proxmox API coverage (128 tools)
+- [x] Formal multi-domain Proxmox API coverage (132 tools)
 - [x] Phase B: replication, SDN read, ACME read, certs, console tickets, pools, firewall extras
-- [x] uvx `proxmox-mcp-server` entrypoint + install docs
-- [x] Local + GitHub CI with inventory floor
-- [ ] Phase D agent QOL (`wait_for_task`, richer create) — [roadmap](.cursor/research/next-expansion.md)
+- [x] Phase D agent QOL: `wait_for_task`, ISO/cloud-init/net create, `list_os_templates`/`list_isos`, `get_token_permissions`
+- [x] uvx `proxmox-mcp-server` entrypoint + PyPI publish workflow
+- [x] Local + GitHub CI with inventory floor + optional mcpo smoke
 - [ ] Phase C heavy/dangerous endpoints (documented only)
 
 ## License

@@ -68,6 +68,72 @@ class StorageTools(ProxmoxTool):
         except Exception as e:
             self._handle_error(f"get storage content on {storage}", e)
 
+    def list_os_templates(
+        self, node: str, storage: Optional[str] = None, filter: Optional[str] = None
+    ) -> List[Content]:
+        """List LXC OS templates (vztmpl). Optionally filter by substring (e.g. 'ubuntu')."""
+        try:
+            storages = self._storages_for_content(node, "vztmpl", storage)
+            found = []
+            for store in storages:
+                items = self.proxmox.nodes(node).storage(store).content.get(content="vztmpl")
+                for item in items or []:
+                    volid = str(item.get("volid", ""))
+                    if filter and filter.lower() not in volid.lower():
+                        continue
+                    found.append(item)
+            if not found:
+                hint = f" (filter={filter!r})" if filter else ""
+                return [
+                    Content(
+                        type="text",
+                        text=(
+                            f"No OS templates found{hint}. "
+                            "Use download_url_to_storage with content='vztmpl' or check storage content types."
+                        ),
+                    )
+                ]
+            return self._format_response(found)
+        except Exception as e:
+            self._handle_error("list OS templates", e)
+
+    def list_isos(
+        self, node: str, storage: Optional[str] = None, filter: Optional[str] = None
+    ) -> List[Content]:
+        """List ISO images. Optionally filter by substring (e.g. 'ubuntu')."""
+        try:
+            storages = self._storages_for_content(node, "iso", storage)
+            found = []
+            for store in storages:
+                items = self.proxmox.nodes(node).storage(store).content.get(content="iso")
+                for item in items or []:
+                    volid = str(item.get("volid", ""))
+                    if filter and filter.lower() not in volid.lower():
+                        continue
+                    found.append(item)
+            if not found:
+                return [
+                    Content(
+                        type="text",
+                        text="No ISOs found. Use download_url_to_storage with content='iso'.",
+                    )
+                ]
+            return self._format_response(found)
+        except Exception as e:
+            self._handle_error("list ISOs", e)
+
+    def _storages_for_content(
+        self, node: str, content_type: str, storage: Optional[str]
+    ) -> List[str]:
+        if storage:
+            return [storage]
+        storage_list = self.proxmox.nodes(node).storage.get()
+        return [
+            s["storage"]
+            for s in storage_list
+            if content_type in str(s.get("content", ""))
+        ]
+
     def delete_storage_content(self, node: str, storage: str, volume: str) -> List[Content]:
         """Delete a volume from storage (ISO, backup, disk image, etc.)."""
         try:

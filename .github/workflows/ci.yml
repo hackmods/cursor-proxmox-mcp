@@ -42,3 +42,8 @@ jobs:
         env:
           PYTHONPATH: src
         run: python -c "from tests.expected_tools import EXPECTED_TOOLS; assert len(EXPECTED_TOOLS) >= 100"
+
+      - name: Optional OpenAPI (mcpo) smoke
+        run: |
+          pip install -e ".[openapi]"
+          python -c "import mcpo; print('mcpo import ok', getattr(mcpo, '__version__', ''))"

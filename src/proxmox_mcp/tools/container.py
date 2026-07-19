@@ -67,38 +67,21 @@ class ContainerTools(ProxmoxTool):
         node: str,
         vmid: str,
         hostname: str,
-        ostemplate: str,
-        cpus: int,
-        memory: int,
-        disk_size: int,
+        ostemplate: Optional[str] = None,
+        cpus: int = 1,
+        memory: int = 2048,
+        disk_size: int = 8,
         storage: Optional[str] = None,
         features: Optional[str] = None,
         password: Optional[str] = None,
         unprivileged: bool = True,
+        bridge: Optional[str] = None,
+        ip: Optional[str] = None,
+        gw: Optional[str] = None,
+        net0: Optional[str] = None,
+        ostemplate_filter: Optional[str] = None,
     ) -> List[Content]:
-        """Create a new LXC container with specified configuration.
-
-        Args:
-            node: Host node name (e.g., 'pve')
-            vmid: New container ID number (e.g., '200')
-            hostname: Container hostname (e.g., 'my-lxc')
-            ostemplate: OS template path (e.g., 'local:vztmpl/ubuntu-22.04-standard_22.04-1_amd64.tar.zst')
-            cpus: Number of CPU cores (e.g., 1, 2, 4)
-            memory: Memory size in MB (e.g., 2048 for 2GB)
-            disk_size: Root filesystem size in GB (e.g., 8, 10, 20)
-            storage: Storage name for rootfs (e.g., 'local-lvm'). If None, will auto-detect
-            features: Container features string (e.g., 'nesting=1', 'nesting=1,keyctl=1').
-                      Default: 'nesting=1'
-            password: Root password for the container. Optional.
-            unprivileged: Whether to create an unprivileged container. Default: True
-
-        Returns:
-            List of Content objects containing creation result
-
-        Raises:
-            ValueError: If container ID already exists or invalid parameters
-            RuntimeError: If container creation fails
-        """
+        """Create an LXC container. If ostemplate is omitted, auto-picks from storage (optional filter)."""
         try:
             try:
                 self.proxmox.nodes(node).lxc(vmid).config.get()
@@ -115,39 +98,45 @@ class ContainerTools(ProxmoxTool):
                     raise e
 
             storage_list = self.proxmox.nodes(node).storage.get()
-            storage_info = {}
-            for s in storage_list:
-                storage_info[s["storage"]] = s
+            storage_info = {s["storage"]: s for s in storage_list}
 
             if storage is None:
-                for s in storage_list:
-                    if s["storage"] == "local-lvm" and "rootdir" in s.get("content", ""):
-                        storage = s["storage"]
-                        break
-                if storage is None:
+                for preferred in ("local-lvm", "vm-storage"):
                     for s in storage_list:
-                        if s["storage"] == "vm-storage" and "rootdir" in s.get("content", ""):
+                        if s["storage"] == preferred and "rootdir" in s.get("content", ""):
                             storage = s["storage"]
                             break
+                    if storage:
+                        break
                 if storage is None:
                     for s in storage_list:
                         if "rootdir" in s.get("content", ""):
                             storage = s["storage"]
                             break
-                    if storage is None:
-                        raise ValueError("No suitable storage found for LXC rootfs (rootdir)")
+                if storage is None:
+                    raise ValueError("No suitable storage found for LXC rootfs (rootdir)")
 
             if storage not in storage_info:
                 raise ValueError(f"Storage '{storage}' not found on node {node}")
-
             if "rootdir" not in storage_info[storage].get("content", ""):
                 raise ValueError(f"Storage '{storage}' does not support LXC rootfs (rootdir)")
 
-            storage_type = storage_info[storage]["type"]
+            if not ostemplate:
+                ostemplate = self._resolve_ostemplate(node, ostemplate_filter)
 
             if features is None:
                 features = "nesting=1"
 
+            bridge = bridge or "vmbr0"
+            ip_val = ip or "dhcp"
+            if net0:
+                net0_value = net0
+            else:
+                net0_value = f"name=eth0,bridge={bridge},ip={ip_val}"
+                if gw and ip_val != "dhcp":
+                    net0_value += f",gw={gw}"
+
+            storage_type = storage_info[storage]["type"]
             lxc_config = {
                 "vmid": vmid,
                 "hostname": hostname,
@@ -155,11 +144,10 @@ class ContainerTools(ProxmoxTool):
                 "cores": cpus,
                 "memory": memory,
                 "rootfs": f"{storage}:{disk_size}",
-                "net0": "name=eth0,bridge=vmbr0,ip=dhcp",
+                "net0": net0_value,
                 "features": features,
                 "unprivileged": 1 if unprivileged else 0,
             }
-
             if password is not None:
                 lxc_config["password"] = password
 
@@ -173,19 +161,15 @@ class ContainerTools(ProxmoxTool):
   • Container ID: {vmid}
   • CPU Cores: {cpus}
   • Memory: {memory} MB ({memory/1024:.1f} GB)
-  • Rootfs: {disk_size} GB ({storage})
-  • Storage Type: {storage_type}
+  • Rootfs: {disk_size} GB ({storage}, {storage_type})
   • OS Template: {ostemplate}
   • Features: {features}
   • Unprivileged: {unprivileged}
-  • Network: eth0 (bridge=vmbr0, dhcp)
+  • Network: {net0_value}
 
 🔧 Task ID: {task_result}
 
-💡 Next steps:
-  1. Start the container with start_lxc (or update_lxc_features first if Docker needs keyctl)
-  2. Enter the container console to finish setup
-  3. Adjust networking or mount points as needed"""
+💡 Next: wait_for_task → update_lxc_features (if Docker needs keyctl) → start_lxc."""
 
             return [Content(type="text", text=result_text)]
 
@@ -193,6 +177,28 @@ class ContainerTools(ProxmoxTool):
             raise e
         except Exception as e:
             self._handle_error(f"create LXC {vmid}", e)
+
+    def _resolve_ostemplate(self, node: str, filter: Optional[str] = None) -> str:
+        """Pick first matching vztmpl from node storage."""
+        storage_list = self.proxmox.nodes(node).storage.get()
+        candidates = []
+        for s in storage_list:
+            if "vztmpl" not in str(s.get("content", "")):
+                continue
+            items = self.proxmox.nodes(node).storage(s["storage"]).content.get(content="vztmpl")
+            for item in items or []:
+                volid = str(item.get("volid", ""))
+                if not volid:
+                    continue
+                if filter and filter.lower() not in volid.lower():
+                    continue
+                candidates.append(volid)
+        if not candidates:
+            raise ValueError(
+                "No ostemplate found. Pass ostemplate= explicitly, or use list_os_templates / "
+                "download_url_to_storage (content=vztmpl). Optional ostemplate_filter e.g. 'ubuntu'."
+            )
+        return candidates[0]
 
     def start_lxc(self, node: str, vmid: str) -> List[Content]:
         """Start an LXC container."""

@@ -16,22 +16,13 @@ node* - Host node name"""
 # VM
 GET_VMS_DESC = """List all virtual machines across the cluster with their status and resource usage."""
 
-CREATE_VM_DESC = """Create a new virtual machine with specified configuration.
-
-Parameters:
-node*, vmid*, name*, cpus*, memory* (MB), disk_size* (GB)
-storage - optional, auto-detect
-ostype - optional, default l26"""
+CREATE_VM_DESC = """Create a QEMU VM. Parameters: node*, vmid*, name*, cpus*, memory* (MB), disk_size* (GB); storage?, ostype?, bridge?, net0?, iso?, boot?, ciuser?, cipassword?, sshkeys?, ipconfig0?"""
 
 GET_VM_CONFIG_DESC = """Get full QEMU VM configuration.
 
 Parameters: node*, vmid*"""
 
-UPDATE_VM_CONFIG_DESC = """Update QEMU VM config. Pass only fields to change.
-
-Parameters:
-node*, vmid*
-cores, memory, name, net0, onboot, agent — optional strings/ints"""
+UPDATE_VM_CONFIG_DESC = """Update QEMU VM config. Parameters: node*, vmid*; cores?, memory?, name?, net0?, onboot?, agent?, iso?, boot?, ciuser?, cipassword?, sshkeys?, ipconfig0?, ide2?"""
 
 EXECUTE_VM_COMMAND_DESC = """Execute commands in a VM via QEMU guest agent.
 
@@ -51,7 +42,7 @@ CONVERT_VM_TEMPLATE_DESC = """Convert VM to template. Parameters: node*, vmid*""
 
 # LXC
 GET_CONTAINERS_DESC = """List all LXC containers across the cluster."""
-CREATE_LXC_DESC = """Create an LXC container. Parameters: node*, vmid*, hostname*, ostemplate*, cpus*, memory*, disk_size*, storage?, features?, password?, unprivileged?=true"""
+CREATE_LXC_DESC = """Create an LXC. Parameters: node*, vmid*, hostname*; ostemplate? (auto-pick if omitted), cpus?, memory?, disk_size?, storage?, features?, password?, unprivileged?, bridge?, ip?, gw?, net0?, ostemplate_filter?"""
 GET_LXC_CONFIG_DESC = """Get full LXC configuration. Parameters: node*, vmid*"""
 UPDATE_LXC_CONFIG_DESC = """Update LXC config. Parameters: node*, vmid* plus cores/memory/hostname/net0/features etc."""
 START_LXC_DESC = """Start an LXC container. Parameters: node*, vmid*"""
@@ -80,12 +71,15 @@ DELETE_BACKUP_DESC = """Delete a backup volume. Parameters: node*, storage*, vol
 # Tasks / cluster
 GET_TASK_STATUS_DESC = """Get status for a task UPID. Parameters: node*, upid*"""
 LIST_TASKS_DESC = """List recent tasks on a node. Parameters: node*"""
+WAIT_FOR_TASK_DESC = """Poll a task UPID until it stops (or timeout). Parameters: node*, upid*, timeout?=300, poll_interval?=2.0"""
 GET_NEXT_VMID_DESC = """Get the next free VM/CT ID from the cluster."""
 GET_CLUSTER_STATUS_DESC = """Get overall Proxmox cluster health and quorum status."""
 
 # Storage
 GET_STORAGE_DESC = """List storage pools across the cluster with usage."""
 GET_STORAGE_CONTENT_DESC = """List storage content (iso/vztmpl/backup/images). Parameters: node*, storage*, content?"""
+LIST_OS_TEMPLATES_DESC = """List LXC OS templates (vztmpl) across storages. Parameters: node*, storage?, filter? (e.g. ubuntu)"""
+LIST_ISOS_DESC = """List ISO images. Parameters: node*, storage?, filter?"""
 DELETE_STORAGE_CONTENT_DESC = """Delete a storage volume. Parameters: node*, storage*, volume*"""
 DOWNLOAD_URL_TO_STORAGE_DESC = """Download URL into storage. Parameters: node*, storage*, url*, filename?, content?=iso"""
 CREATE_STORAGE_DESC = """Create cluster storage definition. Parameters: storage*, type*, content?, path?, server?, export?, vgname?, pool?, monhost?, username?, password?, nodes?, disable?"""
@@ -132,6 +126,7 @@ LIST_TOKENS_DESC = """List API tokens for a user. Parameters: userid*"""
 CREATE_TOKEN_DESC = """Create API token (secret shown once — store immediately). Parameters: userid*, tokenid*, comment?, privsep?=true. privsep=true (default): token needs its own ACL (user@realm!tokenid); effective perms = user ∩ token. privsep=false: token inherits all user permissions (lab shortcut; larger blast radius)."""
 DELETE_TOKEN_DESC = """Delete API token. Parameters: userid*, tokenid*"""
 GET_PERMISSIONS_DESC = """Get effective permissions for the current auth identity (useful to verify token ACLs / Privilege Separation)."""
+GET_TOKEN_PERMISSIONS_DESC = """Get effective permissions for an API token (privsep). Parameters: userid* (user@realm), tokenid*. Empty result often means Privilege Separation with no ACL on user@realm!tokenid."""
 
 # Replication
 LIST_REPLICATION_JOBS_DESC = """List cluster storage replication jobs."""

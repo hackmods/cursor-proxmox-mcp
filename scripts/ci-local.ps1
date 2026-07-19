@@ -24,4 +24,10 @@ Write-Host "==> Tool inventory sanity"
 python -c "from tests.expected_tools import EXPECTED_TOOLS; print(f'Expected tools: {len(EXPECTED_TOOLS)}'); assert len(EXPECTED_TOOLS) >= 100"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+Write-Host "==> Optional OpenAPI (mcpo) smoke"
+python -m pip install -e ".[openapi]" -q
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+python -c "import mcpo; print('mcpo import ok')"
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 Write-Host "==> Local CI passed"

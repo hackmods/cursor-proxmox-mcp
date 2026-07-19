@@ -12,16 +12,16 @@ Source of truth for registered names: `ProxmoxMCPServer._setup_tools()` and `tes
 |--------|-----------|----------------------|
 | Nodes | get_nodes, get_node_status, list_node_networks, subscription, certificates, report, services, time, wakeonlan | /nodes... |
 | Cluster | get_cluster_status, get_next_vmid, get_version, get_cluster_resources, get_cluster_log, get_cluster_options | /cluster..., /version |
-| Tasks | get_task_status, list_tasks | /nodes/{n}/tasks... |
-| QEMU | full lifecycle + config + status + rrd + VNC/SPICE/termproxy tickets | /nodes/{n}/qemu... |
-| LXC | full lifecycle + config + status + VNC/termproxy tickets + exec | /nodes/{n}/lxc... |
+| Tasks | get_task_status, list_tasks, wait_for_task | /nodes/{n}/tasks... |
+| QEMU | full lifecycle + config (ISO/cloud-init/net) + status + rrd + console tickets | /nodes/{n}/qemu... |
+| LXC | full lifecycle + config (auto ostemplate, net) + status + console tickets + exec | /nodes/{n}/lxc... |
 | Snapshots | list/create/delete/rollback | .../snapshot |
 | Backups | create/list/restore/delete | vzdump + storage content |
-| Storage | get/content/delete/download-url + definition CRUD | /storage... |
+| Storage | get/content/list_os_templates/list_isos/delete/download-url + definition CRUD | /storage... |
 | Migrate | migrate_guest | .../migrate |
 | HA | status, groups, resources CRUD | /cluster/ha... |
 | Firewall | cluster+guest rules/options; aliases; ipsets; macros | /cluster/firewall... |
-| Access | users, groups, roles, ACL, tokens, permissions | /access/... |
+| Access | users, groups, roles, ACL, tokens, get_permissions, get_token_permissions | /access/... |
 | Replication | list/status/run/create/delete | /cluster/replication, /nodes/{n}/replication |
 | ACME | list plugins/accounts/directories (read) | /cluster/acme... |
 | SDN | list zones/vnets/controllers/ipams/dns + apply | /cluster/sdn... |
@@ -29,18 +29,19 @@ Source of truth for registered names: `ProxmoxMCPServer._setup_tools()` and `tes
 
 ## Planned
 
-### Phase D — Agent QOL (next)
+### Phase D — Agent QOL (done)
 
-See [next-expansion.md](next-expansion.md) for full detail. Summary:
+See [next-expansion.md](next-expansion.md). Summary:
 
 | Item | Status |
 |------|--------|
-| `wait_for_task` (poll UPID) | planned |
-| ISO/CDROM + boot on create/update VM | planned |
-| Cloud-init params on create/update | planned |
-| Net/bridge overrides on create_vm / create_lxc | planned |
-| Token ACL / permissions smoke helper | planned |
-| PyPI publish for bare `uvx proxmox-mcp-server` | planned |
+| `wait_for_task` (poll UPID) | done |
+| ISO/CDROM + boot on create/update VM | done |
+| Cloud-init params on create/update | done |
+| Net/bridge overrides on create_vm / create_lxc | done |
+| `list_os_templates` / `list_isos` | done |
+| `get_token_permissions` (privsep ACL smoke) | done |
+| PyPI package + publish.yml for `uvx proxmox-mcp-server` | done (publish on Release) |
 
 ### Phase C — Heavy / deferred
 

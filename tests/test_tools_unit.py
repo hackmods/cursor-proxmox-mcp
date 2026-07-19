@@ -54,6 +54,111 @@ def test_get_task_status():
     assert "OK" in result[0].text or "stopped" in result[0].text
 
 
+def test_wait_for_task_success():
+    api = Mock()
+    api.nodes.return_value.tasks.return_value.status.get.side_effect = [
+        {"status": "running"},
+        {"status": "stopped", "exitstatus": "OK"},
+    ]
+    tools = TaskTools(api)
+    result = tools.wait_for_task("pve", "UPID:pve:1:2:3:qmcreate:100:", timeout=10, poll_interval=0.5)
+    assert "finished" in result[0].text.lower() or "OK" in result[0].text
+
+
+def test_wait_for_task_timeout():
+    api = Mock()
+    api.nodes.return_value.tasks.return_value.status.get.return_value = {"status": "running"}
+    tools = TaskTools(api)
+    with pytest.raises(TimeoutError):
+        tools.wait_for_task("pve", "UPID:stuck", timeout=1, poll_interval=0.5)
+
+
+def test_get_token_permissions():
+    api = Mock()
+    api.access.permissions.get.return_value = {"/": ["VM.Audit"]}
+    tools = AccessTools(api)
+    result = tools.get_token_permissions("mcp@pve", "cursor")
+    assert "mcp@pve!cursor" in result[0].text
+    api.access.permissions.get.assert_called_with(userid="mcp@pve!cursor")
+
+
+def test_list_os_templates():
+    api = Mock()
+    api.nodes.return_value.storage.get.return_value = [
+        {"storage": "local", "content": "vztmpl,iso"}
+    ]
+    api.nodes.return_value.storage.return_value.content.get.return_value = [
+        {"volid": "local:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"}
+    ]
+    tools = StorageTools(api)
+    result = tools.list_os_templates("pve", filter="ubuntu")
+    assert "ubuntu" in result[0].text.lower()
+
+
+def test_create_vm_iso_and_net():
+    api = Mock()
+    # VM does not exist
+    api.nodes.return_value.qemu.return_value.config.get.side_effect = Exception(
+        "Configuration file does not exist"
+    )
+    api.nodes.return_value.storage.get.return_value = [
+        {"storage": "local-lvm", "content": "images", "type": "lvmthin"}
+    ]
+    api.nodes.return_value.qemu.create.return_value = "UPID:create"
+    tools = VMTools(api)
+    result = tools.create_vm(
+        "pve",
+        "150",
+        "blank",
+        2,
+        2048,
+        20,
+        iso="local:iso/ubuntu.iso",
+        bridge="vmbr1",
+        ciuser="ubuntu",
+        sshkeys="ssh-ed25519 AAAA",
+        ipconfig0="ip=dhcp",
+    )
+    assert "150" in result[0].text
+    kwargs = api.nodes.return_value.qemu.create.call_args.kwargs
+    assert "ide2" in kwargs
+    assert kwargs["net0"] == "virtio,bridge=vmbr1"
+    assert kwargs["ciuser"] == "ubuntu"
+
+
+def test_create_lxc_auto_template():
+    api = Mock()
+    api.nodes.return_value.lxc.return_value.config.get.side_effect = Exception(
+        "Configuration file does not exist"
+    )
+    api.nodes.return_value.qemu.return_value.config.get.side_effect = Exception(
+        "Configuration file does not exist"
+    )
+    api.nodes.return_value.storage.get.return_value = [
+        {"storage": "local-lvm", "content": "rootdir", "type": "lvmthin"},
+        {"storage": "local", "content": "vztmpl", "type": "dir"},
+    ]
+    api.nodes.return_value.storage.return_value.content.get.return_value = [
+        {"volid": "local:vztmpl/debian-12-standard_12.2-1_amd64.tar.zst"}
+    ]
+    api.nodes.return_value.lxc.create.return_value = "UPID:lxc"
+    tools = ContainerTools(api)
+    result = tools.create_lxc(
+        node="pve",
+        vmid="250",
+        hostname="docker-nest",
+        features="nesting=1,keyctl=1",
+        bridge="vmbr0",
+        ip="dhcp",
+        ostemplate_filter="debian",
+    )
+    assert "250" in result[0].text
+    kwargs = api.nodes.return_value.lxc.create.call_args.kwargs
+    assert "debian" in kwargs["ostemplate"]
+    assert "nesting=1" in kwargs["features"]
+    assert "bridge=vmbr0" in kwargs["net0"]
+
+
 def test_create_snapshot():
     api = Mock()
     api.nodes.return_value.qemu.return_value.snapshot.create.return_value = "UPID:snap"

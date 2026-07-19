@@ -1,5 +1,22 @@
 # Changelog / research notes
 
+## 2026-07-19 — Phase D agent QOL + Soft DX
+
+**Why:** Agents raced UPIDs, guessed templates, and hit privsep empty-maps; create paths hardcoded vmbr0/DHCP.
+
+**Shipped tools/params:**
+- `wait_for_task` — poll UPID until stopped
+- `create_vm` / `update_vm_config` — ISO/CDROM, boot, cloud-init, bridge/net0
+- `create_lxc` — optional ostemplate (auto-pick), bridge/ip/gw/net0, `ostemplate_filter`
+- `list_os_templates`, `list_isos`, `get_token_permissions`
+- Soft DX: SETUP MCP reload checklist, nested Docker LXC prompt, mcpo CI smoke
+- PyPI: package rename to `proxmox-mcp-server` v0.3.0 + `publish.yml`
+
+**Quirks:**
+- Privsep=Yes empty perms → ACL `user@realm!tokenid` (use `get_token_permissions`)
+- Cloud-init drive + pure LVM: API may accept ci* keys; drive placement best-effort
+- First bare `uvx proxmox-mcp-server` needs a GitHub Release + PyPI Trusted Publishing
+
 ## 2026-07-19 — Next-expansion roadmap note
 
 **Why:** Capture post-128-tool priorities so agents don’t invent scope. Prefer Phase D create/wait QOL over Phase C heavy admin.
