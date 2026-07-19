@@ -50,6 +50,7 @@ TOOL_SPECS = [
     ToolSpec("prepare_lxc_for_docker", D.PREPARE_LXC_FOR_DOCKER_DESC),
     ToolSpec("push_to_lxc", D.PUSH_TO_LXC_DESC),
     ToolSpec("pull_from_lxc", D.PULL_FROM_LXC_DESC),
+    ToolSpec("deploy_static_nginx", D.DEPLOY_STATIC_NGINX_DESC),
     ToolSpec("suspend_lxc", D.SUSPEND_LXC_DESC),
     ToolSpec("resume_lxc", D.RESUME_LXC_DESC),
     ToolSpec("get_lxc_status", D.GET_LXC_STATUS_DESC),
@@ -77,14 +78,11 @@ class ContainerTools(ProxmoxTool):
         if ssh_configured(ssh_config) and self.proxmox_host:
             self._pct = PctExecutor(ssh_config, self.proxmox_host)
 
-    def get_containers(self) -> List[Content]:
+    def get_containers(self, probes: bool = False) -> List[Content]:
         """List all LXC containers across the cluster with detailed status.
 
-        Returns:
-            List of Content objects containing formatted container information
-
-        Raises:
-            RuntimeError: If the cluster-wide container query fails
+        When ``probes=True`` and host SSH is configured, run cheap pct checks for
+        docker binary and :80 listeners on *running* CTs only (opt-in; D25-adjacent).
         """
         try:
             result = []
@@ -97,7 +95,7 @@ class ContainerTools(ProxmoxTool):
                     try:
                         config = self.proxmox.nodes(node_name).lxc(vmid).config.get()
                         networks = parse_lxc_networks(config)
-                        result.append({
+                        entry = {
                             "vmid": vmid,
                             "name": config.get("hostname", name),
                             "status": ct["status"],
@@ -109,9 +107,9 @@ class ContainerTools(ProxmoxTool):
                             },
                             "ip": configured_ipv4_summary(networks),
                             "networks": networks,
-                        })
+                        }
                     except Exception:
-                        result.append({
+                        entry = {
                             "vmid": vmid,
                             "name": name,
                             "status": ct["status"],
@@ -123,10 +121,61 @@ class ContainerTools(ProxmoxTool):
                             },
                             "ip": None,
                             "networks": [],
-                        })
+                        }
+                    if probes:
+                        entry.update(
+                            self._probe_container(node_name, str(vmid), ct.get("status"))
+                        )
+                    result.append(entry)
             return self._format_response(result, "containers")
         except Exception as e:
             self._handle_error("get containers", e)
+
+    def _probe_container(
+        self, node: str, vmid: str, status: Optional[str]
+    ) -> dict:
+        """Cheap docker / :80 probes; never raises."""
+        out: dict = {
+            "probe_docker": None,
+            "probe_port_80": None,
+            "probe_note": None,
+        }
+        if status != "running":
+            out["probe_note"] = "skipped (not running)"
+            return out
+        if not self._pct:
+            out["probe_note"] = "skipped (host SSH not configured)"
+            return out
+        try:
+            docker = self._pct.execute(
+                node,
+                vmid,
+                "command -v docker >/dev/null 2>&1 && echo yes || echo no",
+                timeout=15,
+            )
+            out["probe_docker"] = (
+                "yes" if "yes" in (docker.stdout or "").strip().lower() else "no"
+            )
+        except Exception as e:
+            out["probe_docker"] = None
+            out["probe_note"] = f"docker probe failed: {e}"
+        try:
+            port80 = self._pct.execute(
+                node,
+                vmid,
+                "ss -ltn 2>/dev/null | grep -q ':80 ' && echo yes || "
+                "(netstat -ltn 2>/dev/null | grep -q ':80 ' && echo yes || echo no)",
+                timeout=15,
+            )
+            out["probe_port_80"] = (
+                "yes" if "yes" in (port80.stdout or "").strip().lower() else "no"
+            )
+        except Exception as e:
+            out["probe_port_80"] = None
+            note = out.get("probe_note")
+            fail = f"port80 probe failed: {e}"
+            out["probe_note"] = f"{note}; {fail}" if note else fail
+        return out
 
     def create_lxc(
         self,
@@ -148,6 +197,7 @@ class ContainerTools(ProxmoxTool):
         net0: Optional[str] = None,
         ostemplate_filter: Optional[str] = None,
         docker_ready: bool = False,
+        wait: bool = False,
     ) -> List[Content]:
         """Create an LXC container. If ostemplate is omitted, auto-picks from storage (optional filter).
 
@@ -156,6 +206,7 @@ class ContainerTools(ProxmoxTool):
         (PermitRootLogin prohibit-password) — prefer ``ssh_public_keys`` for guest SSH.
         ``docker_ready`` sets nesting+keyctl features and tips ``prepare_lxc_for_docker``;
         it does not install Docker or claim runtime readiness (D21).
+        When ``wait=True``, poll the create UPID until stopped (D25; default remains false).
         """
         try:
             assert_id_absent(self.proxmox, node, vmid, "lxc")
@@ -246,6 +297,30 @@ class ContainerTools(ProxmoxTool):
                 else ""
             )
 
+            if wait:
+                final = wait_for_upid(self.proxmox, node, task_result, timeout=600)
+                status = final.get("status") if isinstance(final, dict) else final
+                exitstatus = (
+                    final.get("exitstatus") if isinstance(final, dict) else None
+                )
+                task_block = (
+                    f"⏳ wait=true — task finished: status={status} "
+                    f"exitstatus={exitstatus}\n🔧 Task ID: {task_result}"
+                )
+                next_step_1 = (
+                    "1. Create finished (wait=true) — proceed to start_lxc "
+                    "(re-check get_task_status if exitstatus != OK)"
+                )
+            else:
+                task_block = (
+                    f"🔧 Task ID: {task_result}\n"
+                    f"{upid_response_footer(task_result, node=node)}"
+                )
+                next_step_1 = (
+                    "1. wait_for_task(node, upid) until stopped — create ≠ ready; "
+                    "task errors (missing template) surface here"
+                )
+
             result_text = f"""🎉 LXC container {vmid} create task started (OS template only — not a deployed app).
 
 📋 Container Configuration:
@@ -261,14 +336,15 @@ class ContainerTools(ProxmoxTool):
   • Network: {net0_value}
 {docker_line}{chr(10).join(auth_lines)}
   • Host SSH/pct for MCP: {ssh_pct}
-{warn_block}🔧 Task ID: {task_result}
+{warn_block}{task_block}
 
 💡 Next (bootstrap):
-  1. wait_for_task(node, upid) until stopped — create ≠ ready; task errors (missing template) surface here
+  {next_step_1}
   2. start_lxc → get_lxc_network (configured/runtime IP)
   3. Guest access: prefer ssh_public_keys at create; or set_lxc_password / set_lxc_ssh_keys / execute_lxc_command (all need config ssh)
   4. For Docker: prepare_lxc_for_docker → stop_lxc + start_lxc → smoke with docker run --rm nginx:alpine (nesting alone ≠ Docker)
-  5. keyctl for Docker-in-LXC often needs elevated role / root@pam (update_lxc_features / prepare)"""
+  5. Static site without Docker: deploy_static_nginx
+  6. keyctl for Docker-in-LXC often needs elevated role / root@pam (update_lxc_features / prepare)"""
 
             return [Content(type="text", text=result_text)]
 
@@ -1099,6 +1175,140 @@ Known limitations (D24):
             if is_missing_resource_error(e):
                 raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"pull from LXC {vmid}", e)
+
+    def deploy_static_nginx(
+        self,
+        node: str,
+        vmid: str,
+        local_path: Optional[str] = None,
+        content_base64: Optional[str] = None,
+        remote_extract_dir: str = "/var/www/html",
+        timeout: Optional[int] = None,
+    ) -> List[Content]:
+        """Install nginx and deploy static content into a running LXC (Lumon-style)."""
+        try:
+            pct = self._require_pct()
+            status = self.proxmox.nodes(node).lxc(vmid).status.current.get()
+            if status.get("status") != "running":
+                raise ValueError(f"LXC {vmid} is not running on node {node}")
+
+            dest = (remote_extract_dir or "/var/www/html").rstrip("/") or "/var/www/html"
+            t = timeout
+
+            install = pct.execute(
+                node,
+                vmid,
+                "export DEBIAN_FRONTEND=noninteractive; "
+                "(command -v nginx >/dev/null 2>&1 || "
+                "(apt-get update -qq && apt-get install -y -qq nginx)) && "
+                "systemctl enable --now nginx 2>/dev/null || "
+                "service nginx start 2>/dev/null || true",
+                timeout=t or 300,
+            )
+            if install.exit_code != 0:
+                # Some guests omit systemctl; tolerate if nginx binary exists
+                check = pct.execute(node, vmid, "command -v nginx", timeout=15)
+                if check.exit_code != 0:
+                    raise RuntimeError(
+                        f"nginx install failed: exit={install.exit_code} "
+                        f"stderr={install.stderr}"
+                    )
+
+            content_note = "default nginx index left in place"
+            if local_path or content_base64:
+                if bool(local_path) == bool(content_base64):
+                    raise ValueError(
+                        "Provide at most one of local_path or content_base64 "
+                        "(omit both to only install nginx)"
+                    )
+                if local_path:
+                    with open(local_path, "rb") as fh:
+                        data = fh.read()
+                    src_name = local_path.rsplit("/" if "/" in local_path else "\\", 1)[-1]
+                else:
+                    data = base64.b64decode(content_base64 or "")
+                    src_name = "payload.bin"
+
+                lower = src_name.lower()
+                if lower.endswith((".tar.gz", ".tgz")):
+                    remote_archive = "/tmp/mcp-nginx-site.tgz"
+                    pct.push_to_guest(node, vmid, data, remote_archive, timeout=t)
+                    extract = pct.execute(
+                        node,
+                        vmid,
+                        f"mkdir -p {shlex.quote(dest)} && "
+                        f"tar -xzf {shlex.quote(remote_archive)} -C {shlex.quote(dest)} && "
+                        f"rm -f {shlex.quote(remote_archive)}",
+                        timeout=t or 120,
+                    )
+                    if extract.exit_code != 0:
+                        raise RuntimeError(
+                            f"extract failed: {extract.stderr or extract.stdout}"
+                        )
+                    content_note = f"extracted {src_name} → {dest}"
+                elif lower.endswith(".tar"):
+                    remote_archive = "/tmp/mcp-nginx-site.tar"
+                    pct.push_to_guest(node, vmid, data, remote_archive, timeout=t)
+                    extract = pct.execute(
+                        node,
+                        vmid,
+                        f"mkdir -p {shlex.quote(dest)} && "
+                        f"tar -xf {shlex.quote(remote_archive)} -C {shlex.quote(dest)} && "
+                        f"rm -f {shlex.quote(remote_archive)}",
+                        timeout=t or 120,
+                    )
+                    if extract.exit_code != 0:
+                        raise RuntimeError(
+                            f"extract failed: {extract.stderr or extract.stdout}"
+                        )
+                    content_note = f"extracted {src_name} → {dest}"
+                else:
+                    # Treat as a single HTML/file → index.html
+                    remote_file = f"{dest}/index.html"
+                    pct.execute(
+                        node,
+                        vmid,
+                        f"mkdir -p {shlex.quote(dest)}",
+                        timeout=30,
+                    )
+                    pct.push_to_guest(node, vmid, data, remote_file, timeout=t)
+                    content_note = f"wrote {len(data)} bytes → {remote_file}"
+
+            reload = pct.execute(
+                node,
+                vmid,
+                "nginx -t 2>/dev/null && "
+                "(systemctl reload nginx 2>/dev/null || nginx -s reload 2>/dev/null || true)",
+                timeout=30,
+            )
+            ip_hint = ""
+            try:
+                net = self.get_lxc_network(node, vmid, resolve_runtime=True)
+                if net and getattr(net[0], "text", None):
+                    ip_hint = "\n💡 Use get_lxc_network for guest IP, then curl http://<ip>/"
+            except Exception:
+                ip_hint = "\n💡 Use get_lxc_network for guest IP, then curl http://<ip>/"
+
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"deploy_static_nginx CT {vmid}@{node}\n"
+                        f"  • nginx: installed/enabled (best-effort)\n"
+                        f"  • content: {content_note}\n"
+                        f"  • reload: exit={reload.exit_code}"
+                        f"{ip_hint}"
+                    ),
+                )
+            ]
+        except ValueError:
+            raise
+        except PctExecError as e:
+            raise RuntimeError(str(e)) from e
+        except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
+            self._handle_error(f"deploy static nginx on LXC {vmid}", e)
 
     def create_vnc_ticket(self, node: str, vmid: str, websocket: bool = True) -> List[Content]:
         """Mint a VNC proxy ticket for an LXC (no websocket proxy)."""

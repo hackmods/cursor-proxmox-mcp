@@ -313,7 +313,7 @@ Proxmox **does not** expose a REST API to run shell inside LXC (unlike QEMU gues
 
 7. **Reload the Proxmox MCP server in Cursor** (Disable → Enable, or fully quit Cursor). Config is read at process start — editing `config.json` alone does nothing until reload.
 
-Without host SSH, prefer static `ip=` on `create_lxc` / `update_lxc_config`, then `get_lxc_network` for the configured address only. Always call `wait_for_task` after create before start. Field reference: [`proxmox-config/README.md`](proxmox-config/README.md).
+Without host SSH, prefer static `ip=` on `create_lxc` / `update_lxc_config`, then `get_lxc_network` for the configured address only. Always call `wait_for_task` after create before start (or pass `wait=true` on create). Field reference: [`proxmox-config/README.md`](proxmox-config/README.md).
 
 ### Smoke-test outside Cursor
 

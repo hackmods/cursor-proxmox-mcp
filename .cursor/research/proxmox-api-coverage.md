@@ -52,15 +52,15 @@ See [next-expansion.md](next-expansion.md). Summary:
 | paramiko core + SSH/exec QOL | done |
 | `create_lxc(docker_ready=…)` tip/features only | done |
 
-### Phase F.1 — Queued after F (see next-expansion effort table)
+### Phase F.1 — done / v1.4.0
 
 | Item | Effort | Status |
 |------|--------|--------|
-| `get_vm_network` (agent network-get-interfaces) | S ~0.5d | queued |
-| `create_vm`/`create_lxc` optional `wait=` (default false) | S ~0.5d | queued |
-| `push_to_vm` (agent file-write/read) | M ~1–1.5d | queued |
-| `deploy_static_nginx` | M ~0.5–1d | queued |
-| `get_containers` probes (docker/`:80`, opt-in only) | M ~0.5–1d | queued |
+| `get_vm_network` (agent network-get-interfaces) | S ~0.5d | done |
+| `create_vm`/`create_lxc` optional `wait=` (default false) | S ~0.5d | done |
+| `push_to_vm` / `pull_from_vm` (agent file-write/read) | M ~1–1.5d | done |
+| `deploy_static_nginx` | M ~0.5–1d | done |
+| `get_containers` probes (docker/`:80`, opt-in only) | M ~0.5–1d | done |
 
 ### Phase C — Heavy / deferred
 
@@ -73,7 +73,7 @@ See [next-expansion.md](next-expansion.md). Summary:
 | Full VNC/SPICE websocket proxy | Long-lived stream ≠ MCP request/response |
 | PBS direct admin | Separate product; use storage.type=pbs |
 | Node reboot/shutdown | Physical host power needs extra confirmation UX |
-| QEMU agent helpers beyond `get_vm_network` / file push | Richer introspection; F.1 takes network + file first |
+| QEMU agent helpers beyond network + file push | Richer introspection / fsfreeze / etc. |
 
 ## Excluded
 

@@ -18,13 +18,17 @@ The tools implement fallback mechanisms for scenarios where
 detailed VM information might be temporarily unavailable.
 """
 from typing import List, Optional
+import base64
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
 from .console.manager import VMConsoleManager
 from .helpers import (
+    agent_runtime_ipv4_summary,
     assert_id_absent,
     console_ticket_footer,
     is_missing_resource_error,
+    parse_agent_network_interfaces,
+    parse_qemu_networks,
     pick_storage,
     qemu_not_found_message,
     upid_response_footer,
@@ -33,12 +37,17 @@ from .helpers import (
 from .spec import ToolSpec
 from . import definitions as D
 
+MAX_VM_PUSH_BYTES = 32 * 1024 * 1024
+
 TOOL_SPECS = [
     ToolSpec("get_vms", D.GET_VMS_DESC),
     ToolSpec("create_vm", D.CREATE_VM_DESC),
     ToolSpec("get_vm_config", D.GET_VM_CONFIG_DESC),
     ToolSpec("update_vm_config", D.UPDATE_VM_CONFIG_DESC),
     ToolSpec("execute_vm_command", D.EXECUTE_VM_COMMAND_DESC),
+    ToolSpec("get_vm_network", D.GET_VM_NETWORK_DESC),
+    ToolSpec("push_to_vm", D.PUSH_TO_VM_DESC),
+    ToolSpec("pull_from_vm", D.PULL_FROM_VM_DESC),
     ToolSpec("start_vm", D.START_VM_DESC),
     ToolSpec("stop_vm", D.STOP_VM_DESC),
     ToolSpec("shutdown_vm", D.SHUTDOWN_VM_DESC),
@@ -169,8 +178,12 @@ class VMTools(ProxmoxTool):
         cipassword: Optional[str] = None,
         sshkeys: Optional[str] = None,
         ipconfig0: Optional[str] = None,
+        wait: bool = False,
     ) -> List[Content]:
-        """Create a new virtual machine with optional ISO, cloud-init, and network overrides."""
+        """Create a new virtual machine with optional ISO, cloud-init, and network overrides.
+
+        When ``wait=True``, poll the create UPID until stopped (D25; default remains false).
+        """
         try:
             assert_id_absent(self.proxmox, node, vmid, "qemu")
 
@@ -234,6 +247,20 @@ class VMTools(ProxmoxTool):
 
             task_result = self.proxmox.nodes(node).qemu.create(**vm_config)
 
+            wait_block = ""
+            if wait:
+                final = wait_for_upid(self.proxmox, node, task_result, timeout=600)
+                status = final.get("status") if isinstance(final, dict) else final
+                exitstatus = (
+                    final.get("exitstatus") if isinstance(final, dict) else None
+                )
+                wait_block = (
+                    f"\n⏳ wait=true — task finished: status={status} "
+                    f"exitstatus={exitstatus}\n"
+                )
+            else:
+                wait_block = f"\n{upid_response_footer(task_result, node=node)}\n"
+
             result_text = f"""🎉 VM {vmid} create task started!
 
 📋 VM Configuration:
@@ -248,10 +275,8 @@ class VMTools(ProxmoxTool):
   • ISO: {iso or '(none)'}
   • Cloud-init: {'yes' if want_cloudinit else 'drive/defaults only'}
   • Boot: {vm_config.get('boot')}
-
-{upid_response_footer(task_result, node=node)}
-
-💡 Then: start_vm (or install from ISO console)."""
+{wait_block}
+💡 Then: start_vm (or install from ISO console). Use get_vm_network after agent is up."""
 
             return [Content(type="text", text=result_text)]
 
@@ -745,6 +770,158 @@ class VMTools(ProxmoxTool):
             if is_missing_resource_error(e):
                 raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"get status for VM {vmid}", e)
+
+    def get_vm_network(
+        self, node: str, vmid: str, resolve_runtime: bool = True
+    ) -> List[Content]:
+        """Configured netN plus optional guest-agent runtime interfaces."""
+        try:
+            config = self.proxmox.nodes(node).qemu(vmid).config.get()
+            status = self.proxmox.nodes(node).qemu(vmid).status.current.get()
+            networks = parse_qemu_networks(config)
+            payload: dict = {
+                "vmid": vmid,
+                "node": node,
+                "status": status.get("status") if isinstance(status, dict) else status,
+                "networks": networks,
+                "runtime_interfaces": [],
+                "runtime_ips": [],
+                "runtime_note": None,
+            }
+            if resolve_runtime and status.get("status") == "running":
+                try:
+                    agent = self.proxmox.nodes(node).qemu(vmid).agent
+                    raw = agent("network-get-interfaces").get()
+                    ifaces = parse_agent_network_interfaces(raw)
+                    payload["runtime_interfaces"] = ifaces
+                    payload["runtime_ips"] = agent_runtime_ipv4_summary(ifaces)
+                    if not ifaces:
+                        payload["runtime_note"] = (
+                            "Agent returned no interfaces — is qemu-guest-agent installed "
+                            "and running inside the VM?"
+                        )
+                except Exception as e:
+                    payload["runtime_note"] = (
+                        f"Guest agent network-get-interfaces failed: {e}. "
+                        "Ensure agent=1 in VM config and qemu-guest-agent is running."
+                    )
+            elif resolve_runtime and status.get("status") != "running":
+                payload["runtime_note"] = "VM not running; runtime IP unavailable."
+            return self._format_response(payload)
+        except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
+            self._handle_error(f"get network for VM {vmid}", e)
+
+    def push_to_vm(
+        self,
+        node: str,
+        vmid: str,
+        remote_path: str,
+        local_path: Optional[str] = None,
+        content_base64: Optional[str] = None,
+    ) -> List[Content]:
+        """Write a file into the guest via QEMU agent file-write."""
+        try:
+            if not remote_path or not str(remote_path).strip():
+                raise ValueError("remote_path is required")
+            if bool(local_path) == bool(content_base64):
+                raise ValueError("Provide exactly one of local_path or content_base64")
+            if local_path:
+                with open(local_path, "rb") as fh:
+                    data = fh.read()
+                src = local_path
+            else:
+                data = base64.b64decode(content_base64 or "")
+                src = "content_base64"
+            if len(data) > MAX_VM_PUSH_BYTES:
+                raise ValueError(
+                    f"Payload {len(data)} bytes exceeds {MAX_VM_PUSH_BYTES} byte limit"
+                )
+
+            status = self.proxmox.nodes(node).qemu(vmid).status.current.get()
+            if status.get("status") != "running":
+                raise ValueError(f"VM {vmid} is not running on node {node}")
+
+            b64 = base64.b64encode(data).decode("ascii")
+            agent = self.proxmox.nodes(node).qemu(vmid).agent
+            agent("file-write").post(file=remote_path, content=b64, encode=1)
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"Pushed {len(data)} bytes → VM {vmid}:{remote_path} "
+                        f"(from {src}) via guest-agent file-write.\n"
+                        f"💡 Next: execute_vm_command to chmod/extract as needed."
+                    ),
+                )
+            ]
+        except ValueError:
+            raise
+        except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
+            self._handle_error(f"push to VM {vmid}", e)
+
+    def pull_from_vm(
+        self,
+        node: str,
+        vmid: str,
+        remote_path: str,
+        local_path: Optional[str] = None,
+    ) -> List[Content]:
+        """Read a file from the guest via QEMU agent file-read."""
+        try:
+            if not remote_path or not str(remote_path).strip():
+                raise ValueError("remote_path is required")
+            status = self.proxmox.nodes(node).qemu(vmid).status.current.get()
+            if status.get("status") != "running":
+                raise ValueError(f"VM {vmid} is not running on node {node}")
+
+            agent = self.proxmox.nodes(node).qemu(vmid).agent
+            raw = agent("file-read").get(file=remote_path)
+            # Proxmox returns {"result": "<content>"} or base64 depending on version
+            content = raw
+            if isinstance(raw, dict):
+                content = raw.get("result") or raw.get("content") or raw.get("data") or ""
+            if isinstance(content, dict):
+                content = content.get("content") or content.get("data") or ""
+            text = content if isinstance(content, str) else str(content)
+            # Try base64 decode; if it fails, treat as latin-1 bytes of text
+            try:
+                data = base64.b64decode(text, validate=False)
+                # Heuristic: if decoded is much smaller and original looks like b64, use it
+                if len(text) > 0 and len(data) == 0:
+                    data = text.encode("utf-8", errors="replace")
+            except Exception:
+                data = text.encode("utf-8", errors="replace")
+
+            if local_path:
+                with open(local_path, "wb") as fh:
+                    fh.write(data)
+                return [
+                    Content(
+                        type="text",
+                        text=(
+                            f"Pulled VM {vmid}:{remote_path} → {local_path} "
+                            f"({len(data)} bytes) via guest-agent file-read."
+                        ),
+                    )
+                ]
+            return self._format_response(
+                {
+                    "vmid": vmid,
+                    "remote_path": remote_path,
+                    "size": len(data),
+                    "content_base64": base64.b64encode(data).decode("ascii"),
+                }
+            )
+        except ValueError:
+            raise
+        except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
+            self._handle_error(f"pull from VM {vmid}", e)
 
     def get_vm_rrd_data(
         self, node: str, vmid: str, timeframe: str = "hour"

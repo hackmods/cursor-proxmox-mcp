@@ -55,7 +55,9 @@ Quick map:
 
 ## Exclusions / planned
 
-**Phase D (done):** `wait_for_task`, richer create (ISO/cloud-init/net), `list_os_templates`/`list_isos`, `get_token_permissions`, PyPI publish workflow. See [next-expansion.md](../.cursor/research/next-expansion.md).
+**Phase D (done):** `wait_for_task`, richer create (ISO/cloud-init/net), `list_os_templates`/`list_isos`, `get_token_permissions`, PyPI publish workflow.
+
+**Phase F / F.1 (done):** LXC day-2 + VM network/push + create `wait=` + `deploy_static_nginx` + opt-in probes — see [next-expansion.md](../.cursor/research/next-expansion.md).
 
 **Phase C (deferred):** SDN write, ACME order/renew, Ceph OSD, cluster join, websocket console proxy, PBS direct admin, node reboot/shutdown — documented as planned, **not** registered as available tools. See [coverage matrix](../.cursor/research/proxmox-api-coverage.md).
 

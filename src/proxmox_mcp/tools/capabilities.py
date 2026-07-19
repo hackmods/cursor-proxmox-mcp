@@ -17,6 +17,7 @@ DAY2_TOOLS = frozenset(
         "prepare_lxc_for_docker",
         "push_to_lxc",
         "pull_from_lxc",
+        "deploy_static_nginx",
         "execute_lxc_command",
         "set_lxc_password",
         "set_lxc_ssh_keys",

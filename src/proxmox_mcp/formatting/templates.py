@@ -200,6 +200,14 @@ class ProxmoxTemplates:
                 result.append(f"  • IP (configured): {ip}")
             elif container.get("networks"):
                 result.append("  • IP (configured): dhcp / see get_lxc_network")
+            if "probe_docker" in container or "probe_port_80" in container:
+                result.append(
+                    f"  • Probes: docker={container.get('probe_docker')} "
+                    f"port80={container.get('probe_port_80')}"
+                )
+                note = container.get("probe_note")
+                if note:
+                    result.append(f"  • Probe note: {note}")
 
         return "\n".join(result)
 

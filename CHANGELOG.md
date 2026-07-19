@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-07-19
+
+### Added
+
+- **Phase F.1:** `get_vm_network`, `push_to_vm`, `pull_from_vm`, `deploy_static_nginx` (**163 tools**).
+- Optional `wait=true` on `create_vm` / `create_lxc` (default **false**, D25) — polls create UPID when set.
+- Optional `get_containers(probes=true)` — cheap docker / `:80` pct probes (SSH required; off by default).
+
+### Notes
+
+- Create tools remain UPID-first unless `wait=true`. Inventory probes stay opt-in.
+
 ## [1.3.0] - 2026-07-19
 
 ### Added

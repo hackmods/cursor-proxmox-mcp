@@ -1,12 +1,20 @@
 # Changelog / research notes
 
+## 2026-07-19 — Phase F.1 VM parity + create wait (rev r9 / v1.4.0) — 163 tools
+
+**Why:** Close Lumon/F.1 deferrals — VM network parity, optional create wait, guest-agent file push, static nginx recipe, opt-in inventory probes.
+
+**Shipped:** `get_vm_network`; `push_to_vm`/`pull_from_vm`; `deploy_static_nginx`; `create_vm`/`create_lxc` `wait=` (default false, D25); `get_containers(probes=true)`.
+
+**Out of scope:** default-on wait; default-on probes; richer QEMU agent beyond network/file.
+
 ## 2026-07-19 — Phase F LXC day-2 god mode (rev r8 / v1.3.0) — 159 tools
 
 **Why:** Lumon CT122 lab: pct exec + password SSH worked; Docker CE installed but `docker run` failed (`ip_unprivileged_port_start`); no MCP push/prepare; paramiko optional extra + stale MCP friction.
 
 **Shipped:** paramiko core; `get_mcp_capabilities`; `prepare_lxc_for_docker` (D24); `push_to_lxc`/`pull_from_lxc`; `docker_ready` on create; SSH/exec QOL (timeouts, output/error aliases, startup warning); SETUP/Recipes rewrite.
 
-**Out of scope (Phase F.1):** `get_vm_network`, create `wait=`, `push_to_vm`, `deploy_static_nginx`, inventory probes.
+**Out of scope (~~Phase F.1~~ shipped r9):** was `get_vm_network`, create `wait=`, `push_to_vm`, `deploy_static_nginx`, inventory probes.
 
 ## 2026-07-19 — Phase F / F.1 pipeline queued (planning)
 
@@ -15,11 +23,11 @@
 **Queued (not shipped):**
 
 - ~~**Phase F**~~ — **shipped r8 / v1.3.0**
-- **Phase F.1** — effort table in [next-expansion.md](next-expansion.md): `get_vm_network` (S ~0.5d), create `wait=` opt-in (S ~0.5d / L if default-on), `push_to_vm` (M ~1–1.5d), `deploy_static_nginx` (M ~0.5–1d), inventory probes opt-in (M ~0.5–1d). Combined F.1 ≈ +2.5–4d after F.
+- ~~**Phase F.1**~~ — **shipped r9 / v1.4.0**
 
 **Insights locked:** Docker `--privileged`/`--sysctl` do not fix `ip_unprivileged_port_start`; prefer host `lxc-pve ≥ 6.0.5-2`; unpatched hosts need **both** AppArmor workaround lines + stop/start; bare `unconfined` overrides nesting.
 
-**Out of scope until F.1 decisions:** default-on create auto-wait; default-on inventory probes.
+**Out of scope (kept):** default-on create auto-wait; default-on inventory probes.
 
 ## 2026-07-19 — Wiki living guide (rev r7) — 155 tools
 

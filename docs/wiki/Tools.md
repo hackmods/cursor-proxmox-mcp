@@ -27,7 +27,7 @@ python scripts/generate-wiki-tools.py
 
 <!-- BEGIN GENERATED TOOLS -->
 
-_Generated from `tools/inventory.py` — **159** tools. Do not edit by hand; run `python scripts/generate-wiki-tools.py`._
+_Generated from `tools/inventory.py` — **163** tools. Do not edit by hand; run `python scripts/generate-wiki-tools.py`._
 
 ### Nodes
 
@@ -66,14 +66,17 @@ _Generated from `tools/inventory.py` — **159** tools. Do not edit by hand; run
 | `convert_vm_to_template` | Convert VM to template. Parameters: node*, vmid* |
 | `create_spice_ticket_vm` | Mint SPICE ticket for a VM. Parameters: node*, vmid* |
 | `create_termproxy_ticket_vm` | Mint termproxy ticket for a VM. Parameters: node*, vmid* |
-| `create_vm` | Create a QEMU VM (async UPID — always wait_for_task before start). Parameters: node*, vmid*, name*, cpus*, memory* (MB), disk_size* (GB); storage?, ostype?, bridge?, net0?, iso?, boot?, ciuser?, cipassword?, sshkeys?, ipconfig0? |
+| `create_vm` | Create a QEMU VM (async UPID — always wait_for_task before start unless wait=true). Parameters: node*, vmid*, name*, cpus*, memory* (MB), disk_size* (GB); storage?, ostype?, bridge?, net0?, iso?, boot?, ciuser?, cipassword?, sshkeys?, ipconfig0?, wait?=false |
 | `create_vnc_ticket_vm` | Mint VNC ticket for a VM (connect externally). Parameters: node*, vmid*, websocket?=true |
 | `delete_vm` | IRREVERSIBLE: permanently delete a QEMU VM and its disks (not LXC). Parameters: node*, vmid*, force?=false |
 | `execute_vm_command` | Execute commands in a VM via QEMU guest agent. |
 | `get_vm_config` | Get full QEMU VM configuration. |
+| `get_vm_network` | Get VM network: configured netN from config plus optional runtime interfaces via QEMU guest agent (network-get-interfaces). Agent must be running. Parameters: node*, vmid*, resolve_runtime?=true |
 | `get_vm_rrd_data` | Get RRD metrics for a VM. Parameters: node*, vmid*, timeframe?=hour |
 | `get_vm_status` | Get current runtime status for one VM. Parameters: node*, vmid* |
 | `get_vms` | List all QEMU virtual machines across the cluster (not LXC — use get_containers, or get_cluster_resources(type=vm) for both). Status and resource usage included. |
+| `pull_from_vm` | Pull a file from a running VM via QEMU guest agent file-read. Writes local_path when set; otherwise returns base64. Parameters: node*, vmid*, remote_path*; local_path? |
+| `push_to_vm` | Push a file into a running VM via QEMU guest agent file-write. Provide local_path or content_base64. Max 32 MiB. Parameters: node*, vmid*, remote_path*; local_path?, content_base64? |
 | `reboot_vm` | Graceful ACPI reboot (distinct from reset). Parameters: node*, vmid* |
 | `reset_vm` | Hard-reset a QEMU VM. Parameters: node*, vmid* |
 | `resize_vm_disk` | Grow a VM disk. Parameters: node*, vmid*, disk* (e.g. scsi0), size* (e.g. +10G) |
@@ -90,13 +93,14 @@ _Generated from `tools/inventory.py` — **159** tools. Do not edit by hand; run
 |------|-------------|
 | `clone_lxc` | Clone an LXC (async UPID — wait_for_task). Parameters: node*, vmid*, newid*, hostname?, full?=true, target?, storage? |
 | `convert_lxc_to_template` | Convert LXC to template. Parameters: node*, vmid* |
-| `create_lxc` | Create an LXC (async UPID — always wait_for_task before start). OS template only — not Docker/app deploy. Prefer ssh_public_keys for guest SSH (many templates block root password SSH). docker_ready=true sets nesting=1,keyctl=1 and tips prepare_lxc_for_docker (does not install Docker). Parameters: node*, vmid*, hostname*; ostemplate?, cpus?, memory?, disk_size?, storage?, features?, password?, ssh_public_keys?, unprivileged?, bridge?, ip?, gw?, net0?, ostemplate_filter?, docker_ready?=false |
+| `create_lxc` | Create an LXC (async UPID — always wait_for_task before start unless wait=true). OS template only — not Docker/app deploy. Prefer ssh_public_keys for guest SSH (many templates block root password SSH). docker_ready=true sets nesting=1,keyctl=1 and tips prepare_lxc_for_docker (does not install Docker). Parameters: node*, vmid*, hostname*; ostemplate?, cpus?, memory?, disk_size?, storage?, features?, password?, ssh_public_keys?, unprivileged?, bridge?, ip?, gw?, net0?, ostemplate_filter?, docker_ready?=false, wait?=false |
 | `create_spice_ticket_lxc` | Mint SPICE ticket for an LXC (connect externally). Parameters: node*, vmid* |
 | `create_termproxy_ticket_lxc` | Mint termproxy ticket for an LXC. Parameters: node*, vmid* |
 | `create_vnc_ticket_lxc` | Mint VNC ticket for an LXC. Parameters: node*, vmid*, websocket?=true |
 | `delete_lxc` | IRREVERSIBLE: permanently delete an LXC and its rootfs. Parameters: node*, vmid*, force?=false |
+| `deploy_static_nginx` | Install nginx in a running LXC and deploy static content to /var/www/html (Lumon-style fallback). Requires host SSH/pct. Optional content_base64 or local_path tarball/html. Parameters: node*, vmid*; local_path?, content_base64?, remote_extract_dir?=/var/www/html, timeout? |
 | `execute_lxc_command` | Execute a command inside a running LXC via host SSH + pct exec (no Proxmox REST /exec — HTTP 501 means stale MCP build). Requires opt-in ssh config. Response includes stdout/stderr and output/error aliases. Parameters: node*, vmid*, command*; timeout? (seconds, else ssh.timeout / PROXMOX_MCP_EXEC_TIMEOUT) |
-| `get_containers` | List all LXC containers across the cluster (includes configured IP from netN when set). For QEMU use get_vms. |
+| `get_containers` | List all LXC containers across the cluster (includes configured IP from netN when set). Optional probes=true runs cheap pct checks for docker binary and :80 listeners (requires host SSH; slow on large fleets). Parameters: probes?=false. For QEMU use get_vms. |
 | `get_lxc_config` | Get full LXC configuration. Parameters: node*, vmid* |
 | `get_lxc_network` | Get LXC network: configured netN (static/dhcp/MAC/bridge) plus optional runtime IPv4 via pct exec when SSH is configured. Parameters: node*, vmid*, resolve_runtime?=true |
 | `get_lxc_rrd_data` | Get RRD metrics for an LXC. Parameters: node*, vmid*, timeframe?=hour |

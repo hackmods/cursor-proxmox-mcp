@@ -14,7 +14,7 @@ Pair with [changelog-notes.md](changelog-notes.md) (research “why”) and root
 | 2026-07-19 | r6 | Tag v1.2.0: wait_for_task non-OK exitstatus test; first tag since v1.1.0 | **155** | Release; deferred create auto-wait / QEMU IP / Docker bake |
 | 2026-07-19 | r7 | Wiki living guide: full tool catalog generator, Recipes, `_Footer.md`, CI lock | **155** | `docs/wiki/` + `scripts/generate-wiki-tools.py` |
 | 2026-07-19 | r8 | Phase F LXC day-2: capabilities, prepare_docker, push/pull, paramiko core | **159** | D4 revised; D24; next-expansion Phase F done |
-| 2026-07-19 | — | **Planned r9:** Phase F.1 VM network + create `wait=` + push_to_vm + optional nginx/probes | +F.1 | next-expansion Phase F.1 effort table |
+| 2026-07-19 | r9 | Phase F.1: get_vm_network, create wait=, push/pull_vm, deploy_static_nginx, probes | **163** | D25; next-expansion Phase F.1 done; v1.4.0 |
 
 ## How to update
 

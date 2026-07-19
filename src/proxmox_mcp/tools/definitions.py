@@ -16,7 +16,7 @@ node* - Host node name"""
 # VM
 GET_VMS_DESC = """List all QEMU virtual machines across the cluster (not LXC — use get_containers, or get_cluster_resources(type=vm) for both). Status and resource usage included."""
 
-CREATE_VM_DESC = """Create a QEMU VM (async UPID — always wait_for_task before start). Parameters: node*, vmid*, name*, cpus*, memory* (MB), disk_size* (GB); storage?, ostype?, bridge?, net0?, iso?, boot?, ciuser?, cipassword?, sshkeys?, ipconfig0?"""
+CREATE_VM_DESC = """Create a QEMU VM (async UPID — always wait_for_task before start unless wait=true). Parameters: node*, vmid*, name*, cpus*, memory* (MB), disk_size* (GB); storage?, ostype?, bridge?, net0?, iso?, boot?, ciuser?, cipassword?, sshkeys?, ipconfig0?, wait?=false"""
 
 GET_VM_CONFIG_DESC = """Get full QEMU VM configuration.
 
@@ -27,6 +27,12 @@ UPDATE_VM_CONFIG_DESC = """Update QEMU VM config. Parameters: node*, vmid*; core
 EXECUTE_VM_COMMAND_DESC = """Execute commands in a VM via QEMU guest agent.
 
 Parameters: node*, vmid*, command*"""
+
+GET_VM_NETWORK_DESC = """Get VM network: configured netN from config plus optional runtime interfaces via QEMU guest agent (network-get-interfaces). Agent must be running. Parameters: node*, vmid*, resolve_runtime?=true"""
+
+PUSH_TO_VM_DESC = """Push a file into a running VM via QEMU guest agent file-write. Provide local_path or content_base64. Max 32 MiB. Parameters: node*, vmid*, remote_path*; local_path?, content_base64?"""
+
+PULL_FROM_VM_DESC = """Pull a file from a running VM via QEMU guest agent file-read. Writes local_path when set; otherwise returns base64. Parameters: node*, vmid*, remote_path*; local_path?"""
 
 START_VM_DESC = """Start a QEMU VM (not LXC — use start_lxc / start_guest). Parameters: node*, vmid*"""
 STOP_VM_DESC = """Force-stop a QEMU VM. Parameters: node*, vmid*"""
@@ -42,8 +48,8 @@ RESIZE_VM_DISK_DESC = """Grow a VM disk. Parameters: node*, vmid*, disk* (e.g. s
 CONVERT_VM_TEMPLATE_DESC = """Convert VM to template. Parameters: node*, vmid*"""
 
 # LXC
-GET_CONTAINERS_DESC = """List all LXC containers across the cluster (includes configured IP from netN when set). For QEMU use get_vms."""
-CREATE_LXC_DESC = """Create an LXC (async UPID — always wait_for_task before start). OS template only — not Docker/app deploy. Prefer ssh_public_keys for guest SSH (many templates block root password SSH). docker_ready=true sets nesting=1,keyctl=1 and tips prepare_lxc_for_docker (does not install Docker). Parameters: node*, vmid*, hostname*; ostemplate?, cpus?, memory?, disk_size?, storage?, features?, password?, ssh_public_keys?, unprivileged?, bridge?, ip?, gw?, net0?, ostemplate_filter?, docker_ready?=false"""
+GET_CONTAINERS_DESC = """List all LXC containers across the cluster (includes configured IP from netN when set). Optional probes=true runs cheap pct checks for docker binary and :80 listeners (requires host SSH; slow on large fleets). Parameters: probes?=false. For QEMU use get_vms."""
+CREATE_LXC_DESC = """Create an LXC (async UPID — always wait_for_task before start unless wait=true). OS template only — not Docker/app deploy. Prefer ssh_public_keys for guest SSH (many templates block root password SSH). docker_ready=true sets nesting=1,keyctl=1 and tips prepare_lxc_for_docker (does not install Docker). Parameters: node*, vmid*, hostname*; ostemplate?, cpus?, memory?, disk_size?, storage?, features?, password?, ssh_public_keys?, unprivileged?, bridge?, ip?, gw?, net0?, ostemplate_filter?, docker_ready?=false, wait?=false"""
 GET_LXC_CONFIG_DESC = """Get full LXC configuration. Parameters: node*, vmid*"""
 UPDATE_LXC_CONFIG_DESC = """Update LXC config (cores/memory/hostname/net0/features). Does NOT set password or SSH keys — use set_lxc_password / set_lxc_ssh_keys (need host SSH/pct) or recreate with password/ssh_public_keys."""
 START_LXC_DESC = """Start an LXC container. Parameters: node*, vmid*"""
@@ -62,6 +68,7 @@ SET_LXC_SSH_KEYS_DESC = """Install root authorized_keys via pct exec (prefer ssh
 PREPARE_LXC_FOR_DOCKER_DESC = """Idempotent host-side prep for Docker-in-LXC (D24): nesting+keyctl features; probe lxc-pve ≥6.0.5-2; if unpatched apply dual AppArmor workaround (never bare unconfined); optional install_docker/smoke_test. Requires ssh. Success = docker run after stop/start — not docker --version. Parameters: node*, vmid*; fuse?=false, allow_apparmor_workaround?=true, install_docker?=false, smoke_test?=false, timeout?"""
 PUSH_TO_LXC_DESC = """Push a file into a running LXC via host SSH + pct push (SFTP to host temp then pct push). Provide local_path (Cursor-side) or content_base64. Max 32 MiB. Requires ssh. Parameters: node*, vmid*, remote_path*; local_path?, content_base64?, timeout?"""
 PULL_FROM_LXC_DESC = """Pull a file from a running LXC via pct pull. Writes local_path when set; otherwise returns base64. Requires ssh. Parameters: node*, vmid*, remote_path*; local_path?, timeout?"""
+DEPLOY_STATIC_NGINX_DESC = """Install nginx in a running LXC and deploy static content to /var/www/html (Lumon-style fallback). Requires host SSH/pct. Optional content_base64 or local_path tarball/html. Parameters: node*, vmid*; local_path?, content_base64?, remote_extract_dir?=/var/www/html, timeout?"""
 SUSPEND_LXC_DESC = """WARNING: LXC suspend uses CRIU checkpoint and is often unreliable/unsupported. Prefer shutdown. Parameters: node*, vmid*"""
 RESUME_LXC_DESC = """WARNING: resume after LXC suspend (CRIU) is best-effort. Parameters: node*, vmid*"""
 GET_LXC_RRD_DATA_DESC = """Get RRD metrics for an LXC. Parameters: node*, vmid*, timeframe?=hour"""

@@ -170,15 +170,15 @@ v1.1.2+ tools after MCP reload; host SSH + `pct exec`; `set_lxc_password(enable_
 
 paramiko core; `get_mcp_capabilities`; `prepare_lxc_for_docker`; `push_to_lxc`/`pull_from_lxc`; SSH/exec QOL. See [next-expansion.md](next-expansion.md) Phase F.
 
-### Queued → Phase F.1 (effort estimates)
+### Queued → Phase F.1 — **shipped** r9 / v1.4.0
 
 | Item | Effort | Notes |
 |------|--------|-------|
-| `get_vm_network` | S ~0.5d | QEMU agent interfaces; best cheap parity |
-| `create_*` `wait=true` (default false) | S ~0.5d / L if default-on | Preserve D10; never default true without explicit decision |
-| `push_to_vm` | M ~1–1.5d | Agent file APIs ≠ pct push |
-| `deploy_static_nginx` | M ~0.5–1d | What unblocked Lumon; optional recipe tool |
-| Inventory docker/`:80` probes | M ~0.5–1d **opt-in only** | Default-on too slow/noisy |
+| `get_vm_network` | S ~0.5d | QEMU agent interfaces; best cheap parity — **done** |
+| `create_*` `wait=true` (default false) | S ~0.5d | Preserve D10; never default true — **done** |
+| `push_to_vm` / `pull_from_vm` | M ~1–1.5d | Agent file APIs ≠ pct push — **done** |
+| `deploy_static_nginx` | M ~0.5–1d | What unblocked Lumon; optional recipe tool — **done** |
+| Inventory docker/`:80` probes | M ~0.5–1d **opt-in only** | `get_containers(probes=true)` — **done** |
 
 ### Out of scope (do not reopen casually)
 

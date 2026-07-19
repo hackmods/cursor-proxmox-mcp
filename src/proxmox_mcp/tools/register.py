@@ -83,10 +83,12 @@ def register_all(server: ProxmoxMCPServer) -> None:
         cipassword: Annotated[Optional[str], Field(description="Cloud-init password", default=None)] = None,
         sshkeys: Annotated[Optional[str], Field(description="Cloud-init SSH public keys", default=None)] = None,
         ipconfig0: Annotated[Optional[str], Field(description="Cloud-init ipconfig0", default=None)] = None,
+        wait: Annotated[bool, Field(description="Poll create UPID until stopped (default false)", default=False)] = False,
     ):
         return server.vm_tools.create_vm(
             node, vmid, name, cpus, memory, disk_size, storage, ostype,
             bridge, net0, iso, boot, ciuser, cipassword, sshkeys, ipconfig0,
+            wait=wait,
         )
 
     @server.mcp.tool(description=D.GET_VM_CONFIG_DESC)
@@ -152,6 +154,33 @@ def register_all(server: ProxmoxMCPServer) -> None:
         command: Annotated[str, Field(description="Shell command")],
     ):
         return await server.vm_tools.execute_command(node, vmid, command)
+
+    @server.mcp.tool(description=D.GET_VM_NETWORK_DESC)
+    def get_vm_network(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="VM ID")],
+        resolve_runtime: Annotated[bool, Field(description="Query guest agent for runtime IPs", default=True)] = True,
+    ):
+        return server.vm_tools.get_vm_network(node, vmid, resolve_runtime)
+
+    @server.mcp.tool(description=D.PUSH_TO_VM_DESC)
+    def push_to_vm(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="VM ID")],
+        remote_path: Annotated[str, Field(description="Absolute path inside guest")],
+        local_path: Annotated[Optional[str], Field(description="Local file path", default=None)] = None,
+        content_base64: Annotated[Optional[str], Field(description="Base64 file bytes", default=None)] = None,
+    ):
+        return server.vm_tools.push_to_vm(node, vmid, remote_path, local_path, content_base64)
+
+    @server.mcp.tool(description=D.PULL_FROM_VM_DESC)
+    def pull_from_vm(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="VM ID")],
+        remote_path: Annotated[str, Field(description="Absolute path inside guest")],
+        local_path: Annotated[Optional[str], Field(description="Write bytes here", default=None)] = None,
+    ):
+        return server.vm_tools.pull_from_vm(node, vmid, remote_path, local_path)
 
     @server.mcp.tool(description=D.START_VM_DESC)
     def start_vm(node: Annotated[str, Field(description="Node")], vmid: Annotated[str, Field(description="VM ID")]):
@@ -219,8 +248,10 @@ def register_all(server: ProxmoxMCPServer) -> None:
 
     # --- LXC ---
     @server.mcp.tool(description=D.GET_CONTAINERS_DESC)
-    def get_containers():
-        return server.container_tools.get_containers()
+    def get_containers(
+        probes: Annotated[bool, Field(description="Opt-in docker/:80 pct probes (slow)", default=False)] = False,
+    ):
+        return server.container_tools.get_containers(probes=probes)
 
     @server.mcp.tool(description=D.CREATE_LXC_DESC)
     def create_lxc(
@@ -242,6 +273,7 @@ def register_all(server: ProxmoxMCPServer) -> None:
         net0: Annotated[Optional[str], Field(description="Full net0 override", default=None)] = None,
         ostemplate_filter: Annotated[Optional[str], Field(description="Auto-pick filter e.g. ubuntu", default=None)] = None,
         docker_ready: Annotated[bool, Field(description="Set nesting+keyctl and tip prepare_lxc_for_docker", default=False)] = False,
+        wait: Annotated[bool, Field(description="Poll create UPID until stopped (default false)", default=False)] = False,
     ):
         return server.container_tools.create_lxc(
             node=node,
@@ -262,6 +294,7 @@ def register_all(server: ProxmoxMCPServer) -> None:
             net0=net0,
             ostemplate_filter=ostemplate_filter,
             docker_ready=docker_ready,
+            wait=wait,
         )
 
     @server.mcp.tool(description=D.GET_LXC_CONFIG_DESC)
@@ -437,6 +470,19 @@ def register_all(server: ProxmoxMCPServer) -> None:
         timeout: Annotated[Optional[int], Field(description="Seconds", default=None)] = None,
     ):
         return server.container_tools.pull_from_lxc(node, vmid, remote_path, local_path, timeout)
+
+    @server.mcp.tool(description=D.DEPLOY_STATIC_NGINX_DESC)
+    def deploy_static_nginx(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="CT ID")],
+        local_path: Annotated[Optional[str], Field(description="Local html/tarball", default=None)] = None,
+        content_base64: Annotated[Optional[str], Field(description="Base64 content", default=None)] = None,
+        remote_extract_dir: Annotated[str, Field(description="Deploy dir", default="/var/www/html")] = "/var/www/html",
+        timeout: Annotated[Optional[int], Field(description="Seconds", default=None)] = None,
+    ):
+        return server.container_tools.deploy_static_nginx(
+            node, vmid, local_path, content_base64, remote_extract_dir, timeout
+        )
 
     # --- Unified guest power (additive) ---
     @server.mcp.tool(description=D.START_GUEST_DESC)

@@ -198,6 +198,81 @@ def parse_lxc_networks(config: Dict[str, Any]) -> List[Dict[str, Any]]:
     return networks
 
 
+def parse_qemu_networks(config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Extract structured network interfaces from a QEMU VM config dict."""
+    model_keys = ("virtio", "e1000", "e1000e", "rtl8139", "vmxnet3", "vhost")
+    networks: List[Dict[str, Any]] = []
+    if not isinstance(config, dict):
+        return networks
+    for key, raw in sorted(config.items()):
+        if not re.fullmatch(r"net\d+", str(key)):
+            continue
+        parsed = parse_net_kv(str(raw))
+        model = parsed.get("model")
+        hwaddr = parsed.get("macaddr") or parsed.get("hwaddr")
+        for mk in model_keys:
+            if mk in parsed:
+                model = model or mk
+                hwaddr = hwaddr or parsed.get(mk)
+                break
+        networks.append(
+            {
+                "iface": key,
+                "model": model,
+                "bridge": parsed.get("bridge"),
+                "hwaddr": hwaddr,
+                "firewall": parsed.get("firewall"),
+                "tag": parsed.get("tag"),
+                "raw": raw,
+            }
+        )
+    return networks
+
+
+def parse_agent_network_interfaces(agent_result: Any) -> List[Dict[str, Any]]:
+    """Normalize QEMU guest-agent network-get-interfaces result to a simple list."""
+    interfaces: List[Dict[str, Any]] = []
+    data = agent_result
+    if isinstance(agent_result, dict):
+        data = agent_result.get("result") or agent_result.get("data") or agent_result
+    if not isinstance(data, list):
+        return interfaces
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name") or item.get("ifname")
+        mac = item.get("hardware-address") or item.get("hardware_address")
+        addrs: List[str] = []
+        for ipinfo in item.get("ip-addresses") or item.get("ip_addresses") or []:
+            if not isinstance(ipinfo, dict):
+                continue
+            addr = ipinfo.get("ip-address") or ipinfo.get("ip_address")
+            if addr:
+                addrs.append(str(addr))
+        interfaces.append(
+            {
+                "name": name,
+                "hwaddr": mac,
+                "addresses": addrs,
+            }
+        )
+    return interfaces
+
+
+def agent_runtime_ipv4_summary(interfaces: List[Dict[str, Any]]) -> List[str]:
+    """Collect global-looking IPv4 addresses from agent interface list."""
+    ips: List[str] = []
+    for iface in interfaces:
+        name = str(iface.get("name") or "")
+        if name in ("lo", "lo0"):
+            continue
+        for addr in iface.get("addresses") or []:
+            s = str(addr)
+            if "." in s and ":" not in s and not s.startswith("127."):
+                ips.append(s)
+    return ips
+
+
 def configured_ipv4_summary(networks: List[Dict[str, Any]]) -> Optional[str]:
     """Best-effort configured IPv4 string for list views (static CIDR or 'dhcp')."""
     for net in networks:

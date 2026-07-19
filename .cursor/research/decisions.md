@@ -121,6 +121,6 @@ Nested Docker on unprivileged LXC fails at `docker run` (not install) when host 
 4. Keep unprivileged default; privileged CT is last-resort docs only.
 5. Success criterion: `docker run --rm nginx:alpine`, not merely `docker --version`.
 
-## D25 — Create auto-wait (Phase F.1 only)
+## D25 — Create auto-wait (Phase F.1 / shipped)
 
-D10 keeps create tools UPID-first. Phase F.1 may add optional `wait: bool = False` on `create_vm` / `create_lxc` that polls internally when true. **Default must remain false** unless a future decision explicitly changes the contract. Default-on is high product risk (MCP latency, agent expectations).
+D10 keeps create tools UPID-first. `create_vm` / `create_lxc` accept optional `wait: bool = False` that polls the create UPID when true. **Default remains false** — default-on is high product risk (MCP latency, agent expectations).
