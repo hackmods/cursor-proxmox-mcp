@@ -1,8 +1,16 @@
 name: Publish to PyPI
 
-# After the first release is configured with PyPI Trusted Publishing for this
-# GitHub repo + environment `pypi`, a published GitHub Release builds and
-# uploads the package. Then: `uvx proxmox-mcp-server` (no local checkout).
+# One-time setup (required before first successful upload):
+#   https://pypi.org/manage/account/publishing/
+#   PyPI project name:  cursor-proxmox-mcp
+#   Owner:              hackmods
+#   Repository:         cursor-proxmox-mcp
+#   Workflow:           publish.yml
+#   Environment name:   pypi
+#
+# After Trusted Publishing is configured, publishing a GitHub Release (or
+# re-running this workflow) uploads the package. Then:
+#   uvx cursor-proxmox-mcp
 
 on:
   release:

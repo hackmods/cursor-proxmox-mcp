@@ -5,7 +5,7 @@
       "args": [
         "--from",
         "/ABS/PATH/TO/cursor-proxmox-mcp",
-        "proxmox-mcp-server"
+        "cursor-proxmox-mcp"
       ],
       "env": {
         "PROXMOX_MCP_CONFIG": "/ABS/PATH/TO/cursor-proxmox-mcp/proxmox-config/config.json"

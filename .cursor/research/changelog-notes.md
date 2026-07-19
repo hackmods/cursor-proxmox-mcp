@@ -1,5 +1,17 @@
 # Changelog / research notes
 
+## 2026-07-19 — v1.0.1 publish QoL (PyPI name collision)
+
+**Why:** `proxmox-mcp-server` on PyPI is owned by another project; v1.0.0 Trusted Publish failed (`invalid-publisher`) and bare `uvx proxmox-mcp-server` would install the wrong package.
+
+**Shipped:**
+- Package rename to `cursor-proxmox-mcp` + console script of the same name
+- Single PyPI path via `publish.yml` + `environment: pypi`; `release.yml` only GHCR + GitHub Release
+- `server.json` / `glama.json` / `PUBLISHING.md` / community drafts; README `mcp-name` marker
+- Decision D20
+
+**Still manual:** configure PyPI Trusted Publisher claims; `mcp-publisher login github && publish`; submit Glama; post community drafts; enable branch protection.
+
 ## 2026-07-19 — Phase D agent QOL + Soft DX
 
 **Why:** Agents raced UPIDs, guessed templates, and hit privsep empty-maps; create paths hardcoded vmbr0/DHCP.
@@ -15,7 +27,7 @@
 **Quirks:**
 - Privsep=Yes empty perms → ACL `user@realm!tokenid` (use `get_token_permissions`)
 - Cloud-init drive + pure LVM: API may accept ci* keys; drive placement best-effort
-- First bare `uvx proxmox-mcp-server` needs a GitHub Release + PyPI Trusted Publishing
+- First bare `uvx cursor-proxmox-mcp` needs a GitHub Release + PyPI Trusted Publishing
 
 ## 2026-07-19 — Next-expansion roadmap note
 

@@ -2,13 +2,16 @@
 
 [![CI](https://github.com/hackmods/cursor-proxmox-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/hackmods/cursor-proxmox-mcp/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![PyPI](https://img.shields.io/pypi/v/proxmox-mcp-server)](https://pypi.org/project/proxmox-mcp-server/)
+[![PyPI](https://img.shields.io/pypi/v/cursor-proxmox-mcp)](https://pypi.org/project/cursor-proxmox-mcp/)
+[![GHCR](https://img.shields.io/badge/GHCR-cursor--proxmox--mcp-blue)](https://github.com/hackmods/cursor-proxmox-mcp/pkgs/container/cursor-proxmox-mcp)
 
 **Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 132 tools covering QEMU VMs, LXC, storage admin, cluster/tasks, snapshots, backups, migration, HA, firewall, access control, replication, SDN (read), ACME (read), pools, and console tickets.
 
 **Repo:** [hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)
 
-Docs: [**Setup guide**](SETUP.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [API coverage](docs/api-coverage.md) · [Changelog](CHANGELOG.md)
+Docs: [**Setup guide**](SETUP.md) · [Publishing](PUBLISHING.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [API coverage](docs/api-coverage.md) · [Changelog](CHANGELOG.md)
+
+<!-- mcp-name: io.github.hackmods/cursor-proxmox-mcp -->
 
 ## MCP tools
 
@@ -46,16 +49,18 @@ Registered via `tools/register.py` (called from `ProxmoxMCPServer._setup_tools()
 
 ### Path 1 — uvx (recommended)
 
-PyPI package name is **`proxmox-mcp-server`** (console scripts: `proxmox-mcp-server` and `proxmox-mcp`).
+PyPI package name is **`cursor-proxmox-mcp`** (console scripts: `cursor-proxmox-mcp`, plus aliases `proxmox-mcp-server` / `proxmox-mcp`).
+
+> **Note:** The unrelated PyPI project `proxmox-mcp-server` is a different codebase. Always install **`cursor-proxmox-mcp`**.
 
 ```bash
 # Install uv if needed:  pip install uv   OR   winget install astral-sh.uv
 
 # After PyPI publish (GitHub Release → publish.yml):
-uvx proxmox-mcp-server
+uvx cursor-proxmox-mcp
 
 # From a local checkout (dev / before first publish):
-uvx --from . proxmox-mcp-server
+uvx --from . cursor-proxmox-mcp
 ```
 
 Cursor MCP (published package — no checkout):
@@ -65,7 +70,7 @@ Cursor MCP (published package — no checkout):
   "mcpServers": {
     "proxmox": {
       "command": "uvx",
-      "args": ["proxmox-mcp-server"],
+      "args": ["cursor-proxmox-mcp"],
       "env": {
         "PROXMOX_MCP_CONFIG": "C:/Users/YOU/proxmox-config/config.json"
       }
@@ -74,7 +79,7 @@ Cursor MCP (published package — no checkout):
 }
 ```
 
-From a local checkout, use `"args": ["--from", "C:/Users/YOU/Projects/cursor-proxmox-mcp", "proxmox-mcp-server"]` instead.
+From a local checkout, use `"args": ["--from", "C:/Users/YOU/Projects/cursor-proxmox-mcp", "cursor-proxmox-mcp"]` instead.
 
 Why uvx: it resolves dependencies into an isolated ephemeral env so Cursor does not depend on a hand-managed venv/`PYTHONPATH`.
 
@@ -89,7 +94,7 @@ uv venv
 uv pip install -e ".[dev]"
 cp proxmox-config/config.example.json proxmox-config/config.json
 # Edit host + token, then:
-uv run proxmox-mcp-server
+uv run cursor-proxmox-mcp
 ```
 
 ### Path 3 — pip fallback
@@ -211,7 +216,7 @@ After adding a tool: update `definitions.py`, README table, `.cursor/research/pr
 - [x] Formal multi-domain Proxmox API coverage (132 tools)
 - [x] Phase B + Phase D agent QOL tools
 - [x] v1.0 security hardening, code-design audit, full test suite
-- [x] uvx `proxmox-mcp-server` + PyPI/GHCR release workflow
+- [x] uvx `cursor-proxmox-mcp` + PyPI/GHCR release workflow
 - [x] Local + GitHub CI with coverage + design invariants
 - [ ] Phase C heavy/dangerous endpoints (documented only)
 - [ ] Phase C heavy/dangerous endpoints (documented only)

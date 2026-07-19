@@ -42,22 +42,29 @@ def test_all_tool_modules_import():
 
 
 def test_console_script_entrypoints_registered():
-    """Verify pyproject console scripts resolve after install."""
+    """Verify pyproject declares console scripts; soft-check installed eps."""
+    import tomllib
+    from pathlib import Path
+
+    data = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+    scripts = data["project"]["scripts"]
+    assert "cursor-proxmox-mcp" in scripts
+    assert "proxmox-mcp" in scripts
+    assert "proxmox-mcp-server" in scripts
+    for name in ("cursor-proxmox-mcp", "proxmox-mcp", "proxmox-mcp-server"):
+        assert scripts[name].endswith(":main")
+
     from importlib.metadata import entry_points
 
     eps = entry_points()
-    # Python 3.10+ returns SelectableGroups; 3.9 returns dict-like
     if hasattr(eps, "select"):
-        scripts = {ep.name: ep for ep in eps.select(group="console_scripts")}
+        installed = {ep.name: ep for ep in eps.select(group="console_scripts")}
     else:
-        scripts = {ep.name: ep for ep in eps.get("console_scripts", [])}
+        installed = {ep.name: ep for ep in eps.get("console_scripts", [])}
 
-    # May be absent if package not installed editable in this env — soft check
-    if "proxmox-mcp" in scripts or "proxmox-mcp-server" in scripts:
-        assert "proxmox-mcp" in scripts
-        assert "proxmox-mcp-server" in scripts
-        assert scripts["proxmox-mcp"].value.endswith(":main")
-        assert scripts["proxmox-mcp-server"].value.endswith(":main")
+    # Soft check only when this package is installed into the active env
+    if "cursor-proxmox-mcp" in installed:
+        assert installed["cursor-proxmox-mcp"].value.endswith(":main")
 
 
 def test_main_requires_config_env(monkeypatch):

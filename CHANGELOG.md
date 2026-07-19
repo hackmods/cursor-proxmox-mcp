@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-07-19
+
+### Fixed
+
+- PyPI package renamed to **`cursor-proxmox-mcp`** — `proxmox-mcp-server` on PyPI is an unrelated project; bare `uvx proxmox-mcp-server` would install the wrong package
+- Release workflow no longer double-publishes to PyPI without the `pypi` environment (OIDC trusted publisher claims)
+
+### Added
+
+- `PUBLISHING.md`, `server.json`, `glama.json`, community announcement drafts
+- MCP registry ownership marker (`mcp-name`) in README; OCI label on Docker image
+- Console script `cursor-proxmox-mcp` (aliases `proxmox-mcp` / `proxmox-mcp-server` retained)
+
 ## [1.0.0] - 2026-07-19
 
 ### Security
@@ -25,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared helpers for storage selection and guest ID checks
 - Removed unused `utils/auth.py` / `utils/logging.py`
 - Package version **1.0.0** (Production/Stable)
-- Docker image slimmed for `proxmox-mcp-server` entrypoint
+- Docker image slimmed for `cursor-proxmox-mcp` / `proxmox-mcp-server` entrypoint
 - CI: coverage gate, CodeQL, Dependabot, release workflow (PyPI OIDC + GHCR)
 
 ### Added

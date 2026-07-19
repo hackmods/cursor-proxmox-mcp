@@ -1,0 +1,54 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.hackmods/cursor-proxmox-mcp",
+  "title": "Cursor Proxmox MCP",
+  "description": "Manage Proxmox VE via Cursor: QEMU, LXC, storage, HA, firewall, access.",
+  "version": "1.0.1",
+  "websiteUrl": "https://github.com/hackmods/cursor-proxmox-mcp",
+  "repository": {
+    "url": "https://github.com/hackmods/cursor-proxmox-mcp",
+    "source": "github",
+    "id": "1305384104"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "cursor-proxmox-mcp",
+      "version": "1.0.1",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "PROXMOX_MCP_CONFIG",
+          "description": "Absolute path to Proxmox MCP config.json (host, token, SSL).",
+          "format": "filepath",
+          "isRequired": true
+        },
+        {
+          "name": "PROXMOX_TOKEN_VALUE",
+          "description": "API token secret when config uses ${PROXMOX_TOKEN_VALUE}.",
+          "isSecret": true,
+          "isRequired": false
+        }
+      ]
+    },
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/hackmods/cursor-proxmox-mcp:1.0.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "PROXMOX_MCP_CONFIG",
+          "description": "Path to config.json inside the container (default /config/config.json).",
+          "format": "filepath",
+          "isRequired": false,
+          "value": "/config/config.json"
+        }
+      ]
+    }
+  ]
+}

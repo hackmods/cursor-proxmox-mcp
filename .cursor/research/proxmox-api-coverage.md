@@ -41,7 +41,7 @@ See [next-expansion.md](next-expansion.md). Summary:
 | Net/bridge overrides on create_vm / create_lxc | done |
 | `list_os_templates` / `list_isos` | done |
 | `get_token_permissions` (privsep ACL smoke) | done |
-| PyPI package + publish.yml for `uvx proxmox-mcp-server` | done (publish on Release) |
+| PyPI package + publish.yml for `uvx cursor-proxmox-mcp` | done (publish on Release) |
 
 ### Phase C — Heavy / deferred
 

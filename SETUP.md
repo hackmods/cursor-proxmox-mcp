@@ -185,7 +185,7 @@ uv --version
 After a GitHub Release publishes the package:
 
 ```bash
-uvx proxmox-mcp-server
+uvx cursor-proxmox-mcp
 ```
 
 You still need a `config.json` somewhere (copy from [`proxmox-config/config.example.json`](proxmox-config/config.example.json) in the repo or the gist you keep for the lab). Point Cursor’s `PROXMOX_MCP_CONFIG` at that absolute path.
@@ -257,14 +257,14 @@ From the repo root:
 
 ```bash
 # Windows paths work with forward slashes in the env value
-uvx --from . proxmox-mcp-server
+uvx --from . cursor-proxmox-mcp
 ```
 
 Or with an explicit config path:
 
 ```powershell
 $env:PROXMOX_MCP_CONFIG = "C:\Users\YOU\Projects\cursor-proxmox-mcp\proxmox-config\config.json"
-uvx --from . proxmox-mcp-server
+uvx --from . cursor-proxmox-mcp
 ```
 
 The first run downloads dependencies into an isolated env. If the process starts without an immediate auth error, you’re ready for Cursor.
@@ -292,7 +292,7 @@ Prefer **project** MCP config if the token is lab-only and you work on many unre
       "args": [
         "--from",
         "C:/Users/YOU/Projects/cursor-proxmox-mcp",
-        "proxmox-mcp-server"
+        "cursor-proxmox-mcp"
       ],
       "env": {
         "PROXMOX_MCP_CONFIG": "C:/Users/YOU/Projects/cursor-proxmox-mcp/proxmox-config/config.json"
@@ -334,7 +334,7 @@ uv pip install -e ".[dev]"
 
 Cursor caches the MCP process and tool list. After pulling new tools:
 
-1. Save any open work; note your `mcp.json` still points at this checkout (or at `uvx proxmox-mcp-server` if you switched to PyPI).
+1. Save any open work; note your `mcp.json` still points at this checkout (or at `uvx cursor-proxmox-mcp` if you switched to PyPI).
 2. Open **Cursor Settings → MCP**.
 3. Find the **proxmox** server → **Disable** → wait until it shows disconnected → **Enable** (or use Restart if shown).
 4. Confirm the tool count matches the README inventory (~132) — if the count is stale, fully quit Cursor and reopen.
@@ -343,7 +343,7 @@ Cursor caches the MCP process and tool list. After pulling new tools:
 
 ### Other MCP clients
 
-**Claude Desktop** can use the same server; see [`claude_desktop_config.json`](claude_desktop_config.json) in the repo as a starting point. Point `PROXMOX_MCP_CONFIG` at an absolute `config.json` and prefer `uvx --from <repo> proxmox-mcp-server` over bare `python` when possible.
+**Claude Desktop** can use the same server; see [`claude_desktop_config.json`](claude_desktop_config.json) in the repo as a starting point. Point `PROXMOX_MCP_CONFIG` at an absolute `config.json` and prefer `uvx --from <repo> cursor-proxmox-mcp` over bare `python` when possible.
 
 ---
 
@@ -451,7 +451,7 @@ Home labs are ideal for learning where AI+MCP helps (health checks, template clo
 | 403 on HA / firewall / privileged ops | Token/user need a stronger role |
 | SSL / connection errors | Ping `:8006`; set `verify_ssl` correctly; check host firewall / VPN |
 | Tools missing after pull | Follow [MCP reload checklist](#after-git-pull--live-cursor-mcp-reload-checklist) |
-| `ModuleNotFoundError: proxmox_mcp` | Prefer `uvx proxmox-mcp-server` or `uvx --from <repo>`; or set `PYTHONPATH` to `.../src` |
+| `ModuleNotFoundError: proxmox_mcp` | Prefer `uvx cursor-proxmox-mcp` or `uvx --from <repo>`; or set `PYTHONPATH` to `.../src` |
 | Green MCP but agent never calls tools | Explicitly say “use the Proxmox MCP tools”; confirm tool list is long (~132) in Cursor MCP settings |
 
 Local verification:

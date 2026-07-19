@@ -26,7 +26,7 @@ MCP request/response does not fit long-lived websocket console streams. Tools mi
 
 ## D7 — uvx as recommended install path
 
-Cursor MCP reliability improved when using `uvx` (or `uv run`) with console script `proxmox-mcp-server` instead of a fragile system Python + manual `PYTHONPATH`. Keep `python -m proxmox_mcp.server` as documented fallback. Both `proxmox-mcp` and `proxmox-mcp-server` map to `server:main`.
+Cursor MCP reliability improved when using `uvx` (or `uv run`) with console script `cursor-proxmox-mcp` instead of a fragile system Python + manual `PYTHONPATH`. Keep `python -m proxmox_mcp.server` as documented fallback. Scripts `cursor-proxmox-mcp`, `proxmox-mcp`, and `proxmox-mcp-server` all map to `server:main`.
 
 ## D8 — API tokens default to Privilege Separation
 
@@ -50,7 +50,7 @@ After the 128-tool baseline, expand create/wait paths before exotic admin APIs. 
 
 ## D12 — PyPI package name matches uvx entrypoint
 
-Publish as `proxmox-mcp-server` (not only `proxmox-mcp`) so `uvx proxmox-mcp-server` resolves without `--from`. Import package remains `proxmox_mcp`. Release via `.github/workflows/publish.yml` + PyPI Trusted Publishing.
+Publish as **`cursor-proxmox-mcp`** so `uvx cursor-proxmox-mcp` resolves without `--from`. Import package remains `proxmox_mcp`. Release via `.github/workflows/publish.yml` + PyPI Trusted Publishing (environment `pypi`). Do **not** use the PyPI name `proxmox-mcp-server` — that name is already owned by an unrelated project (see D20).
 
 ## D13 — Shared guest helpers, parallel VM/LXC classes
 
@@ -79,3 +79,7 @@ Hardcoded defaults (`vmbr0`, `nesting=1`) live as named constants for testabilit
 ## D19 — Declarative tool metadata + register module
 
 Each tools domain exports `TOOL_SPECS` (name + description ref). Registration wrappers live in `tools/register.py`; `server._setup_tools` calls `register_all`. Public tool names/params unchanged; `expected_tools.py` remains the golden inventory.
+
+## D20 — Avoid colliding PyPI names
+
+`proxmox-mcp-server` on PyPI belongs to [GethosTheWalrus/proxmox-mcp](https://github.com/GethosTheWalrus/proxmox-mcp). Publishing under that name would fail or, worse, confuse installers. Canonical distribution name is `cursor-proxmox-mcp` (matches the GitHub repo). Document the collision in README / SECURITY / PUBLISHING.

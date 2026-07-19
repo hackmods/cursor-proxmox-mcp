@@ -19,11 +19,11 @@ After connect, use `get_token_permissions` / `get_permissions` to sanity-check w
 
 ## Install (uvx)
 
-Recommended: PyPI package / console script `proxmox-mcp-server`:
+Recommended: PyPI package / console script `cursor-proxmox-mcp`:
 
 ```bash
-uvx proxmox-mcp-server                                          # after PyPI publish
-uvx --from /path/to/cursor-proxmox-mcp proxmox-mcp-server      # local checkout
+uvx cursor-proxmox-mcp                                          # after PyPI publish
+uvx --from /path/to/cursor-proxmox-mcp cursor-proxmox-mcp      # local checkout
 ```
 
 Set `PROXMOX_MCP_CONFIG` to your `config.json`. See [SETUP.md](../SETUP.md).

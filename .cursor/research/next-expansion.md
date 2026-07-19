@@ -19,7 +19,7 @@ Update this file when priorities change; keep [proxmox-api-coverage.md](proxmox-
 | P1 | Net/bridge params on create_vm / create_lxc | done |
 | P1 | `list_os_templates` / `list_isos` + auto ostemplate | done |
 | P1 | `get_token_permissions` (privsep D8) | done |
-| P2 | PyPI package `proxmox-mcp-server` + publish.yml | done (workflow; publish on Release) |
+| P2 | PyPI package `cursor-proxmox-mcp` + publish.yml | done (name collision fix in 1.0.1; needs Trusted Publisher) |
 | P2 | SETUP nested Docker LXC prompts + MCP reload checklist | done |
 
 **Success criteria:** Agent can discover media → pick nextid → create with ISO/cloud-init/net → `wait_for_task` → verify — without guessing paths or sleeping blindly.
@@ -59,7 +59,7 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 | Privsep=Yes needs ACL on `user@realm!tokenid` | D8, SETUP.md, `get_token_permissions` | Empty lists ≠ “no VMs” — check token ACL first |
 | SETUP.md is first-run SoT | D9 | README stays inventory + short install |
 | Console = ticket mint only | D6 | No websocket proxy in MCP |
-| uvx / `proxmox-mcp-server` preferred | D7 | PyPI name matches console script for bare `uvx` |
+| uvx / `cursor-proxmox-mcp` preferred | D7 / D20 | PyPI name matches console script; avoid colliding `proxmox-mcp-server` |
 | Inventory lock | D5, `tests/expected_tools.py` | Every new tool updates README + coverage + expected_tools |
 | LXC `/exec` version-dependent | D4, changelog | Fail clearly; don’t pretend QGA |
 | Destructive ops need force + warnings | D2 | Keep pattern for new delete/power tools |
@@ -69,8 +69,10 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 ## Suggested next work
 
 ```text
-1. First GitHub Release + PyPI Trusted Publishing (so uvx works without --from)
-2. Only then: SDN write or ACME write if a real use case appears (Phase C)
+1. Configure PyPI Trusted Publisher for `cursor-proxmox-mcp` → re-run publish.yml (see PUBLISHING.md)
+2. Official MCP registry: `mcp-publisher publish` after PyPI upload
+3. Glama submit + community drafts in docs/community/
+4. Only then: SDN write or ACME write if a real use case appears (Phase C)
 ```
 
 When shipping any new tool: update this file’s status, coverage matrix, changelog-notes, README, and `expected_tools.py` in the same change (api-coverage + keep-docs-aligned rules).
