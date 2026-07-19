@@ -41,13 +41,14 @@ Quick map:
 | Create guest | `create_vm` / `create_lxc` (ISO, cloud-init, bridge/net) |
 | Wait for job | `wait_for_task` (or `get_task_status`) |
 | Token ACL smoke | `get_token_permissions` |
-| Inspect config | `get_vm_config` / `get_lxc_config` |
-| Safety net | `create_snapshot` / `create_backup` |
-| Move node | `migrate_guest` |
+| Inspect config | `get_vm_config` / `get_lxc_config` / `get_guest_pending` |
+| Power (either type) | `start_guest` / `stop_guest` / … or parallel `*_vm` / `*_lxc` |
+| Safety net | `create_snapshot` / `create_backup` / `list_backup_jobs` |
+| Move disk/node | `move_guest_disk` / `migrate_guest` |
 | HA | `create_ha_resource` |
-| Firewall | `create_guest_firewall_rule` / `create_firewall_alias` |
+| Firewall | `create_guest_firewall_rule` / `add_firewall_ipset_cidr` |
 | Users/tokens | `create_user` / `create_token` |
-| Replication | `list_replication_jobs` / `run_replication_job` |
+| Replication | `list_replication_jobs` / `update_replication_job` / `run_replication_job` |
 | SDN | `list_sdn_zones` / `apply_sdn` |
 | Console ticket | `create_vnc_ticket_vm` (mint only) |
 | Cluster overview | `get_cluster_resources` / `get_version` |

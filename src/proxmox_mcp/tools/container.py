@@ -30,8 +30,12 @@ TOOL_SPECS = [
     ToolSpec("resize_lxc_disk", D.RESIZE_LXC_DISK_DESC),
     ToolSpec("convert_lxc_to_template", D.CONVERT_LXC_TEMPLATE_DESC),
     ToolSpec("execute_lxc_command", D.EXECUTE_LXC_COMMAND_DESC),
+    ToolSpec("suspend_lxc", D.SUSPEND_LXC_DESC),
+    ToolSpec("resume_lxc", D.RESUME_LXC_DESC),
     ToolSpec("get_lxc_status", D.GET_LXC_STATUS_DESC),
+    ToolSpec("get_lxc_rrd_data", D.GET_LXC_RRD_DATA_DESC),
     ToolSpec("create_vnc_ticket_lxc", D.CREATE_VNC_TICKET_LXC_DESC),
+    ToolSpec("create_spice_ticket_lxc", D.CREATE_SPICE_TICKET_LXC_DESC),
     ToolSpec("create_termproxy_ticket_lxc", D.CREATE_TERMPROXY_TICKET_LXC_DESC),
 ]
 
@@ -278,6 +282,39 @@ class ContainerTools(ProxmoxTool):
                 raise ValueError(f"LXC {vmid} not found on node {node}")
             self._handle_error(f"reboot LXC {vmid}", e)
 
+    def suspend_lxc(self, node: str, vmid: str) -> List[Content]:
+        """Suspend an LXC (CRIU checkpoint — often unreliable)."""
+        try:
+            task_result = self.proxmox.nodes(node).lxc(vmid).status.suspend.post()
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"⚠️ LXC {vmid} suspend initiated (CRIU — best-effort)\n"
+                        f"Task ID: {task_result}\n"
+                        f"Prefer shutdown_lxc for reliable power-off."
+                    ),
+                )
+            ]
+        except Exception as e:
+            self._handle_error(f"suspend LXC {vmid}", e)
+
+    def resume_lxc(self, node: str, vmid: str) -> List[Content]:
+        """Resume a suspended LXC (CRIU — best-effort)."""
+        try:
+            task_result = self.proxmox.nodes(node).lxc(vmid).status.resume.post()
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"⚠️ LXC {vmid} resume initiated (CRIU — best-effort)\n"
+                        f"Task ID: {task_result}"
+                    ),
+                )
+            ]
+        except Exception as e:
+            self._handle_error(f"resume LXC {vmid}", e)
+
     def delete_lxc(self, node: str, vmid: str, force: bool = False) -> List[Content]:
         """Delete an LXC container permanently.
 
@@ -495,6 +532,14 @@ class ContainerTools(ProxmoxTool):
         except Exception as e:
             self._handle_error(f"create termproxy ticket for LXC {vmid}", e)
 
+    def create_spice_ticket(self, node: str, vmid: str) -> List[Content]:
+        """Mint a SPICE proxy ticket for an LXC."""
+        try:
+            result = self.proxmox.nodes(node).lxc(vmid).spiceproxy.post()
+            return self._format_response(result)
+        except Exception as e:
+            self._handle_error(f"create SPICE ticket for LXC {vmid}", e)
+
     def get_lxc_status(self, node: str, vmid: str) -> List[Content]:
         """Get current runtime status for a single LXC."""
         try:
@@ -502,3 +547,13 @@ class ContainerTools(ProxmoxTool):
             return self._format_response(status)
         except Exception as e:
             self._handle_error(f"get status for LXC {vmid}", e)
+
+    def get_lxc_rrd_data(
+        self, node: str, vmid: str, timeframe: str = "hour"
+    ) -> List[Content]:
+        """Get RRD performance data for an LXC (timeframe: hour|day|week|month|year)."""
+        try:
+            data = self.proxmox.nodes(node).lxc(vmid).rrddata.get(timeframe=timeframe)
+            return self._format_response(data)
+        except Exception as e:
+            self._handle_error(f"get RRD data for LXC {vmid}", e)

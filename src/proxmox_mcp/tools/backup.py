@@ -81,3 +81,64 @@ class BackupTools(ProxmoxTool):
             return [Content(type="text", text=f"Deleted backup volume {volume}\nResult: {result}")]
         except Exception as e:
             self._handle_error(f"delete backup {volume}", e)
+
+    def list_backup_jobs(self) -> List[Content]:
+        """List scheduled cluster backup jobs."""
+        try:
+            jobs = self.proxmox.cluster.backup.get()
+            return self._format_response(jobs)
+        except Exception as e:
+            self._handle_error("list backup jobs", e)
+
+    def create_backup_job(
+        self,
+        schedule: str,
+        storage: str,
+        vmid: Optional[str] = None,
+        mode: str = "snapshot",
+        compress: str = "zstd",
+        enabled: bool = True,
+        comment: Optional[str] = None,
+        mailto: Optional[str] = None,
+        mailnotification: Optional[str] = None,
+        all: bool = False,
+    ) -> List[Content]:
+        """Create a scheduled /cluster/backup job."""
+        try:
+            params = {
+                "schedule": schedule,
+                "storage": storage,
+                "mode": mode,
+                "compress": compress,
+                "enabled": 1 if enabled else 0,
+                "all": 1 if all else 0,
+            }
+            if vmid is not None:
+                params["vmid"] = vmid
+            if comment is not None:
+                params["comment"] = comment
+            if mailto is not None:
+                params["mailto"] = mailto
+            if mailnotification is not None:
+                params["mailnotification"] = mailnotification
+            result = self.proxmox.cluster.backup.post(**params)
+            return [
+                Content(
+                    type="text",
+                    text=f"Backup job created\nParams: {params}\nResult: {result}",
+                )
+            ]
+        except Exception as e:
+            self._handle_error("create backup job", e)
+
+    def delete_backup_job(self, id: str) -> List[Content]:
+        try:
+            result = self.proxmox.cluster.backup(id).delete()
+            return [
+                Content(
+                    type="text",
+                    text=f"Backup job '{id}' deleted\nResult: {result}",
+                )
+            ]
+        except Exception as e:
+            self._handle_error(f"delete backup job {id}", e)

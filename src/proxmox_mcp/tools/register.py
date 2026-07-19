@@ -306,6 +306,14 @@ def register_all(server: ProxmoxMCPServer) -> None:
     def reboot_lxc(node: Annotated[str, Field(description="Node")], vmid: Annotated[str, Field(description="CT ID")]):
         return server.container_tools.reboot_lxc(node, vmid)
 
+    @server.mcp.tool(description=D.SUSPEND_LXC_DESC)
+    def suspend_lxc(node: Annotated[str, Field(description="Node")], vmid: Annotated[str, Field(description="CT ID")]):
+        return server.container_tools.suspend_lxc(node, vmid)
+
+    @server.mcp.tool(description=D.RESUME_LXC_DESC)
+    def resume_lxc(node: Annotated[str, Field(description="Node")], vmid: Annotated[str, Field(description="CT ID")]):
+        return server.container_tools.resume_lxc(node, vmid)
+
     @server.mcp.tool(description=D.DELETE_LXC_DESC)
     def delete_lxc(
         node: Annotated[str, Field(description="Node")],
@@ -357,6 +365,77 @@ def register_all(server: ProxmoxMCPServer) -> None:
         command: Annotated[str, Field(description="Command")],
     ):
         return server.container_tools.execute_lxc_command(node, vmid, command)
+
+    # --- Unified guest power (additive) ---
+    @server.mcp.tool(description=D.START_GUEST_DESC)
+    def start_guest(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="Guest ID")],
+        guest_type: Annotated[str, Field(description="qemu or lxc", default="qemu")] = "qemu",
+    ):
+        return server.guest_power_tools.start_guest(node, vmid, guest_type)
+
+    @server.mcp.tool(description=D.STOP_GUEST_DESC)
+    def stop_guest(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="Guest ID")],
+        guest_type: Annotated[str, Field(description="qemu or lxc", default="qemu")] = "qemu",
+    ):
+        return server.guest_power_tools.stop_guest(node, vmid, guest_type)
+
+    @server.mcp.tool(description=D.SHUTDOWN_GUEST_DESC)
+    def shutdown_guest(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="Guest ID")],
+        guest_type: Annotated[str, Field(description="qemu or lxc", default="qemu")] = "qemu",
+    ):
+        return server.guest_power_tools.shutdown_guest(node, vmid, guest_type)
+
+    @server.mcp.tool(description=D.REBOOT_GUEST_DESC)
+    def reboot_guest(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="Guest ID")],
+        guest_type: Annotated[str, Field(description="qemu or lxc", default="qemu")] = "qemu",
+    ):
+        return server.guest_power_tools.reboot_guest(node, vmid, guest_type)
+
+    @server.mcp.tool(description=D.DELETE_GUEST_DESC)
+    def delete_guest(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="Guest ID")],
+        guest_type: Annotated[str, Field(description="qemu or lxc", default="qemu")] = "qemu",
+        force: Annotated[bool, Field(description="Force if running", default=False)] = False,
+    ):
+        return server.guest_power_tools.delete_guest(node, vmid, guest_type, force)
+
+    @server.mcp.tool(description=D.GET_GUEST_STATUS_DESC)
+    def get_guest_status(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="Guest ID")],
+        guest_type: Annotated[str, Field(description="qemu or lxc", default="qemu")] = "qemu",
+    ):
+        return server.guest_power_tools.get_guest_status(node, vmid, guest_type)
+
+    @server.mcp.tool(description=D.GET_GUEST_PENDING_DESC)
+    def get_guest_pending(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="Guest ID")],
+        guest_type: Annotated[str, Field(description="qemu or lxc", default="qemu")] = "qemu",
+    ):
+        return server.guest_power_tools.get_guest_pending(node, vmid, guest_type)
+
+    @server.mcp.tool(description=D.MOVE_GUEST_DISK_DESC)
+    def move_guest_disk(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="Guest ID")],
+        disk: Annotated[str, Field(description="Disk/volume e.g. scsi0 or rootfs")],
+        storage: Annotated[str, Field(description="Target storage")],
+        guest_type: Annotated[str, Field(description="qemu or lxc", default="qemu")] = "qemu",
+        delete: Annotated[bool, Field(description="Delete source after move", default=True)] = True,
+    ):
+        return server.guest_power_tools.move_guest_disk(
+            node, vmid, disk, storage, guest_type, delete
+        )
 
     # --- Snapshots ---
     @server.mcp.tool(description=D.LIST_SNAPSHOTS_DESC)
@@ -436,6 +515,40 @@ def register_all(server: ProxmoxMCPServer) -> None:
         volume: Annotated[str, Field(description="Volume id")],
     ):
         return server.backup_tools.delete_backup(node, storage, volume)
+
+    @server.mcp.tool(description=D.LIST_BACKUP_JOBS_DESC)
+    def list_backup_jobs():
+        return server.backup_tools.list_backup_jobs()
+
+    @server.mcp.tool(description=D.CREATE_BACKUP_JOB_DESC)
+    def create_backup_job(
+        schedule: Annotated[str, Field(description="Cron-like schedule e.g. sun 01:00")],
+        storage: Annotated[str, Field(description="Backup storage")],
+        vmid: Annotated[Optional[str], Field(description="Comma-separated VMIDs", default=None)] = None,
+        mode: Annotated[str, Field(description="snapshot|suspend|stop", default="snapshot")] = "snapshot",
+        compress: Annotated[str, Field(description="zstd|gzip|lzo|0", default="zstd")] = "zstd",
+        enabled: Annotated[bool, Field(description="Enabled", default=True)] = True,
+        comment: Annotated[Optional[str], Field(description="Comment", default=None)] = None,
+        mailto: Annotated[Optional[str], Field(description="Mail to", default=None)] = None,
+        mailnotification: Annotated[Optional[str], Field(description="always|failure", default=None)] = None,
+        all: Annotated[bool, Field(description="Backup all guests", default=False)] = False,
+    ):
+        return server.backup_tools.create_backup_job(
+            schedule,
+            storage,
+            vmid,
+            mode,
+            compress,
+            enabled,
+            comment,
+            mailto,
+            mailnotification,
+            all,
+        )
+
+    @server.mcp.tool(description=D.DELETE_BACKUP_JOB_DESC)
+    def delete_backup_job(id: Annotated[str, Field(description="Backup job id")]):
+        return server.backup_tools.delete_backup_job(id)
 
     # --- Storage ---
     @server.mcp.tool(description=D.GET_STORAGE_DESC)
@@ -852,6 +965,14 @@ def register_all(server: ProxmoxMCPServer) -> None:
     ):
         return server.container_tools.get_lxc_status(node, vmid)
 
+    @server.mcp.tool(description=D.GET_LXC_RRD_DATA_DESC)
+    def get_lxc_rrd_data(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="CT ID")],
+        timeframe: Annotated[str, Field(description="hour|day|week|month|year", default="hour")] = "hour",
+    ):
+        return server.container_tools.get_lxc_rrd_data(node, vmid, timeframe)
+
     @server.mcp.tool(description=D.CREATE_VNC_TICKET_LXC_DESC)
     def create_vnc_ticket_lxc(
         node: Annotated[str, Field(description="Node")],
@@ -859,6 +980,13 @@ def register_all(server: ProxmoxMCPServer) -> None:
         websocket: Annotated[bool, Field(description="Websocket", default=True)] = True,
     ):
         return server.container_tools.create_vnc_ticket(node, vmid, websocket)
+
+    @server.mcp.tool(description=D.CREATE_SPICE_TICKET_LXC_DESC)
+    def create_spice_ticket_lxc(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="CT ID")],
+    ):
+        return server.container_tools.create_spice_ticket(node, vmid)
 
     @server.mcp.tool(description=D.CREATE_TERMPROXY_TICKET_LXC_DESC)
     def create_termproxy_ticket_lxc(
@@ -895,6 +1023,15 @@ def register_all(server: ProxmoxMCPServer) -> None:
         enabled: Annotated[bool, Field(description="Enabled", default=True)] = True,
     ):
         return server.replication_tools.create_replication_job(id, target, schedule, comment, enabled)
+
+    @server.mcp.tool(description=D.UPDATE_REPLICATION_JOB_DESC)
+    def update_replication_job(
+        id: Annotated[str, Field(description="Job id")],
+        schedule: Annotated[Optional[str], Field(description="Schedule", default=None)] = None,
+        comment: Annotated[Optional[str], Field(description="Comment", default=None)] = None,
+        enabled: Annotated[Optional[bool], Field(description="Enabled", default=None)] = None,
+    ):
+        return server.replication_tools.update_replication_job(id, schedule, comment, enabled)
 
     @server.mcp.tool(description=D.DELETE_REPLICATION_JOB_DESC)
     def delete_replication_job(id: Annotated[str, Field(description="Job id")]):
@@ -954,6 +1091,16 @@ def register_all(server: ProxmoxMCPServer) -> None:
     ):
         return server.pool_tools.create_pool(poolid, comment)
 
+    @server.mcp.tool(description=D.UPDATE_POOL_DESC)
+    def update_pool(
+        poolid: Annotated[str, Field(description="Pool id")],
+        comment: Annotated[Optional[str], Field(description="Comment", default=None)] = None,
+        vms: Annotated[Optional[str], Field(description="Comma-separated VMIDs", default=None)] = None,
+        storage: Annotated[Optional[str], Field(description="Comma-separated storages", default=None)] = None,
+        delete: Annotated[bool, Field(description="Remove members instead of add", default=False)] = False,
+    ):
+        return server.pool_tools.update_pool(poolid, comment, vms, storage, delete)
+
     @server.mcp.tool(description=D.DELETE_POOL_DESC)
     def delete_pool(poolid: Annotated[str, Field(description="Pool id")]):
         return server.pool_tools.delete_pool(poolid)
@@ -989,6 +1136,26 @@ def register_all(server: ProxmoxMCPServer) -> None:
     @server.mcp.tool(description=D.DELETE_FIREWALL_IPSET_DESC)
     def delete_firewall_ipset(name: Annotated[str, Field(description="IP set name")]):
         return server.firewall_tools.delete_firewall_ipset(name)
+
+    @server.mcp.tool(description=D.LIST_FIREWALL_IPSET_CIDRS_DESC)
+    def list_firewall_ipset_cidrs(name: Annotated[str, Field(description="IP set name")]):
+        return server.firewall_tools.list_firewall_ipset_cidrs(name)
+
+    @server.mcp.tool(description=D.ADD_FIREWALL_IPSET_CIDR_DESC)
+    def add_firewall_ipset_cidr(
+        name: Annotated[str, Field(description="IP set name")],
+        cidr: Annotated[str, Field(description="CIDR or IP")],
+        comment: Annotated[Optional[str], Field(description="Comment", default=None)] = None,
+        nomatch: Annotated[bool, Field(description="nomatch flag", default=False)] = False,
+    ):
+        return server.firewall_tools.add_firewall_ipset_cidr(name, cidr, comment, nomatch)
+
+    @server.mcp.tool(description=D.DELETE_FIREWALL_IPSET_CIDR_DESC)
+    def delete_firewall_ipset_cidr(
+        name: Annotated[str, Field(description="IP set name")],
+        cidr: Annotated[str, Field(description="CIDR or IP")],
+    ):
+        return server.firewall_tools.delete_firewall_ipset_cidr(name, cidr)
 
     @server.mcp.tool(description=D.LIST_FIREWALL_MACROS_DESC)
     def list_firewall_macros():

@@ -1,28 +1,27 @@
 # Next expansion phases
 
-Living Cursor note for what to build after the current **132-tool** baseline.
+Living Cursor note for what to build after the current **152-tool** baseline.
 Update this file when priorities change; keep [proxmox-api-coverage.md](proxmox-api-coverage.md), [README.md](../../README.md), and [docs/api-coverage.md](../../docs/api-coverage.md) in sync.
 
 **Baseline (done):** Formal Cursor ↔ Proxmox MCP — guest lifecycle, storage, HA, firewall, access, replication, SDN read, ACME read, pools, console tickets, inventory-locked CI.
 
 **Phase D (done):** Agent QOL — `wait_for_task`, ISO/cloud-init/net on create, template/ISO helpers, token ACL helper, SETUP reload + nested Docker prompts, mcpo CI smoke, PyPI publish workflow.
 
+**Phase E (done):** LXC↔VM parity + unified guest power + ops completeness — RRD/SPICE/suspend LXC, `*_guest` aliases, pending, pool membership, IPSet CIDRs, move disk, replication update, backup jobs.
+
 ---
 
-## Phase D — Agent QOL (shipped)
+## Phase E — Agent ops completeness (shipped)
 
 | Priority | Item | Status |
 |----------|------|--------|
-| P0 | `wait_for_task` | done |
-| P0 | ISO / CDROM + boot on `create_vm` / `update_vm_config` | done |
-| P0 | Cloud-init params (`ciuser`, `sshkeys`, `ipconfig0`, `cipassword`) | done |
-| P1 | Net/bridge params on create_vm / create_lxc | done |
-| P1 | `list_os_templates` / `list_isos` + auto ostemplate | done |
-| P1 | `get_token_permissions` (privsep D8) | done |
-| P2 | PyPI package `cursor-proxmox-mcp` + publish.yml | done (name collision fix in 1.0.1; needs Trusted Publisher) |
-| P2 | SETUP nested Docker LXC prompts + MCP reload checklist | done |
-
-**Success criteria:** Agent can discover media → pick nextid → create with ISO/cloud-init/net → `wait_for_task` → verify — without guessing paths or sleeping blindly.
+| P0 | Cursor MCP wiring (`uvx --from` checkout; kill wrong `proxmox-mcp-server` package) | done (operator reload) |
+| P0 | `get_lxc_rrd_data`, `create_spice_ticket_lxc` | done |
+| P0 | `suspend_lxc` / `resume_lxc` (CRIU warnings) | done |
+| P0 | Additive `*_guest` power tools + `get_guest_status` | done |
+| P1 | `get_guest_pending`, `move_guest_disk` | done |
+| P1 | `update_pool`, IPSet CIDR CRUD | done |
+| P1 | `update_replication_job`, `list/create/delete_backup_job` | done |
 
 ---
 
@@ -39,6 +38,8 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 | Full VNC/SPICE websocket proxy | High | Poor MCP fit | Tickets only (D6) unless a client needs proxy |
 | PBS direct admin | Medium | Separate product | Use `storage.type=pbs` until needed |
 | Node reboot / shutdown | Low code, high risk | Host power | Needs explicit confirmation UX |
+| Node network create/update/reload | Medium | Med | Bridge automation labs |
+| QEMU agent helpers beyond exec | Low–med | Low | Richer guest introspection |
 
 ---
 
@@ -46,7 +47,7 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 
 | Item | Status |
 |------|--------|
-| Cursor MCP reload checklist after `git pull` | done (SETUP.md) |
+| Cursor MCP reload checklist after `git pull` | done (SETUP.md) — includes stale ~14-tool catalog symptom |
 | Optional `mcpo` OpenAPI smoke in CI | done |
 | Example agent prompts (nested Docker LXC, ISO VM) | done (SETUP.md) |
 
@@ -59,9 +60,11 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 | Privsep=Yes needs ACL on `user@realm!tokenid` | D8, SETUP.md, `get_token_permissions` | Empty lists ≠ “no VMs” — check token ACL first |
 | SETUP.md is first-run SoT | D9 | README stays inventory + short install |
 | Console = ticket mint only | D6 | No websocket proxy in MCP |
-| uvx / `cursor-proxmox-mcp` preferred | D7 / D20 | PyPI name matches console script; avoid colliding `proxmox-mcp-server` |
+| uvx / `cursor-proxmox-mcp` preferred | D7 / D20 | Wrong PyPI name `proxmox-mcp-server` is a different project |
 | Inventory lock | D5, `tests/expected_tools.py` | Every new tool updates README + coverage + expected_tools |
 | LXC `/exec` version-dependent | D4, changelog | Fail clearly; don’t pretend QGA |
+| LXC suspend/resume is CRIU best-effort | Phase E | Prefer shutdown; warn in tool text |
+| Parallel `*_vm`/`*_lxc` + additive `*_guest` | D1 | Do not rename power tools in minor releases |
 | Destructive ops need force + warnings | D2 | Keep pattern for new delete/power tools |
 
 ---

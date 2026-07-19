@@ -14,18 +14,19 @@ Source of truth for registered names: `ProxmoxMCPServer._setup_tools()` and `tes
 | Cluster | get_cluster_status, get_next_vmid, get_version, get_cluster_resources, get_cluster_log, get_cluster_options | /cluster..., /version |
 | Tasks | get_task_status, list_tasks, wait_for_task | /nodes/{n}/tasks... |
 | QEMU | full lifecycle + config (ISO/cloud-init/net) + status + rrd + console tickets | /nodes/{n}/qemu... |
-| LXC | full lifecycle + config (auto ostemplate, net) + status + console tickets + exec | /nodes/{n}/lxc... |
+| LXC | full lifecycle + config + suspend/resume (CRIU warn) + status + rrd + VNC/SPICE/termproxy + exec | /nodes/{n}/lxc... |
+| Guest unified | start/stop/shutdown/reboot/delete_guest, get_guest_status/pending, move_guest_disk | qemu\|lxc status + pending + move_disk/move_volume |
 | Snapshots | list/create/delete/rollback | .../snapshot |
-| Backups | create/list/restore/delete | vzdump + storage content |
+| Backups | one-shot create/list/restore/delete + scheduled list/create/delete_backup_job | vzdump + /cluster/backup |
 | Storage | get/content/list_os_templates/list_isos/delete/download-url + definition CRUD | /storage... |
 | Migrate | migrate_guest | .../migrate |
 | HA | status, groups, resources CRUD | /cluster/ha... |
-| Firewall | cluster+guest rules/options; aliases; ipsets; macros | /cluster/firewall... |
+| Firewall | cluster+guest rules/options; aliases; ipsets + CIDR members; macros | /cluster/firewall... |
 | Access | users, groups, roles, ACL, tokens, get_permissions, get_token_permissions | /access/... |
-| Replication | list/status/run/create/delete | /cluster/replication, /nodes/{n}/replication |
+| Replication | list/status/run/create/update/delete | /cluster/replication, /nodes/{n}/replication |
 | ACME | list plugins/accounts/directories (read) | /cluster/acme... |
 | SDN | list zones/vnets/controllers/ipams/dns + apply | /cluster/sdn... |
-| Pools | list/get/create/delete | /pools |
+| Pools | list/get/create/update/delete | /pools |
 
 ## Planned
 

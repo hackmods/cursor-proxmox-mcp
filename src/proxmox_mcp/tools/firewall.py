@@ -222,6 +222,49 @@ class FirewallTools(ProxmoxTool):
         except Exception as e:
             self._handle_error(f"delete firewall IP set {name}", e)
 
+    def list_firewall_ipset_cidrs(self, name: str) -> List[Content]:
+        try:
+            members = self.proxmox.cluster.firewall.ipset(name).get()
+            return self._format_response(members)
+        except Exception as e:
+            self._handle_error(f"list IP set '{name}' CIDRs", e)
+
+    def add_firewall_ipset_cidr(
+        self,
+        name: str,
+        cidr: str,
+        comment: Optional[str] = None,
+        nomatch: bool = False,
+    ) -> List[Content]:
+        try:
+            params = {"cidr": cidr}
+            if comment is not None:
+                params["comment"] = comment
+            if nomatch:
+                params["nomatch"] = 1
+            result = self.proxmox.cluster.firewall.ipset(name).post(**params)
+            return [
+                Content(
+                    type="text",
+                    text=f"Added '{cidr}' to IP set '{name}'\nResult: {result}",
+                )
+            ]
+        except Exception as e:
+            self._handle_error(f"add CIDR to IP set {name}", e)
+
+    def delete_firewall_ipset_cidr(self, name: str, cidr: str) -> List[Content]:
+        try:
+            # Proxmox encodes CIDR in the path; proxmoxer accepts the cidr segment
+            result = self.proxmox.cluster.firewall.ipset(name)(cidr).delete()
+            return [
+                Content(
+                    type="text",
+                    text=f"Removed '{cidr}' from IP set '{name}'\nResult: {result}",
+                )
+            ]
+        except Exception as e:
+            self._handle_error(f"delete CIDR from IP set {name}", e)
+
     def list_firewall_macros(self) -> List[Content]:
         try:
             macros = self.proxmox.cluster.firewall.macros.get()

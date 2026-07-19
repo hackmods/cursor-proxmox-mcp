@@ -53,6 +53,36 @@ class ReplicationTools(ProxmoxTool):
         except Exception as e:
             self._handle_error(f"create replication job {id}", e)
 
+    def update_replication_job(
+        self,
+        id: str,
+        schedule: Optional[str] = None,
+        comment: Optional[str] = None,
+        enabled: Optional[bool] = None,
+    ) -> List[Content]:
+        """Update an existing replication job."""
+        try:
+            params = {}
+            if schedule is not None:
+                params["schedule"] = schedule
+            if comment is not None:
+                params["comment"] = comment
+            if enabled is not None:
+                params["enabled"] = 1 if enabled else 0
+            if not params:
+                raise ValueError("Provide schedule, comment, and/or enabled to update")
+            result = self.proxmox.cluster.replication(id).put(**params)
+            return [
+                Content(
+                    type="text",
+                    text=f"Replication job '{id}' updated\nParams: {params}\nResult: {result}",
+                )
+            ]
+        except ValueError:
+            raise
+        except Exception as e:
+            self._handle_error(f"update replication job {id}", e)
+
     def delete_replication_job(self, id: str) -> List[Content]:
         try:
             result = self.proxmox.cluster.replication(id).delete()

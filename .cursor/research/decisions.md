@@ -2,7 +2,9 @@
 
 ## D1 — guest_type for cross-cutting tools
 
-Snapshots, backups (restore), migrate, and guest firewall use `guest_type=qemu|lxc` instead of doubling every tool name. Existing power tools stay as `*_vm` / `*_lxc` for compatibility with earlier Cursor workflows.
+Snapshots, backups (restore), migrate, guest firewall, pending config, and disk move use `guest_type=qemu|lxc` instead of doubling every tool name. Parallel power tools stay as `*_vm` / `*_lxc` for Cursor workflow compatibility.
+
+Additive unified aliases (`start_guest`, `stop_guest`, `shutdown_guest`, `reboot_guest`, `delete_guest`, `get_guest_status`) also take `guest_type` and must not replace or deprecate the parallel names in a minor release.
 
 ## D2 — Destructive ops
 

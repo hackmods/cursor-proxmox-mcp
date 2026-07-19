@@ -98,6 +98,8 @@ def _default_args(tool_name: str, fn) -> dict:
             kwargs[name] = "nesting=1"
         elif name == "ostemplate":
             kwargs[name] = "local:vztmpl/u.tar.zst"
+        elif name == "schedule":
+            kwargs[name] = "sun 01:00"
         else:
             kwargs[name] = "x"
     return kwargs

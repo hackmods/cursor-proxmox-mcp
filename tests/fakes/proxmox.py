@@ -55,6 +55,9 @@ def make_fake_proxmox(
     api.cluster.firewall.ipset.get.return_value = []
     api.cluster.firewall.macros.get.return_value = []
     api.cluster.replication.get.return_value = []
+    api.cluster.backup.get.return_value = []
+    api.cluster.backup.post.return_value = "ok"
+    api.cluster.backup.return_value.delete.return_value = "ok"
     api.access.users.get.return_value = []
     api.access.groups.get.return_value = []
     api.access.roles.get.return_value = []
@@ -159,6 +162,8 @@ def make_fake_proxmox(
             q.spiceproxy.post.return_value = {"ticket": "t"}
             q.termproxy.post.return_value = {"ticket": "t"}
             q.rrddata.get.return_value = []
+            q.pending.get.return_value = []
+            q.move_disk.post.return_value = "UPID:movedisk"
             q.snapshot.get.return_value = []
             q.snapshot.post.return_value = "UPID:snap"
             q.snapshot.return_value.delete.return_value = "UPID:delsnap"
@@ -230,13 +235,19 @@ def make_fake_proxmox(
             c.status.stop.post.return_value = "UPID:stop"
             c.status.shutdown.post.return_value = "UPID:shutdown"
             c.status.reboot.post.return_value = "UPID:reboot"
+            c.status.suspend.post.return_value = "UPID:suspend"
+            c.status.resume.post.return_value = "UPID:resume"
             c.delete.return_value = "UPID:delete"
             c.clone.post.return_value = "UPID:clone"
             c.resize.put.return_value = "ok"
             c.template.post.return_value = "ok"
             c.config.put.return_value = "ok"
             c.vncproxy.post.return_value = {"ticket": "t"}
+            c.spiceproxy.post.return_value = {"ticket": "t"}
             c.termproxy.post.return_value = {"ticket": "t"}
+            c.rrddata.get.return_value = []
+            c.pending.get.return_value = []
+            c.move_volume.post.return_value = "UPID:movevol"
             c.snapshot.get.return_value = []
             c.snapshot.post.return_value = "UPID:snap"
             c.exec.post.return_value = {"exitcode": 0, "stdout": "ok"}
@@ -258,6 +269,7 @@ def make_fake_proxmox(
     api.storage.return_value.delete.return_value = "ok"
     api.pools.post.return_value = "ok"
     api.pools.return_value.get.return_value = {"poolid": "p"}
+    api.pools.return_value.put.return_value = "ok"
     api.pools.return_value.delete.return_value = "ok"
     api.access.users.post.return_value = "ok"
     api.access.users.return_value.get.return_value = {"userid": "u@pve"}
@@ -282,8 +294,12 @@ def make_fake_proxmox(
     api.cluster.firewall.aliases.post.return_value = "ok"
     api.cluster.firewall.aliases.return_value.delete.return_value = "ok"
     api.cluster.firewall.ipset.post.return_value = "ok"
+    api.cluster.firewall.ipset.return_value.get.return_value = []
+    api.cluster.firewall.ipset.return_value.post.return_value = "ok"
     api.cluster.firewall.ipset.return_value.delete.return_value = "ok"
+    api.cluster.firewall.ipset.return_value.return_value.delete.return_value = "ok"
     api.cluster.replication.post.return_value = "ok"
+    api.cluster.replication.return_value.put.return_value = "ok"
     api.cluster.replication.return_value.delete.return_value = "ok"
     api.cluster.sdn.apply.put.return_value = "ok"
     return api

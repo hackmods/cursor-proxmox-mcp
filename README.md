@@ -5,7 +5,7 @@
 [![PyPI](https://img.shields.io/pypi/v/cursor-proxmox-mcp)](https://pypi.org/project/cursor-proxmox-mcp/)
 [![GHCR](https://img.shields.io/badge/GHCR-cursor--proxmox--mcp-blue)](https://github.com/hackmods/cursor-proxmox-mcp/pkgs/container/cursor-proxmox-mcp)
 
-**Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 132 tools covering QEMU VMs, LXC, storage admin, cluster/tasks, snapshots, backups, migration, HA, firewall, access control, replication, SDN (read), ACME (read), pools, and console tickets.
+**Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 152 tools covering QEMU VMs, LXC, unified guest power, storage admin, cluster/tasks, snapshots, backups (incl. scheduled jobs), migration, HA, firewall (incl. IPSet CIDRs), access control, replication, SDN (read), ACME (read), pools, and console tickets.
 
 **Repo:** [hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)
 
@@ -22,16 +22,17 @@ Registered via `tools/register.py` (called from `ProxmoxMCPServer._setup_tools()
 | **Nodes** | `get_nodes`, `get_node_status`, `list_node_networks`, `get_node_subscription`, `list_node_certificates`, `get_node_report`, `list_node_services`, `get_node_time`, `wake_node` |
 | **Cluster / tasks** | `get_cluster_status`, `get_next_vmid`, `get_task_status`, `list_tasks`, `wait_for_task`, `get_version`, `get_cluster_resources`, `get_cluster_log`, `get_cluster_options` |
 | **QEMU** | lifecycle + config (ISO/cloud-init/net on create/update) + `get_vm_status`, `get_vm_rrd_data`, console tickets |
-| **LXC** | lifecycle + config (auto ostemplate, bridge/ip/net0) + `get_lxc_status`, console tickets |
-| **Snapshots / Backups** | list/create/delete/rollback snapshot; create/list/restore/delete backup |
+| **LXC** | lifecycle + config + suspend/resume (CRIU warn) + `get_lxc_status` / `get_lxc_rrd_data` + VNC/SPICE/termproxy tickets |
+| **Guest (unified)** | `start/stop/shutdown/reboot/delete_guest`, `get_guest_status`, `get_guest_pending`, `move_guest_disk` (`guest_type`) |
+| **Snapshots / Backups** | snapshot CRUD/rollback; one-shot backup CRUD; scheduled `list/create/delete_backup_job` |
 | **Storage** | list, content, `list_os_templates`, `list_isos`, download-url, definition CRUD |
 | **Migrate / HA** | `migrate_guest`; HA groups + resources CRUD |
-| **Firewall** | cluster + guest rules/options; aliases, IP sets, macros |
+| **Firewall** | cluster + guest rules/options; aliases; IP sets + CIDR members; macros |
 | **Access** | users, groups, roles, ACL, tokens, `get_permissions`, `get_token_permissions` |
-| **Replication** | list/status/run/create/delete jobs |
+| **Replication** | list/status/run/create/update/delete jobs |
 | **SDN** | list zones/vnets/controllers/ipams/dns + `apply_sdn` |
 | **ACME** | list plugins/accounts/directories (read) |
-| **Pools** | list/get/create/delete |
+| **Pools** | list/get/create/update/delete |
 
 ### Suggested agent flow
 
@@ -213,7 +214,7 @@ After adding a tool: update `definitions.py`, README table, `.cursor/research/pr
 
 ## Status
 
-- [x] Formal multi-domain Proxmox API coverage (132 tools)
+- [x] Formal multi-domain Proxmox API coverage (152 tools)
 - [x] Phase B + Phase D agent QOL tools
 - [x] v1.0 security hardening, code-design audit, full test suite
 - [x] uvx `cursor-proxmox-mcp` + PyPI/GHCR release workflow

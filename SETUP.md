@@ -2,7 +2,7 @@
 
 Connect Cursor (or another MCP client) to your Proxmox VE cluster so you can query and manage infrastructure in natural language.
 
-This guide walks through a home-lab style setup for **[hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)** — a formal Cursor ↔ Proxmox integration with **132 tools** (VMs, LXC, storage, HA, firewall, access, replication, SDN, and more).
+This guide walks through a home-lab style setup for **[hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)** — a formal Cursor ↔ Proxmox integration with **152 tools** (VMs, LXC, storage, HA, firewall, access, replication, SDN, and more).
 
 Inspired by Brandon Lee’s walkthrough on [Virtualization Howto](https://www.virtualizationhowto.com/2026/07/i-connected-ai-to-my-proxmox-cluster-using-mcp-and-it-was-better-than-i-expected/) (July 2026). That article used an earlier PyPI package with env-var config; this repo uses a **JSON config file** and a much broader tool surface. Steps below match **this** project.
 
@@ -337,8 +337,8 @@ Cursor caches the MCP process and tool list. After pulling new tools:
 1. Save any open work; note your `mcp.json` still points at this checkout (or at `uvx cursor-proxmox-mcp` if you switched to PyPI).
 2. Open **Cursor Settings → MCP**.
 3. Find the **proxmox** server → **Disable** → wait until it shows disconnected → **Enable** (or use Restart if shown).
-4. Confirm the tool count matches the README inventory (~132) — if the count is stale, fully quit Cursor and reopen.
-5. Smoke in chat: *“Call `get_nodes` and `get_version`.”* Then *“Call `get_token_permissions` for my MCP user/token.”*
+4. Confirm the tool count matches the README inventory (~152). If Cursor still shows ~13–14 tools after Enable, the catalog snapshot is stale — **fully quit Cursor** (all windows) and reopen. Prefer `uvx --from <checkout> cursor-proxmox-mcp` with only `PROXMOX_MCP_CONFIG` (avoid leftover `uvx proxmox-mcp-server`, which is a different PyPI project).
+5. Smoke in chat: *“Call `get_nodes` and `get_version`.”* Then *“Call `get_containers` and `get_token_permissions` for my MCP user/token.”*
 6. If you use `uvx --from <checkout>`, a restart is enough (uvx rebuilds the env). If you use an editable `pip install -e .`, reinstall after large dependency changes: `uv pip install -e ".[dev]"`.
 
 ### Other MCP clients
@@ -452,7 +452,8 @@ Home labs are ideal for learning where AI+MCP helps (health checks, template clo
 | SSL / connection errors | Ping `:8006`; set `verify_ssl` correctly; check host firewall / VPN |
 | Tools missing after pull | Follow [MCP reload checklist](#after-git-pull--live-cursor-mcp-reload-checklist) |
 | `ModuleNotFoundError: proxmox_mcp` | Prefer `uvx cursor-proxmox-mcp` or `uvx --from <repo>`; or set `PYTHONPATH` to `.../src` |
-| Green MCP but agent never calls tools | Explicitly say “use the Proxmox MCP tools”; confirm tool list is long (~132) in Cursor MCP settings |
+| Green MCP but agent never calls tools | Explicitly say “use the Proxmox MCP tools”; confirm tool list is long (~152) in Cursor MCP settings |
+| Green MCP but only ~13–14 tools | Stale Cursor catalog or wrong package (`uvx proxmox-mcp-server` ≠ this repo). Disable/Enable proxmox, quit Cursor fully, use `uvx --from <checkout> cursor-proxmox-mcp` |
 
 Local verification:
 

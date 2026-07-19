@@ -15,6 +15,7 @@ from proxmox_mcp.tools.container import ContainerTools
 from proxmox_mcp.tools.snapshot import SnapshotTools
 from proxmox_mcp.tools.migrate import MigrateTools
 from proxmox_mcp.tools.firewall import FirewallTools
+from proxmox_mcp.tools.guest_power import GuestPowerTools
 from tests.expected_tools import EXPECTED_TOOLS
 from tests.fakes.proxmox import make_fake_proxmox
 
@@ -53,7 +54,7 @@ def test_dead_utils_modules_removed():
 
 
 def test_guest_modules_use_guest_helpers():
-    for mod in (SnapshotTools, MigrateTools, FirewallTools):
+    for mod in (SnapshotTools, MigrateTools, FirewallTools, GuestPowerTools):
         path = Path("src") / Path(*mod.__module__.split("."))
         path = path.with_suffix(".py")
         text = path.read_text(encoding="utf-8")
@@ -64,6 +65,7 @@ def test_tool_classes_injectable():
     api = make_fake_proxmox()
     VMTools(api)
     ContainerTools(api)
+    GuestPowerTools(api)
 
 
 def test_register_module_exists():

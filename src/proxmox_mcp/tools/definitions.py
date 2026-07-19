@@ -55,6 +55,20 @@ CLONE_LXC_DESC = """Clone an LXC. Parameters: node*, vmid*, newid*, hostname?, f
 RESIZE_LXC_DISK_DESC = """Grow an LXC volume. Parameters: node*, vmid*, disk* (e.g. rootfs), size* (e.g. +5G)"""
 CONVERT_LXC_TEMPLATE_DESC = """Convert LXC to template. Parameters: node*, vmid*"""
 EXECUTE_LXC_COMMAND_DESC = """Execute a command inside a running LXC. Parameters: node*, vmid*, command*"""
+SUSPEND_LXC_DESC = """WARNING: LXC suspend uses CRIU checkpoint and is often unreliable/unsupported. Prefer shutdown. Parameters: node*, vmid*"""
+RESUME_LXC_DESC = """WARNING: resume after LXC suspend (CRIU) is best-effort. Parameters: node*, vmid*"""
+GET_LXC_RRD_DATA_DESC = """Get RRD metrics for an LXC. Parameters: node*, vmid*, timeframe?=hour"""
+CREATE_SPICE_TICKET_LXC_DESC = """Mint SPICE ticket for an LXC (connect externally). Parameters: node*, vmid*"""
+
+# Unified guest power (additive; keeps *_vm / *_lxc)
+START_GUEST_DESC = """Start a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu|lxc"""
+STOP_GUEST_DESC = """Force-stop a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu|lxc"""
+SHUTDOWN_GUEST_DESC = """Gracefully shut down a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu|lxc"""
+REBOOT_GUEST_DESC = """Reboot a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu|lxc"""
+DELETE_GUEST_DESC = """IRREVERSIBLE: permanently delete a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu|lxc, force?=false"""
+GET_GUEST_STATUS_DESC = """Get runtime status for a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu|lxc"""
+GET_GUEST_PENDING_DESC = """Get pending (not-yet-applied) config for a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu|lxc"""
+MOVE_GUEST_DISK_DESC = """Move a guest disk/volume to another storage. Parameters: node*, vmid*, disk*, storage*, guest_type?=qemu|lxc, delete?=true"""
 
 # Snapshots
 LIST_SNAPSHOTS_DESC = """List snapshots for a guest. Parameters: node*, vmid*, guest_type?=qemu|lxc"""
@@ -67,6 +81,9 @@ CREATE_BACKUP_DESC = """Create a vzdump backup. Parameters: node*, vmid*, storag
 LIST_BACKUPS_DESC = """List backups on storage. Parameters: node*, storage*, vmid?"""
 RESTORE_BACKUP_DESC = """WARNING: restore may overwrite guest disks when force is set. Parameters: node*, archive*, vmid*, storage?, force?=false, guest_type?=qemu"""
 DELETE_BACKUP_DESC = """IRREVERSIBLE: delete a backup volume. Parameters: node*, storage*, volume*"""
+LIST_BACKUP_JOBS_DESC = """List scheduled cluster backup jobs (/cluster/backup)."""
+CREATE_BACKUP_JOB_DESC = """Create a scheduled backup job. Parameters: schedule*, storage*; vmid? (comma-separated), mode?=snapshot, compress?=zstd, enabled?=true, comment?, mailto?, mailnotification?, all?=false"""
+DELETE_BACKUP_JOB_DESC = """IRREVERSIBLE: delete a scheduled backup job. Parameters: id*"""
 
 # Tasks / cluster
 GET_TASK_STATUS_DESC = """Get status for a task UPID. Parameters: node*, upid*"""
@@ -133,6 +150,7 @@ LIST_REPLICATION_JOBS_DESC = """List cluster storage replication jobs."""
 GET_REPLICATION_STATUS_DESC = """Get replication job status. Parameters: node*, jobid*"""
 RUN_REPLICATION_JOB_DESC = """Schedule a replication job to run now. Parameters: node*, jobid*"""
 CREATE_REPLICATION_JOB_DESC = """Create replication job. Parameters: id* (e.g. 100-0), target*, schedule?, comment?, enabled?=true"""
+UPDATE_REPLICATION_JOB_DESC = """Update replication job. Parameters: id*; schedule?, comment?, enabled?"""
 DELETE_REPLICATION_JOB_DESC = """IRREVERSIBLE: delete replication job. Parameters: id*"""
 
 # ACME
@@ -152,6 +170,7 @@ APPLY_SDN_DESC = """Apply pending SDN configuration cluster-wide."""
 LIST_POOLS_DESC = """List resource pools."""
 GET_POOL_DESC = """Get a resource pool and its members. Parameters: poolid*"""
 CREATE_POOL_DESC = """Create a resource pool. Parameters: poolid*, comment?"""
+UPDATE_POOL_DESC = """Update pool membership. Parameters: poolid*; comment?, vms? (comma IDs), storage? (comma names), delete?=false (true=remove members)"""
 DELETE_POOL_DESC = """IRREVERSIBLE: delete a resource pool. Parameters: poolid*"""
 
 # Node extras
@@ -185,5 +204,8 @@ DELETE_FIREWALL_ALIAS_DESC = """IRREVERSIBLE: delete firewall alias. Parameters:
 LIST_FIREWALL_IPSETS_DESC = """List cluster firewall IP sets."""
 CREATE_FIREWALL_IPSET_DESC = """Create firewall IP set. Parameters: name*, comment?"""
 DELETE_FIREWALL_IPSET_DESC = """IRREVERSIBLE: delete firewall IP set. Parameters: name*"""
+LIST_FIREWALL_IPSET_CIDRS_DESC = """List CIDR members of a firewall IP set. Parameters: name*"""
+ADD_FIREWALL_IPSET_CIDR_DESC = """Add a CIDR/IP to a firewall IP set. Parameters: name*, cidr*, comment?, nomatch?=false"""
+DELETE_FIREWALL_IPSET_CIDR_DESC = """IRREVERSIBLE: remove a CIDR from a firewall IP set. Parameters: name*, cidr*"""
 LIST_FIREWALL_MACROS_DESC = """List available firewall macros."""
 

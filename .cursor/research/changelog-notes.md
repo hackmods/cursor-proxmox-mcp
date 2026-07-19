@@ -1,5 +1,21 @@
 # Changelog / research notes
 
+## 2026-07-19 — Phase E LXC parity + guest power + ops APIs (152 tools)
+
+**Why:** Cursor’s live MCP catalog was stuck at ~14 tools while the checkout already had full LXC lifecycle; agents also lacked LXC RRD/SPICE, unified `guest_type` power aliases, pending config, pool membership, IPSet CIDRs, disk move, replication update, and scheduled backup jobs.
+
+**Shipped:**
+- Operator wiring: `~/.cursor/mcp.json` → `uvx --from <checkout> cursor-proxmox-mcp` + `PROXMOX_MCP_CONFIG` only; kill leftover Gethos `uvx proxmox-mcp-server`
+- LXC: `suspend_lxc` / `resume_lxc` (CRIU warnings), `get_lxc_rrd_data`, `create_spice_ticket_lxc`
+- Additive guest tools: `start/stop/shutdown/reboot/delete_guest`, `get_guest_status`, `get_guest_pending`, `move_guest_disk`
+- Ops: `update_pool`, IPSet CIDR list/add/delete, `update_replication_job`, `list/create/delete_backup_job`
+- D1 updated: parallel `*_vm`/`*_lxc` retained; `*_guest` is additive
+
+**Quirks:**
+- Cursor may keep a stale tool snapshot until Disable/Enable or full quit — SETUP checklist documents the ~14-tool symptom
+- LXC suspend/resume is not production-grade CRIU; prefer shutdown
+- `reset_lxc` intentionally omitted (use `reboot_lxc`)
+
 ## 2026-07-19 — v1.0.1 publish QoL (PyPI name collision)
 
 **Why:** `proxmox-mcp-server` on PyPI is owned by another project; v1.0.0 Trusted Publish failed (`invalid-publisher`) and bare `uvx proxmox-mcp-server` would install the wrong package.
