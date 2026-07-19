@@ -1,5 +1,15 @@
 # Changelog / research notes
 
+## 2026-07-19 — Next-expansion roadmap note
+
+**Why:** Capture post-128-tool priorities so agents don’t invent scope. Prefer Phase D create/wait QOL over Phase C heavy admin.
+
+**Shipped docs:**
+- `.cursor/research/next-expansion.md` — Phase D + Phase C + knowledge index + implementation order
+- `.cursor/rules/next-expansion.mdc` — point agents at the roadmap
+- Decisions D10 (Phase D bias), D11 (create hardcodes)
+- README / docs/api-coverage / coverage matrix Planned sections updated
+
 ## 2026-07-19 — Setup guide + Privilege Separation depth
 
 **Why:** First-run auth is the #1 footgun. Virtualization Howto–style walkthroughs and this fork’s JSON config differ; operators often disable Privilege Separation without knowing why.

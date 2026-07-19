@@ -39,3 +39,11 @@ Operators hitting empty results after a “successful” token create should che
 ## D9 — Setup guide is first-run source of truth
 
 `SETUP.md` is the primary first-run path (token, Cursor `mcp.json`, prompts, security). README stays the inventory + short install reference and links into SETUP for auth depth. `proxmox-config/README.md` covers the config file only.
+
+## D10 — Prefer Phase D QOL over Phase C surface
+
+After the 128-tool baseline, expand create/wait paths before exotic admin APIs. Agents lose more time to racing UPIDs and hardcoded `vmbr0`/missing ISO/cloud-init than to missing SDN zone CRUD. Roadmap: `.cursor/research/next-expansion.md`.
+
+## D11 — Create tools should not hardcode lab assumptions forever
+
+`create_vm` / `create_lxc` currently assume `vmbr0` and DHCP-style net. Treat bridge/IP/ISO/cloud-init as first-class optional params in Phase D so multi-bridge labs work without post-create config edits.

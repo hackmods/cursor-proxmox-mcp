@@ -52,7 +52,19 @@ Quick map:
 
 ## Exclusions / planned
 
-Phase C (SDN write, ACME order, Ceph OSD, cluster join, websocket console proxy) is documented as planned — not registered as available tools.
+**Phase D (next — agent QOL):** `wait_for_task`, richer `create_vm`/`create_lxc` (ISO, cloud-init, net/bridge), token permission smoke, optional PyPI publish. Full table: [next-expansion.md](../.cursor/research/next-expansion.md).
+
+**Phase C (deferred):** SDN write, ACME order/renew, Ceph OSD, cluster join, websocket console proxy, PBS direct admin, node reboot/shutdown — documented as planned, **not** registered as available tools. See [coverage matrix](../.cursor/research/proxmox-api-coverage.md).
+
+## Knowledge pointers
+
+| Topic | File |
+|-------|------|
+| What to build next | [.cursor/research/next-expansion.md](../.cursor/research/next-expansion.md) |
+| API done / planned / excluded | [.cursor/research/proxmox-api-coverage.md](../.cursor/research/proxmox-api-coverage.md) |
+| Design decisions (privsep, tickets, uvx, Phase D bias) | [.cursor/research/decisions.md](../.cursor/research/decisions.md) |
+| Quirks found while shipping | [.cursor/research/changelog-notes.md](../.cursor/research/changelog-notes.md) |
+| First-run auth | [SETUP.md](../SETUP.md) |
 
 ## Local CI
 

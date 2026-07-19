@@ -4,7 +4,7 @@
 
 **Repo:** [hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)
 
-Docs: [**Setup guide**](SETUP.md) · [API coverage](docs/api-coverage.md) · Research matrix: [`.cursor/research/proxmox-api-coverage.md`](.cursor/research/proxmox-api-coverage.md)
+Docs: [**Setup guide**](SETUP.md) · [API coverage](docs/api-coverage.md) · [Next expansion](.cursor/research/next-expansion.md) · Research matrix: [`.cursor/research/proxmox-api-coverage.md`](.cursor/research/proxmox-api-coverage.md)
 
 ## MCP tools
 
@@ -178,9 +178,11 @@ Create the token in Proxmox UI: Datacenter → Permissions → API Tokens. See *
 - uvx / uv / pip install paths; optional `.[openapi]` for mcpo
 - Local + GitHub CI (`ruff` + `pytest` + inventory lock)
 
-### Planned (Phase C — not implemented)
+### Planned (not implemented yet)
 
-SDN write CRUD, ACME order/renew, Ceph OSD/MON admin, cluster join/bootstrap, full VNC/SPICE websocket proxy, PBS direct admin, node reboot/shutdown — see [coverage matrix](.cursor/research/proxmox-api-coverage.md).
+**Phase D — agent QOL (next):** `wait_for_task`, ISO/cloud-init/net on create, token ACL smoke, optional PyPI publish — see [next-expansion.md](.cursor/research/next-expansion.md).
+
+**Phase C — heavy:** SDN write CRUD, ACME order/renew, Ceph OSD/MON admin, cluster join/bootstrap, full VNC/SPICE websocket proxy, PBS direct admin, node reboot/shutdown — see [coverage matrix](.cursor/research/proxmox-api-coverage.md).
 
 ## Development
 
@@ -188,7 +190,7 @@ SDN write CRUD, ACME order/renew, Ceph OSD/MON admin, cluster join/bootstrap, fu
 .\scripts\ci-local.ps1
 ```
 
-After adding a tool: update `definitions.py`, README table, `.cursor/research/proxmox-api-coverage.md`, and `tests/expected_tools.py`.
+After adding a tool: update `definitions.py`, README table, `.cursor/research/proxmox-api-coverage.md`, `.cursor/research/next-expansion.md` (if closing a planned row), and `tests/expected_tools.py`.
 
 ## Status
 
@@ -196,6 +198,7 @@ After adding a tool: update `definitions.py`, README table, `.cursor/research/pr
 - [x] Phase B: replication, SDN read, ACME read, certs, console tickets, pools, firewall extras
 - [x] uvx `proxmox-mcp-server` entrypoint + install docs
 - [x] Local + GitHub CI with inventory floor
+- [ ] Phase D agent QOL (`wait_for_task`, richer create) — [roadmap](.cursor/research/next-expansion.md)
 - [ ] Phase C heavy/dangerous endpoints (documented only)
 
 ## License

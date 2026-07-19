@@ -426,6 +426,13 @@ Local verification:
 
 ## What’s next
 
+**Product roadmap (what we build next in this repo):** [.cursor/research/next-expansion.md](.cursor/research/next-expansion.md)
+
+- **Phase D (agent QOL):** `wait_for_task`, richer create (ISO / cloud-init / net), token ACL smoke, optional PyPI
+- **Phase C (deferred):** SDN write, ACME order, Ceph, cluster join, websocket console proxy
+
+**Things you can do with the MCP today:**
+
 - Daily health prompts (cluster status, storage pressure, odd SDN / HA state)
 - Template → clone → configure flows for disposable lab VMs
 - More MCP servers alongside Proxmox (Docker, GitHub, monitoring) as your home-lab agent surface grows
@@ -433,7 +440,9 @@ Local verification:
 Project docs:
 
 - [README](README.md) — tool inventory and install paths
-- [API coverage](docs/api-coverage.md) — what’s implemented vs planned
+- [API coverage](docs/api-coverage.md) — what’s implemented vs planned + knowledge pointers
+- [Next expansion](.cursor/research/next-expansion.md) — Phase D / C roadmap and insights
 - Research matrix: [`.cursor/research/proxmox-api-coverage.md`](.cursor/research/proxmox-api-coverage.md)
+- Decisions: [`.cursor/research/decisions.md`](.cursor/research/decisions.md)
 
 External read: [I Connected AI to My Proxmox Cluster Using MCP…](https://www.virtualizationhowto.com/2026/07/i-connected-ai-to-my-proxmox-cluster-using-mcp-and-it-was-better-than-i-expected/) (Virtualization Howto).

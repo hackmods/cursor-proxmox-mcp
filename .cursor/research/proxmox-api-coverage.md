@@ -27,7 +27,22 @@ Source of truth for registered names: `ProxmoxMCPServer._setup_tools()` and `tes
 | SDN | list zones/vnets/controllers/ipams/dns + apply | /cluster/sdn... |
 | Pools | list/get/create/delete | /pools |
 
-## Planned (Phase C)
+## Planned
+
+### Phase D — Agent QOL (next)
+
+See [next-expansion.md](next-expansion.md) for full detail. Summary:
+
+| Item | Status |
+|------|--------|
+| `wait_for_task` (poll UPID) | planned |
+| ISO/CDROM + boot on create/update VM | planned |
+| Cloud-init params on create/update | planned |
+| Net/bridge overrides on create_vm / create_lxc | planned |
+| Token ACL / permissions smoke helper | planned |
+| PyPI publish for bare `uvx proxmox-mcp-server` | planned |
+
+### Phase C — Heavy / deferred
 
 | Area | Reason to defer |
 |------|-----------------|

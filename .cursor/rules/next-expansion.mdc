@@ -1,0 +1,14 @@
+---
+description: Point agents at next-expansion roadmap and keep it aligned with docs
+globs: src/proxmox_mcp/**/*.py,README.md,docs/**/*.md,.cursor/research/**/*.md
+alwaysApply: false
+---
+
+# Next expansion roadmap
+
+When adding Proxmox MCP tools or deciding “what’s next”:
+
+1. Read `.cursor/research/next-expansion.md` (Phase D QOL vs Phase C heavy).
+2. Prefer Phase D agent-friction fixes (`wait_for_task`, richer create_vm/lxc) over Phase C unless the user asks for SDN write / Ceph / cluster join.
+3. Capture new API quirks in `.cursor/research/changelog-notes.md` and lasting decisions in `decisions.md`.
+4. Follow `api-coverage.mdc` + `keep-docs-aligned.mdc` for inventory/docs lockstep.

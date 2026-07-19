@@ -9,8 +9,9 @@ alwaysApply: true
 When adding, renaming, or removing MCP tools:
 
 1. Update `.cursor/research/proxmox-api-coverage.md` status (done/planned/excluded).
-2. Note non-obvious API quirks in `.cursor/research/changelog-notes.md`.
-3. Record design choices in `.cursor/research/decisions.md` when changing patterns.
-4. Keep `tests/expected_tools.py` in sync with `server.py` `_setup_tools()`.
-5. Follow `keep-docs-aligned.mdc` for README / definitions / SETUP when auth or install changes.
-6. Auth/privsep quirks belong in `changelog-notes.md` + `decisions.md` (see D8) and `.cursor/rules/proxmox-auth.mdc`.
+2. If closing or changing a roadmap item, update `.cursor/research/next-expansion.md`.
+3. Note non-obvious API quirks in `.cursor/research/changelog-notes.md`.
+4. Record design choices in `.cursor/research/decisions.md` when changing patterns.
+5. Keep `tests/expected_tools.py` in sync with `server.py` `_setup_tools()`.
+6. Follow `keep-docs-aligned.mdc` for README / definitions / SETUP when auth or install changes.
+7. Auth/privsep quirks belong in `changelog-notes.md` + `decisions.md` (see D8) and `.cursor/rules/proxmox-auth.mdc`.
