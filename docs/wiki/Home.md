@@ -4,8 +4,8 @@ Formal **Cursor ↔ [Proxmox VE](https://www.proxmox.com/)** MCP connector — a
 
 | | |
 |--|--|
-| **Version** | [v1.2.0](https://github.com/hackmods/cursor-proxmox-mcp/releases/tag/v1.2.0) |
-| **Tools** | **155** (CI-locked inventory) |
+| **Version** | [v1.5.1](https://github.com/hackmods/cursor-proxmox-mcp/releases/tag/v1.5.1) |
+| **Tools** | **171** (CI-locked inventory) |
 | **Package** | [`cursor-proxmox-mcp`](https://pypi.org/project/cursor-proxmox-mcp/) on PyPI · [GHCR](https://github.com/hackmods/cursor-proxmox-mcp/pkgs/container/cursor-proxmox-mcp) |
 
 Covers QEMU VMs, LXC, unified guest power, storage, cluster/tasks, snapshots, backups (incl. scheduled jobs), migration, HA, firewall (aliases / IP sets / CIDRs), access control, replication, SDN (read + apply), ACME (read), pools, and console tickets.

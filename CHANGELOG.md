@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-07-19
+
+### Added
+
+- **`deploy_node_app` (rev r14):** Node.js LTS → extract tarball → build → systemd on :3000 (Next/portfolio path); prefer `local_path` for private sources (**171 tools**).
+
+### Changed
+
+- CT111 tip hygiene: create_lxc reload footer, private→`push_to_lxc`, guest password optional when pct works; Debian health tips use `wget -qO-`.
+- Single-node `get_cluster_status` quorum copy notes lab expectation.
+- Default `ssh.timeout` **120** (day-2 apt/npm/Docker).
+
 ## [1.5.0] - 2026-07-19
 
 ### Added

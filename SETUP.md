@@ -301,7 +301,7 @@ Proxmox **does not** expose a REST API to run shell inside LXC (unlike QEMU gues
    | `enabled` | Must be `true` or LXC exec/push/prepare tools refuse with a clear error |
    | `private_key_path` | Absolute path to the **private** key (forward slashes on Windows are fine) |
    | `host_overrides` | Map Proxmox **node name** → SSH hostname/IP. If omitted/empty, MCP SSHs to `proxmox.host` |
-   | `user` / `port` / `pct_path` / `timeout` | Defaults: root / 22 / `/usr/sbin/pct` / 30. Use **120+** for Docker installs (or set `PROXMOX_MCP_EXEC_TIMEOUT`) |
+   | `user` / `port` / `pct_path` / `timeout` | Defaults: root / 22 / `/usr/sbin/pct` / **120**. Override with `PROXMOX_MCP_EXEC_TIMEOUT` for one-off long installs |
 
 6. **Verify outside Cursor** before expecting MCP tools to work:
 

@@ -66,6 +66,7 @@ TOOL_SPECS = [
     ToolSpec("push_to_lxc", D.PUSH_TO_LXC_DESC),
     ToolSpec("pull_from_lxc", D.PULL_FROM_LXC_DESC),
     ToolSpec("deploy_static_nginx", D.DEPLOY_STATIC_NGINX_DESC),
+    ToolSpec("deploy_node_app", D.DEPLOY_NODE_APP_DESC),
     ToolSpec("suspend_lxc", D.SUSPEND_LXC_DESC),
     ToolSpec("resume_lxc", D.RESUME_LXC_DESC),
     ToolSpec("get_lxc_status", D.GET_LXC_STATUS_DESC),
@@ -410,11 +411,13 @@ class ContainerTools(ProxmoxTool):
   0. Prefer provision_lxc for one-shot create→start→IP→SSH (requires host SSH)
   {next_step_1}
   2. start_lxc → get_lxc_network (configured/runtime IP)
-  3. Guest access: prefer ssh_public_keys at create; or set_lxc_password / set_lxc_ssh_keys / configure_lxc_ssh / execute_lxc_command (all need config ssh)
+  3. Guest access: prefer ssh_public_keys at create; password optional when host SSH + pct works (execute_lxc_command / push_to_lxc). Else set_lxc_password / configure_lxc_ssh (all need config ssh)
   4. For Docker: bootstrap_docker_lxc or prepare_lxc_for_docker(docker_mode=auto) → stop/start if needed → verify with docker run (nesting-only + stock runc ≠ Docker-ready; use crun fallback)
-  5. Static site without Docker: deploy_static_nginx
-  6. HTTP health on Debian templates: prefer wget -qO- (curl often missing)
-  7. keyctl often needs elevated role / root@pam; else pct_set_lxc or prepare crun path"""
+  5. Static site without Docker: deploy_static_nginx; Node/Next app: deploy_node_app
+  6. Private app sources: prefer push_to_lxc (local_path tarball) — not guest HTTPS git clone without creds
+  7. HTTP health on Debian templates: prefer wget -qO- (curl often missing)
+  8. keyctl often needs elevated role / root@pam; else pct_set_lxc or prepare crun path
+  9. If any named day-2 tool is missing from your MCP tool list → get_mcp_capabilities, then reload MCP (Disable/Enable) or quit Cursor. Do not invent base64/scp/public-repo workarounds."""
 
             return [Content(type="text", text=result_text)]
 
@@ -1261,7 +1264,7 @@ Known limitations (D24):
 
 💡 Next: {"stop_lxc → start_lxc (full stop/start, not reboot alone) → " if restart_required else ""}"""
             result += (
-                "execute_lxc_command('docker run --rm -p 8080:80 nginx:alpine') then curl; "
+                "execute_lxc_command('docker run --rm -p 8080:80 nginx:alpine') then wget -qO-; "
                 "use push_to_lxc for app files."
             )
             return [Content(type="text", text=result)]
@@ -1881,6 +1884,7 @@ Known limitations (D24):
                     text=(
                         f"Pushed {len(data)} bytes → CT {vmid}:{remote_path} "
                         f"(from {src}) via pct push.\n"
+                        f"💡 Prefer local_path for private app sources (not guest git clone).\n"
                         f"💡 Next: execute_lxc_command to extract/chmod as needed."
                     ),
                 )
@@ -2055,9 +2059,9 @@ Known limitations (D24):
             try:
                 net = self.get_lxc_network(node, vmid, resolve_runtime=True)
                 if net and getattr(net[0], "text", None):
-                    ip_hint = "\n💡 Use get_lxc_network for guest IP, then curl http://<ip>/"
+                    ip_hint = "\n💡 Use get_lxc_network for guest IP, then wget -qO- http://<ip>/"
             except Exception:
-                ip_hint = "\n💡 Use get_lxc_network for guest IP, then curl http://<ip>/"
+                ip_hint = "\n💡 Use get_lxc_network for guest IP, then wget -qO- http://<ip>/"
 
             return [
                 Content(
@@ -2079,6 +2083,229 @@ Known limitations (D24):
             if is_missing_resource_error(e):
                 raise ValueError(lxc_not_found_message(vmid, node))
             self._handle_error(f"deploy static nginx on LXC {vmid}", e)
+
+    def deploy_node_app(
+        self,
+        node: str,
+        vmid: str,
+        local_path: Optional[str] = None,
+        content_base64: Optional[str] = None,
+        remote_dir: str = "/opt/app",
+        node_major: int = 22,
+        build_command: Optional[str] = None,
+        start_command: Optional[str] = None,
+        port: int = 3000,
+        service_name: str = "node-app",
+        timeout: Optional[int] = None,
+    ) -> List[Content]:
+        """Install Node.js LTS, deploy app tarball, build, and run under systemd."""
+        try:
+            pct = self._require_pct()
+            status = self.proxmox.nodes(node).lxc(vmid).status.current.get()
+            if status.get("status") != "running":
+                raise ValueError(f"LXC {vmid} is not running on node {node}")
+
+            dest = (remote_dir or "/opt/app").rstrip("/") or "/opt/app"
+            major = int(node_major or 22)
+            if major < 16 or major > 24:
+                raise ValueError("node_major must be between 16 and 24")
+            port_n = int(port or 3000)
+            if port_n < 1 or port_n > 65535:
+                raise ValueError("port must be 1–65535")
+            svc = (service_name or "node-app").strip() or "node-app"
+            if not all(c.isalnum() or c in "-_" for c in svc):
+                raise ValueError(
+                    "service_name must be alphanumeric with optional - or _"
+                )
+            build_cmd = (build_command or "npm ci && npm run build").strip()
+            start_cmd = (start_command or "npm run start").strip()
+            t = timeout
+
+            install = pct.execute(
+                node,
+                vmid,
+                "export DEBIAN_FRONTEND=noninteractive; "
+                "apt-get update -qq && "
+                "apt-get install -y -qq ca-certificates curl gnupg && "
+                f"(command -v node >/dev/null 2>&1 && node -v | grep -q 'v{major}\\.' ) || "
+                f"(curl -fsSL https://deb.nodesource.com/setup_{major}.x | bash - && "
+                "apt-get install -y -qq nodejs)",
+                timeout=t or 300,
+            )
+            if install.exit_code != 0:
+                check = pct.execute(node, vmid, "command -v node && node -v", timeout=30)
+                if check.exit_code != 0:
+                    raise RuntimeError(
+                        f"Node.js install failed: exit={install.exit_code} "
+                        f"stderr={install.stderr or install.stdout}"
+                    )
+
+            content_note = "no app payload — Node installed only"
+            if local_path or content_base64:
+                if bool(local_path) == bool(content_base64):
+                    raise ValueError(
+                        "Provide at most one of local_path or content_base64 "
+                        "(omit both to only install Node.js)"
+                    )
+                if local_path:
+                    with open(local_path, "rb") as fh:
+                        data = fh.read()
+                    src_name = local_path.rsplit("/" if "/" in local_path else "\\", 1)[-1]
+                else:
+                    data = base64.b64decode(content_base64 or "")
+                    src_name = "payload.tar.gz"
+
+                lower = src_name.lower()
+                pct.execute(
+                    node,
+                    vmid,
+                    f"mkdir -p {shlex.quote(dest)} && rm -rf {shlex.quote(dest)}/*",
+                    timeout=30,
+                )
+                if lower.endswith((".tar.gz", ".tgz")):
+                    remote_archive = "/root/mcp-node-app.tgz"
+                    pct.push_to_guest(node, vmid, data, remote_archive, timeout=t)
+                    extract = pct.execute(
+                        node,
+                        vmid,
+                        f"tar -xzf {shlex.quote(remote_archive)} -C {shlex.quote(dest)} && "
+                        f"rm -f {shlex.quote(remote_archive)}",
+                        timeout=t or 120,
+                    )
+                    if extract.exit_code != 0:
+                        raise RuntimeError(
+                            f"extract failed: {extract.stderr or extract.stdout}"
+                        )
+                    content_note = f"extracted {src_name} → {dest}"
+                elif lower.endswith(".tar"):
+                    remote_archive = "/root/mcp-node-app.tar"
+                    pct.push_to_guest(node, vmid, data, remote_archive, timeout=t)
+                    extract = pct.execute(
+                        node,
+                        vmid,
+                        f"tar -xf {shlex.quote(remote_archive)} -C {shlex.quote(dest)} && "
+                        f"rm -f {shlex.quote(remote_archive)}",
+                        timeout=t or 120,
+                    )
+                    if extract.exit_code != 0:
+                        raise RuntimeError(
+                            f"extract failed: {extract.stderr or extract.stdout}"
+                        )
+                    content_note = f"extracted {src_name} → {dest}"
+                else:
+                    raise ValueError(
+                        "App payload must be a .tar.gz / .tgz / .tar archive "
+                        "(prefer local_path for private sources)"
+                    )
+
+                # If tarball has a single top-level dir, use it as working dir
+                nest = pct.execute(
+                    node,
+                    vmid,
+                    f"cd {shlex.quote(dest)} && "
+                    "n=$(find . -mindepth 1 -maxdepth 1 | wc -l); "
+                    "d=$(find . -mindepth 1 -maxdepth 1 -type d | head -1); "
+                    'if [ "$n" = 1 ] && [ -n "$d" ]; then printf %s "$d"; fi',
+                    timeout=30,
+                )
+                workdir = dest
+                nested = (nest.stdout or "").strip()
+                if nested.startswith("./"):
+                    nested = nested[2:]
+                if nested and "/" not in nested.rstrip("/"):
+                    workdir = f"{dest}/{nested.rstrip('/')}"
+
+                build = pct.execute(
+                    node,
+                    vmid,
+                    f"cd {shlex.quote(workdir)} && {build_cmd}",
+                    timeout=t or 600,
+                )
+                if build.exit_code != 0:
+                    raise RuntimeError(
+                        f"build failed (exit={build.exit_code}): "
+                        f"{(build.stderr or build.stdout or '')[:500]}"
+                    )
+
+                # Prefer npm binary path when using default start; else /bin/sh -c
+                if start_cmd == "npm run start":
+                    exec_start = "ExecStart=/usr/bin/npm run start\n"
+                else:
+                    esc = start_cmd.replace("\\", "\\\\").replace('"', '\\"')
+                    exec_start = f'ExecStart=/bin/sh -c "{esc}"\n'
+                unit_body = (
+                    "[Unit]\n"
+                    f"Description=MCP {svc}\n"
+                    "After=network.target\n"
+                    "\n"
+                    "[Service]\n"
+                    "Type=simple\n"
+                    f"WorkingDirectory={workdir}\n"
+                    "Environment=NODE_ENV=production\n"
+                    f"Environment=PORT={port_n}\n"
+                    f"{exec_start}"
+                    "Restart=on-failure\n"
+                    "\n"
+                    "[Install]\n"
+                    "WantedBy=multi-user.target\n"
+                )
+                unit_b64 = base64.b64encode(unit_body.encode("utf-8")).decode("ascii")
+                unit_path = f"/etc/systemd/system/{svc}.service"
+                write_unit = pct.execute(
+                    node,
+                    vmid,
+                    f"echo {shlex.quote(unit_b64)} | base64 -d > {shlex.quote(unit_path)} && "
+                    "systemctl daemon-reload && "
+                    f"systemctl enable --now {shlex.quote(svc)}",
+                    timeout=t or 120,
+                )
+                if write_unit.exit_code != 0:
+                    raise RuntimeError(
+                        f"systemd unit failed (exit={write_unit.exit_code}): "
+                        f"{(write_unit.stderr or write_unit.stdout or '')[:400]}"
+                    )
+                content_note += f"; build OK; systemd {svc} on :{port_n}"
+            else:
+                workdir = dest
+
+            ip_hint = ""
+            try:
+                net = self.get_lxc_network(node, vmid, resolve_runtime=True)
+                if net and getattr(net[0], "text", None):
+                    ip_hint = (
+                        f"\n💡 Use get_lxc_network for guest IP, then "
+                        f"wget -qO- http://<ip>:{port_n}/"
+                    )
+            except Exception:
+                ip_hint = (
+                    f"\n💡 Use get_lxc_network for guest IP, then "
+                    f"wget -qO- http://<ip>:{port_n}/"
+                )
+
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"deploy_node_app CT {vmid}@{node}\n"
+                        f"  • node_major: {major}\n"
+                        f"  • content: {content_note}\n"
+                        f"  • remote_dir: {dest}\n"
+                        f"  • service: {svc} port={port_n}"
+                        f"{ip_hint}\n"
+                        "💡 Prefer local_path tarball for private sources "
+                        "(not guest git clone). If this tool was missing from "
+                        "your MCP list → get_mcp_capabilities + reload MCP."
+                    ),
+                )
+            ]
+        except ValueError:
+            raise
+        except PctExecError as e:
+            raise RuntimeError(str(e)) from e
+        except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(lxc_not_found_message(vmid, node))
+            self._handle_error(f"deploy node app on LXC {vmid}", e)
 
     def create_vnc_ticket(self, node: str, vmid: str, websocket: bool = True) -> List[Content]:
         """Mint a VNC proxy ticket for an LXC (no websocket proxy)."""

@@ -10,6 +10,18 @@ def test_templates_empty_safe():
     assert isinstance(ProxmoxTemplates.cluster_status({"name": "c", "nodes": 1}), str)
 
 
+def test_cluster_quorum_single_node_lab_note():
+    text = ProxmoxTemplates.cluster_status(
+        {"name": "lab", "quorum": False, "nodes": 1, "resources": []}
+    )
+    assert "single-node" in text.lower() or "lab" in text.lower()
+    multi = ProxmoxTemplates.cluster_status(
+        {"name": "prod", "quorum": False, "nodes": 3, "resources": []}
+    )
+    assert "NOT OK" in multi
+    assert "single-node" not in multi.lower()
+
+
 def test_templates_with_data():
     nodes = [{"node": "pve", "status": "online", "cpu": 0.1, "maxcpu": 4, "mem": 1, "maxmem": 2}]
     assert "pve" in ProxmoxTemplates.node_list(nodes)

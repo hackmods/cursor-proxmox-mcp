@@ -23,9 +23,10 @@ def test_phase_f1_tools_in_inventory():
         "push_to_vm",
         "pull_from_vm",
         "deploy_static_nginx",
+        "deploy_node_app",
     ):
         assert name in ALL_TOOL_NAMES
-    assert len(ALL_TOOL_NAMES) == 170
+    assert len(ALL_TOOL_NAMES) == 171
 
 
 def test_parse_qemu_networks_virtio_mac():
@@ -289,6 +290,61 @@ def test_deploy_static_nginx_tar():
     finally:
         os.unlink(path)
     assert "extracted" in out[0].text.lower()
+
+
+def test_deploy_node_app_install_only():
+    api = MagicMock()
+    api.nodes.return_value.lxc.return_value.status.current.get.return_value = {
+        "status": "running"
+    }
+    tools = ContainerTools(api)
+    pct = MagicMock()
+    pct.execute.return_value = PctExecResult(True, "", "", 0, "cmd")
+    tools._pct = pct
+    with patch.object(tools, "get_lxc_network", side_effect=RuntimeError("no net")):
+        out = tools.deploy_node_app("pve", "111")
+    assert "deploy_node_app" in out[0].text
+    assert "Node installed only" in out[0].text
+    assert "wget -qO-" in out[0].text
+
+
+def test_deploy_node_app_tarball():
+    api = MagicMock()
+    api.nodes.return_value.lxc.return_value.status.current.get.return_value = {
+        "status": "running"
+    }
+    tools = ContainerTools(api)
+    pct = MagicMock()
+
+    def _exec(node, vmid, command, timeout=None):
+        # nest check returns empty → workdir = remote_dir
+        if "find . -mindepth 1" in command:
+            return PctExecResult(True, "", "", 0, command)
+        return PctExecResult(True, "", "", 0, command)
+
+    pct.execute.side_effect = _exec
+    tools._pct = pct
+    import tempfile
+    import os
+
+    with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as fh:
+        fh.write(b"fake")
+        path = fh.name
+    try:
+        with patch.object(tools, "get_lxc_network", return_value=[]):
+            out = tools.deploy_node_app(
+                "pve",
+                "111",
+                local_path=path,
+                service_name="behind7proxies",
+                port=3000,
+            )
+    finally:
+        os.unlink(path)
+    assert "deploy_node_app" in out[0].text
+    assert "build OK" in out[0].text
+    assert pct.push_to_guest.called
+    assert "behind7proxies" in out[0].text
 
 
 def test_probe_container_skipped_stopped():

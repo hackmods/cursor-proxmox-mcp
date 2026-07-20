@@ -11,7 +11,7 @@ Source of truth for registered names: `ProxmoxMCPServer._setup_tools()` and `tes
 | Domain | MCP tools | API (representative) |
 |--------|-----------|----------------------|
 | Nodes | get_nodes, get_node_status, list_node_networks, subscription, certificates, report, services, time, wakeonlan | /nodes... |
-| LXC | full lifecycle + config + suspend/resume (CRIU warn) + status + **get_lxc_network** + rrd + VNC/SPICE/termproxy + **exec/password/keys via SSH/pct** + **prepare_lxc_for_docker (keyctl\|crun)** + **configure_lxc_dns** + **pct_set_lxc** + **push/pull** + **provision_lxc** + **ssh_public_keys / docker_ready / nameserver / onboot / description / tags on create** | /nodes/{n}/lxc... + host pct (opt-in ssh) |
+| LXC | full lifecycle + config + suspend/resume (CRIU warn) + status + **get_lxc_network** + rrd + VNC/SPICE/termproxy + **exec/password/keys via SSH/pct** + **prepare_lxc_for_docker (keyctl\|crun)** + **configure_lxc_dns** + **pct_set_lxc** + **push/pull** + **provision_lxc** + **deploy_static_nginx** + **deploy_node_app** + **ssh_public_keys / docker_ready / nameserver / onboot / description / tags on create** | /nodes/{n}/lxc... + host pct (opt-in ssh) |
 | Cluster | get_cluster_status, get_next_vmid, get_version, **get_mcp_capabilities**, get_cluster_resources, get_cluster_log, get_cluster_options | /cluster..., /version + MCP self-check |
 | Guest unified | start/stop/shutdown/reboot/delete_guest, get_guest_status/pending, move_guest_disk | qemu\|lxc status + pending + move_disk/move_volume |
 | Snapshots | list/create/delete/rollback | .../snapshot |
@@ -68,6 +68,7 @@ See [next-expansion.md](next-expansion.md). Summary:
 | `push_to_vm` / `pull_from_vm` (agent file-write/read) | M ~1–1.5d | done |
 | `deploy_static_nginx` | M ~0.5–1d | done |
 | `get_containers` probes (docker/`:80`, opt-in only) | M ~0.5–1d | done |
+| `deploy_node_app` (Node LTS → build → systemd) | M ~0.5d | done (r14) |
 
 ### Phase C — Heavy / deferred
 

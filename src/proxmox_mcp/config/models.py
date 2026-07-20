@@ -87,7 +87,7 @@ class SSHConfig(BaseModel):
     # Map Proxmox node name → SSH hostname/IP when API host differs from nodes
     host_overrides: Dict[str, str] = Field(default_factory=dict)
     pct_path: str = "/usr/sbin/pct"
-    timeout: int = 30  # Use 120+ for Docker installs; or PROXMOX_MCP_EXEC_TIMEOUT
+    timeout: int = 120  # Day-2 apt/npm/Docker; or PROXMOX_MCP_EXEC_TIMEOUT
 
     @model_validator(mode="after")
     def _warn_missing_key(self) -> "SSHConfig":

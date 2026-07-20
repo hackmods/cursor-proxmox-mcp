@@ -38,7 +38,14 @@ Prompt-style recipe: [SETUP.md — Provision a nested Docker LXC](https://github
 
 1. Running CT with host SSH configured
 2. `deploy_static_nginx` — installs nginx; optional `content_base64` / `local_path` (html or `.tar.gz`)
-3. `get_lxc_network` → `curl http://<ip>/`
+3. `get_lxc_network` → `wget -qO- http://<ip>/` (curl often missing on Debian)
+
+## Node / Next.js app on LXC (no Docker)
+
+1. Running CT with host SSH configured
+2. Prefer `push_to_lxc` / `deploy_node_app` with a **local_path** tarball for private sources (not guest HTTPS `git clone` without creds)
+3. `deploy_node_app` — installs Node LTS (default 22), extracts app, `npm ci && npm run build`, systemd on port 3000
+4. `get_lxc_network` → `wget -qO- http://<ip>:3000/`
 
 ## Create VM (ISO / cloud-init)
 

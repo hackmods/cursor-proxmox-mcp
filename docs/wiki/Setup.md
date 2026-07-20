@@ -49,7 +49,7 @@ Prefer **only** `PROXMOX_MCP_CONFIG` (tokens in the JSON file / `${ENV}` interpo
 ## After `git pull` — reload checklist
 
 1. Settings → MCP → **Disable** proxmox → **Enable**.
-2. Confirm tool count ~**155**. If still ~13–14 tools, fully quit Cursor and reopen (stale catalog).
+2. Confirm tool count ~**171**. If still ~13–14 tools or missing day-2 tools (`push_to_lxc`, `deploy_node_app`), fully quit Cursor and reopen (stale catalog). Call `get_mcp_capabilities` after reload.
 3. Smoke: `get_nodes`, `get_version`, `get_containers` / `get_vms`.
 
 ## Auth / Privilege Separation

@@ -2,7 +2,7 @@
 
 Complete inventory of MCP tools registered by **cursor-proxmox-mcp** (`tools/inventory.py` / `tools/register.py`). CI fails if this page drifts from the golden set.
 
-**Count:** see generated section below (locked at **155** for v1.2.0).
+**Count:** see generated section below (CI-locked inventory).
 
 ## Naming and agent tips
 
@@ -27,7 +27,7 @@ python scripts/generate-wiki-tools.py
 
 <!-- BEGIN GENERATED TOOLS -->
 
-_Generated from `tools/inventory.py` — **170** tools. Do not edit by hand; run `python scripts/generate-wiki-tools.py`._
+_Generated from `tools/inventory.py` — **171** tools. Do not edit by hand; run `python scripts/generate-wiki-tools.py`._
 
 ### Nodes
 
@@ -97,12 +97,13 @@ _Generated from `tools/inventory.py` — **170** tools. Do not edit by hand; run
 | `configure_lxc_dns` | Set CT nameserver/searchdomain via REST (falls back to pct set). Optionally prefer IPv4 in guest gai.conf when running. Prefer CT nameserver over editing resolv.conf (PVE rewrites on start). Parameters: node*, vmid*; nameserver?=8.8.8.8 9.9.9.9, searchdomain?, prefer_ipv4?=true |
 | `configure_lxc_ssh` | Ensure openssh-server enabled; optionally install ssh_public_keys and/or set password; return sshd_listening. Requires ssh. Parameters: node*, vmid*; ssh_public_keys?, password?, enable_password_ssh?=true, install_openssh?=true |
 | `convert_lxc_to_template` | Convert LXC to template. Parameters: node*, vmid* |
-| `create_lxc` | Create an LXC (async UPID — always wait_for_task before start unless wait=true). OS template only — not Docker/app deploy. Prefer ssh_public_keys for guest SSH (many templates block root password SSH; create password ≠ SSH login). For one-shot create→start→IP→SSH bootstrap use provision_lxc. docker_ready=true tries nesting=1,keyctl=1 (retries nesting-only + needs_crun warning on ACL deny) and tips prepare_lxc_for_docker (does not install Docker). Parameters: node*, vmid*, hostname*; ostemplate?, cpus?, memory?, disk_size?, storage?, features?, password?, ssh_public_keys?, unprivileged?, bridge?, ip?, gw?, net0?, ostemplate_filter?, docker_ready?=false, wait?=false, nameserver?, searchdomain?, onboot?, description?, tags? |
+| `create_lxc` | Create an LXC (async UPID — always wait_for_task before start unless wait=true). OS template only — not Docker/app deploy. Prefer ssh_public_keys for guest SSH (many templates block root password SSH; create password ≠ SSH login). Guest password optional when host SSH + pct exec works. For one-shot create→start→IP→SSH bootstrap use provision_lxc. docker_ready=true tries nesting=1,keyctl=1 (retries nesting-only + needs_crun warning on ACL deny) and tips prepare_lxc_for_docker (does not install Docker). Day-2: push_to_lxc (prefer for private sources — not guest git clone), deploy_static_nginx, deploy_node_app. If any named tool is missing from your MCP list → get_mcp_capabilities then reload MCP; do not invent base64/scp/public-repo workarounds. Parameters: node*, vmid*, hostname*; ostemplate?, cpus?, memory?, disk_size?, storage?, features?, password?, ssh_public_keys?, unprivileged?, bridge?, ip?, gw?, net0?, ostemplate_filter?, docker_ready?=false, wait?=false, nameserver?, searchdomain?, onboot?, description?, tags? |
 | `create_spice_ticket_lxc` | Mint SPICE ticket for an LXC (connect externally). Parameters: node*, vmid* |
 | `create_termproxy_ticket_lxc` | Mint termproxy ticket for an LXC. Parameters: node*, vmid* |
 | `create_vnc_ticket_lxc` | Mint VNC ticket for an LXC. Parameters: node*, vmid*, websocket?=true |
 | `delete_lxc` | IRREVERSIBLE: permanently delete an LXC and its rootfs. Parameters: node*, vmid*, force?=false |
-| `deploy_static_nginx` | Install nginx in a running LXC and deploy static content to /var/www/html (Lumon-style fallback). Requires host SSH/pct. Optional content_base64 or local_path tarball/html. Parameters: node*, vmid*; local_path?, content_base64?, remote_extract_dir?=/var/www/html, timeout? |
+| `deploy_node_app` | Install Node.js LTS in a running LXC, deploy an app tarball, build, and run under systemd (Next.js / Node portfolio path). Requires host SSH/pct. Prefer local_path tarball (private sources — not guest git clone). Default: Node 22, npm ci && npm run build, systemd on port 3000. Health: wget -qO-. Parameters: node*, vmid*; local_path?, content_base64?, remote_dir?=/opt/app, node_major?=22, build_command?, start_command?, port?=3000, service_name?=node-app, timeout? |
+| `deploy_static_nginx` | Install nginx in a running LXC and deploy static content to /var/www/html (Lumon-style fallback). Requires host SSH/pct. Prefer local_path tarball over content_base64. Optional content_base64 or local_path tarball/html. Health: wget -qO- (curl often missing on Debian). Parameters: node*, vmid*; local_path?, content_base64?, remote_extract_dir?=/var/www/html, timeout? |
 | `execute_lxc_command` | Execute a command inside a running LXC via host SSH + pct exec (no Proxmox REST /exec — HTTP 501 means stale MCP build). Requires opt-in ssh config. Response includes stdout/stderr and output/error aliases. Stock Debian templates often lack curl — prefer wget -qO- URL or python3 for HTTP checks. Parameters: node*, vmid*, command*; timeout? (seconds, else ssh.timeout / PROXMOX_MCP_EXEC_TIMEOUT) |
 | `get_containers` | List all LXC containers across the cluster (includes configured IP from netN when set). Optional probes=true runs cheap pct checks for docker binary and :80 listeners (requires host SSH; slow on large fleets). Parameters: probes?=false. For QEMU use get_vms. |
 | `get_docker_lxc_status` | Read-only Docker-in-LXC probe: features, DefaultRuntime, docker/compose versions, disk, IP. Does not install or smoke-test. Requires ssh for runtime fields. Parameters: node*, vmid* |
@@ -114,7 +115,7 @@ _Generated from `tools/inventory.py` — **170** tools. Do not edit by hand; run
 | `prepare_lxc_for_docker` | Idempotent Docker-in-LXC prep (D24): features + AppArmor; docker_mode=auto\|keyctl\|crun (auto falls back to nesting+crun when keyctl ACL denied); optional install_docker/smoke_test. Requires ssh. Success = docker run (hello-world) — not docker --version. Do not claim ready with nesting-only + stock runc. Parameters: node*, vmid*; fuse?=false, allow_apparmor_workaround?=true, install_docker?=false, smoke_test?=false, timeout?, docker_mode?=auto |
 | `provision_lxc` | One-shot small LXC: create(wait)+start(wait) → optional configure_lxc_ssh → resolve runtime IP → return {vmid,hostname,ip,ssh_hint}. OS template only (not Docker — use bootstrap_docker_lxc). Requires host SSH. Prefer ssh_public_keys; password at create still needs enable_password_ssh (default true when password set). Never echoes password. Parameters: node*, hostname*; vmid?, cpus?=1, memory?=2048, disk_size?=8, storage?, bridge?, ip?, gw?, ostemplate?, ostemplate_filter?, nameserver?, password?, ssh_public_keys?, enable_password_ssh?=true, onboot?, description?, tags?, timeout? |
 | `pull_from_lxc` | Pull a file from a running LXC via pct pull. Writes local_path when set; otherwise returns base64. Requires ssh. Parameters: node*, vmid*, remote_path*; local_path?, timeout? |
-| `push_to_lxc` | Push a file into a running LXC via host SSH + pct push (SFTP to host temp then pct push). Provide local_path (Cursor-side) or content_base64. Max 32 MiB. Requires ssh. Parameters: node*, vmid*, remote_path*; local_path?, content_base64?, timeout? |
+| `push_to_lxc` | Push a file into a running LXC via host SSH + pct push (SFTP to host temp then pct push). Prefer local_path (Cursor-side) over content_base64 — avoid base64 chunk workarounds. Preferred path for private app sources (not guest HTTPS git clone without creds). Max 32 MiB. Requires ssh. Parameters: node*, vmid*, remote_path*; local_path?, content_base64?, timeout? |
 | `reboot_lxc` | Reboot an LXC (applies pending config). Parameters: node*, vmid* |
 | `resize_lxc_disk` | Grow an LXC volume. Parameters: node*, vmid*, disk* (e.g. rootfs), size* (e.g. +5G) |
 | `resume_lxc` | WARNING: resume after LXC suspend (CRIU) is best-effort. Parameters: node*, vmid* |

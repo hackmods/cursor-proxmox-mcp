@@ -23,6 +23,6 @@
         "private_key_path": null,
         "host_overrides": {},
         "pct_path": "/usr/sbin/pct",
-        "timeout": 30
+        "timeout": 120
     }
 }

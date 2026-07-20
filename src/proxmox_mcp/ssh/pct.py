@@ -102,7 +102,7 @@ class PctExecutor:
                 return max(1, int(env))
             except ValueError:
                 pass
-        return int(getattr(ssh_config, "timeout", 30) or 30)
+        return int(getattr(ssh_config, "timeout", 120) or 120)
 
     def resolve_host(self, node: str) -> str:
         overrides = getattr(self.ssh, "host_overrides", None) or {}

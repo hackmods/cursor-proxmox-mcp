@@ -22,7 +22,7 @@ Copy `config.example.json` → `config.json` and fill in host + API token fields
 | `ssh.private_key_path` | recommended | Absolute path to private key; agent/`look_for_keys` also tried |
 | `ssh.host_overrides` | optional | Map node name → SSH address when API host ≠ node, e.g. `{ "pve": "192.168.0.23" }` |
 | `ssh.pct_path` | optional | Default `/usr/sbin/pct` |
-| `ssh.timeout` | optional | Seconds (default `30`; use **120+** for Docker installs) |
+| `ssh.timeout` | optional | Seconds (default `120` for day-2 apt/npm/Docker; override with `PROXMOX_MCP_EXEC_TIMEOUT`) |
 
 ## Privilege Separation
 

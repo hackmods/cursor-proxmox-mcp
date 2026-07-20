@@ -1,5 +1,13 @@
 # Changelog / research notes
 
+## 2026-07-19 — CT111 hygiene + deploy_node_app (rev r14) — 171 tools
+
+**Why:** CT111 behind7proxies Next.js deploy — stale Cursor catalog made Phase F tip names look like ghost tools; private git clone failed; no Node recipe; quorum NOT OK on 1-node lab; ssh.timeout 30 opaque for apt/npm.
+
+**Shipped:** `deploy_node_app`; create_lxc tip reload footer + private→push + password-optional; curl→wget on deploy tips; single-node quorum lab note; default `ssh.timeout` 120; `__version__` align.
+
+**Out of scope:** Auto-wait on create; free-form host shell; baking Node into create_lxc; git-token clone helper; returning create passwords.
+
 ## 2026-07-19 — provision_lxc + create knobs (rev r13) — 170 tools
 
 **Why:** CT110 lab feedback — create→start→SSH→IP took ~8 tool calls; password at create ≠ SSH login (Debian `prohibit-password`); create lacked tags/onboot/description; curl missing on stock Debian.

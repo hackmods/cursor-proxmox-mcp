@@ -124,6 +124,7 @@ DOMAIN_GROUPS: list[tuple[str, frozenset[str]]] = [
                 "push_to_lxc",
                 "pull_from_lxc",
                 "deploy_static_nginx",
+                "deploy_node_app",
                 "get_lxc_status",
                 "get_lxc_network",
                 "get_lxc_rrd_data",

@@ -224,11 +224,22 @@ class ProxmoxTemplates:
         result = [f"{ProxmoxTheme.SECTIONS['configuration']} Proxmox Cluster"]
 
         # Basic cluster info
+        nodes = status.get('nodes', 0) or 0
+        quorum = status.get('quorum')
+        if quorum:
+            quorum_line = "  • Quorum: OK"
+        elif nodes <= 1:
+            quorum_line = (
+                "  • Quorum: NOT OK "
+                "(often expected on a single-node lab — not a create blocker)"
+            )
+        else:
+            quorum_line = "  • Quorum: NOT OK"
         result.extend([
             "",
             f"  • Name: {status.get('name', 'N/A')}",
-            f"  • Quorum: {'OK' if status.get('quorum') else 'NOT OK'}",
-            f"  • Nodes: {status.get('nodes', 0)}",
+            quorum_line,
+            f"  • Nodes: {nodes}",
         ])
 
         # Add resource count if available

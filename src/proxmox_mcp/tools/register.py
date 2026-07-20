@@ -681,6 +681,42 @@ def register_all(server: ProxmoxMCPServer) -> None:
             node, vmid, local_path, content_base64, remote_extract_dir, timeout
         )
 
+    @server.mcp.tool(description=D.DEPLOY_NODE_APP_DESC)
+    def deploy_node_app(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="CT ID")],
+        local_path: Annotated[
+            Optional[str], Field(description="Local app tarball (.tar.gz)", default=None)
+        ] = None,
+        content_base64: Annotated[
+            Optional[str], Field(description="Base64 tarball (prefer local_path)", default=None)
+        ] = None,
+        remote_dir: Annotated[str, Field(description="Extract dir", default="/opt/app")] = "/opt/app",
+        node_major: Annotated[int, Field(description="Node.js major (NodeSource)", default=22)] = 22,
+        build_command: Annotated[
+            Optional[str], Field(description="Build shell (default npm ci && npm run build)", default=None)
+        ] = None,
+        start_command: Annotated[
+            Optional[str], Field(description="Start shell (default npm run start)", default=None)
+        ] = None,
+        port: Annotated[int, Field(description="PORT / health-check port", default=3000)] = 3000,
+        service_name: Annotated[str, Field(description="systemd unit name", default="node-app")] = "node-app",
+        timeout: Annotated[Optional[int], Field(description="Seconds", default=None)] = None,
+    ):
+        return server.container_tools.deploy_node_app(
+            node,
+            vmid,
+            local_path,
+            content_base64,
+            remote_dir,
+            node_major,
+            build_command,
+            start_command,
+            port,
+            service_name,
+            timeout,
+        )
+
     # --- Unified guest power (additive) ---
     @server.mcp.tool(description=D.START_GUEST_DESC)
     def start_guest(

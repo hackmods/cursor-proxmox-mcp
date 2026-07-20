@@ -260,7 +260,7 @@ Discovery stack; UPID/`wait_for_task`; `get_lxc_network` runtime IPs; `execute_l
 | Exec | `execute_lxc_command` for apt, NodeSource Node 22, `npm ci` / `npm run build`, systemd unit, `wget` health checks |
 | Messaging | “OS template only — not a deployed app”; Debian prefer `wget -qO-` tip |
 
-### Friction
+### Friction → fix (rev r14 / v1.5.1)
 
 | Gap | Impact | Suggested fix |
 |-----|--------|----------------|
@@ -285,6 +285,14 @@ Discovery stack; UPID/`wait_for_task`; `get_lxc_network` runtime IPs; `execute_l
 - Private source → `push_to_lxc` (when available), not guest HTTPS git without creds
 - Debian templates: health-check with `wget`, not `curl`
 - Create ≠ app deployed: plan Node/nginx/Docker as explicit day-2 steps
+
+### Fixes shipped (rev r14 / v1.5.1)
+
+1. deploy_node_app (Node LTS → tarball → build → systemd :3000).
+2. create_lxc tip footer: reload MCP / get_mcp_capabilities if day-2 tools missing; private → push_to_lxc; guest password optional when pct works.
+3. Health tips: wget -qO- (not curl) on deploy paths.
+4. Single-node quorum lab note on get_cluster_status.
+5. Default ssh.timeout **120**.
 
 ### Out of scope (do not reopen casually)
 
