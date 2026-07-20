@@ -222,13 +222,27 @@ Privsep tokens often cannot set keyctl; nesting alone is insufficient for stock 
 
 ## 2026-07-19 — CT110 small LXC end-to-end (provision UX)
 
-**Session context:** Agent provisioned Debian CT **110** at `192.168.0.174` — discovery → create → wait → start → network → nginx → git deploy. MCP usable as-is; friction was round-trips + password SSH + missing create knobs. Cursor was on a **stale** catalog (pre–Phase F tools).
+**Source:** `strongtowns-nf-radar-tracker/docs/PROXMOX-MCP-FEEDBACK.md` (STNF radar static nginx test host).
+
+**Session context:** Agent provisioned Debian CT **110** (`stnf-radar`) at `192.168.0.174` — discovery → create → wait → start → network → nginx → git deploy. MCP usable as-is; friction was round-trips + password SSH + missing create knobs. Cursor was on a **stale** catalog (pre–Phase F tools).
+
+### Instance reference
+
+| Field | Value |
+|-------|-------|
+| CT ID | 110 |
+| Hostname | `stnf-radar` |
+| Node | `pve` |
+| Resources | 1 vCPU / 512 MB / 8 GB |
+| Bridge | `vmbr0` (DHCP) |
+| Runtime IP | `192.168.0.174` |
+| Stack | Debian 12 + nginx, site cloned from `main` |
 
 ### What worked
 
 Discovery stack; UPID/`wait_for_task`; `get_lxc_network` runtime IPs; `execute_lxc_command` for apt/nginx/git.
 
-### Friction → fix (rev r13)
+### Friction → fix (rev r13 / v1.5.0, D27)
 
 | Gap | Impact | Fix |
 |-----|--------|-----|
@@ -238,11 +252,23 @@ Discovery stack; UPID/`wait_for_task`; `get_lxc_network` runtime IPs; `execute_l
 | curl missing on Debian | First health check failed | Doc: prefer `wget -qO-` on `execute_lxc_command` |
 | No push helper (session on old build) | Would use git clone | Already shipped `push_to_lxc` (v1.3+) — reload MCP |
 
+### Feedback priority checklist (source → status)
+
+| Priority | Request | Status |
+|----------|---------|--------|
+| High | Post-create SSH bootstrap (`enable_password_ssh` or prefer keys) | **shipped r13** via `provision_lxc` / `configure_lxc_ssh` (not on bare async `create_lxc` — D27) |
+| High | `provision_lxc` composite → `{vmid,ip,hostname,ssh_hint}` | **shipped r13** |
+| Medium | `tags` / `onboot` / `description` on `create_lxc` | **shipped r13** |
+| Medium | `push_to_lxc` / pct push | **shipped** Phase F / v1.3+ (session needed MCP reload) |
+| Low | Doc note: wget vs curl on Debian | **shipped r13** |
+| — | Auto nginx/Docker in create; sync-blocking create default; echo password | **out of scope** (matches source “What not to change”) |
+
 ### Out of scope
 
 - Auto-install nginx/Docker in create
 - Dropping `wait_for_task` / sync-blocking create by default
 - Returning create password in tool output
+- `enable_password_ssh` on bare `create_lxc` (duplicates `provision_lxc`; needs post-start pct — D27)
 
 ---
 
