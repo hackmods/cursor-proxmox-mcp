@@ -184,6 +184,65 @@ def register_all(server: ProxmoxMCPServer) -> None:
     ):
         return server.vm_tools.get_vm_network(node, vmid, resolve_runtime)
 
+    @server.mcp.tool(description=D.GET_VM_GUEST_INFO_DESC)
+    def get_vm_guest_info(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="VM ID")],
+        sections: Annotated[
+            Optional[str],
+            Field(description="Comma sections: os,fs,host,info,timezone,users", default=None),
+        ] = None,
+    ):
+        return server.vm_tools.get_vm_guest_info(node, vmid, sections)
+
+    @server.mcp.tool(description=D.FSFREEZE_VM_DESC)
+    def fsfreeze_vm(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="VM ID")],
+    ):
+        return server.vm_tools.fsfreeze_vm(node, vmid)
+
+    @server.mcp.tool(description=D.FSTHAW_VM_DESC)
+    def fsthaw_vm(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="VM ID")],
+    ):
+        return server.vm_tools.fsthaw_vm(node, vmid)
+
+    @server.mcp.tool(description=D.BOOTSTRAP_CLOUDINIT_VM_DESC)
+    def bootstrap_cloudinit_vm(
+        node: Annotated[str, Field(description="Node")],
+        name: Annotated[str, Field(description="VM name")],
+        clone_from: Annotated[str, Field(description="Template/source VMID")],
+        vmid: Annotated[Optional[str], Field(description="New VMID (auto nextid)", default=None)] = None,
+        full: Annotated[bool, Field(description="Full clone", default=True)] = True,
+        ciuser: Annotated[Optional[str], Field(description="cloud-init user", default=None)] = None,
+        cipassword: Annotated[Optional[str], Field(description="cloud-init password", default=None)] = None,
+        sshkeys: Annotated[Optional[str], Field(description="cloud-init SSH public keys", default=None)] = None,
+        ipconfig0: Annotated[Optional[str], Field(description="cloud-init ipconfig0", default=None)] = None,
+        storage: Annotated[Optional[str], Field(description="Target storage for full clone", default=None)] = None,
+        target: Annotated[Optional[str], Field(description="Target node", default=None)] = None,
+        cores: Annotated[Optional[int], Field(description="vCPU cores after clone", default=None)] = None,
+        memory: Annotated[Optional[int], Field(description="Memory MB after clone", default=None)] = None,
+        timeout: Annotated[Optional[int], Field(description="Settle timeout seconds", default=None)] = None,
+    ):
+        return server.vm_tools.bootstrap_cloudinit_vm(
+            node,
+            name,
+            clone_from,
+            vmid,
+            full,
+            ciuser,
+            cipassword,
+            sshkeys,
+            ipconfig0,
+            storage,
+            target,
+            cores,
+            memory,
+            timeout,
+        )
+
     @server.mcp.tool(description=D.PUSH_TO_VM_DESC)
     def push_to_vm(
         node: Annotated[str, Field(description="Node")],
@@ -1273,6 +1332,26 @@ def register_all(server: ProxmoxMCPServer) -> None:
     def get_cluster_options():
         return server.cluster_tools.get_cluster_options()
 
+    @server.mcp.tool(description=D.GET_CLUSTER_JOIN_INFO_DESC)
+    def get_cluster_join_info(
+        node: Annotated[Optional[str], Field(description="Preferred member node", default=None)] = None,
+    ):
+        return server.cluster_tools.get_cluster_join_info(node)
+
+    @server.mcp.tool(description=D.JOIN_CLUSTER_DESC)
+    def join_cluster(
+        hostname: Annotated[str, Field(description="Existing cluster member hostname/IP")],
+        fingerprint: Annotated[str, Field(description="Peer SHA256 fingerprint")],
+        password: Annotated[str, Field(description="Peer root password")],
+        confirm: Annotated[str, Field(description="Must be literal JOIN")],
+        nodeid: Annotated[Optional[int], Field(description="Corosync node id", default=None)] = None,
+        votes: Annotated[Optional[int], Field(description="Votes", default=None)] = None,
+        force: Annotated[bool, Field(description="Allow if node already exists", default=False)] = False,
+    ):
+        return server.cluster_tools.join_cluster(
+            hostname, fingerprint, password, confirm, nodeid, votes, force
+        )
+
     # --- Node extras ---
     @server.mcp.tool(description=D.GET_NODE_SUBSCRIPTION_DESC)
     def get_node_subscription(node: Annotated[str, Field(description="Node")]):
@@ -1297,6 +1376,20 @@ def register_all(server: ProxmoxMCPServer) -> None:
     @server.mcp.tool(description=D.WAKE_NODE_DESC)
     def wake_node(node: Annotated[str, Field(description="Node")]):
         return server.node_tools.wake_node(node)
+
+    @server.mcp.tool(description=D.REBOOT_NODE_DESC)
+    def reboot_node(
+        node: Annotated[str, Field(description="Node")],
+        confirm: Annotated[str, Field(description="Must equal exact node name")],
+    ):
+        return server.node_tools.reboot_node(node, confirm)
+
+    @server.mcp.tool(description=D.SHUTDOWN_NODE_DESC)
+    def shutdown_node(
+        node: Annotated[str, Field(description="Node")],
+        confirm: Annotated[str, Field(description="Must equal exact node name")],
+    ):
+        return server.node_tools.shutdown_node(node, confirm)
 
     # --- Guest status / RRD / console tickets ---
     @server.mcp.tool(description=D.GET_VM_STATUS_DESC)

@@ -30,6 +30,14 @@ Parameters: node*, vmid*, command*"""
 
 GET_VM_NETWORK_DESC = """Get VM network: configured netN from config plus optional runtime interfaces via QEMU guest agent (network-get-interfaces). Agent must be running. Parameters: node*, vmid*, resolve_runtime?=true"""
 
+GET_VM_GUEST_INFO_DESC = """QEMU guest-agent introspection (info/os/fs/host/timezone/users). Per-section soft-fail; VM must be running with agent. Parameters: node*, vmid*, sections?=os,fs,host,info (comma list)"""
+
+FSFREEZE_VM_DESC = """Freeze guest filesystems via QEMU guest-agent (fsfreeze-freeze). Always thaw after backup/snapshot. VM must be running. Parameters: node*, vmid*"""
+
+FSTHAW_VM_DESC = """Thaw guest filesystems via QEMU guest-agent (fsfreeze-thaw). Call after fsfreeze_vm. Parameters: node*, vmid*"""
+
+BOOTSTRAP_CLOUDINIT_VM_DESC = """One-shot cloud-init VM from a template: clone→ci config→start→runtime IP (requires qemu-guest-agent). Prefer sshkeys over cipassword. Not a blank-disk create — clone_from* must be a cloud image template. If tool missing → get_mcp_capabilities + reload MCP. Parameters: node*, name*, clone_from*; vmid?, full?=true, ciuser?, cipassword?, sshkeys?, ipconfig0?, storage?, target?, cores?, memory?, timeout?"""
+
 PUSH_TO_VM_DESC = """Push a file into a running VM via QEMU guest agent file-write. Provide local_path or content_base64. Max 32 MiB. Parameters: node*, vmid*, remote_path*; local_path?, content_base64?"""
 
 PULL_FROM_VM_DESC = """Pull a file from a running VM via QEMU guest agent file-read. Writes local_path when set; otherwise returns base64. Parameters: node*, vmid*, remote_path*; local_path?"""
@@ -212,6 +220,8 @@ GET_NODE_REPORT_DESC = """Get diagnostic report for a node. Parameters: node*"""
 LIST_NODE_SERVICES_DESC = """List Proxmox-managed services on a node. Parameters: node*"""
 GET_NODE_TIME_DESC = """Get node timezone and time. Parameters: node*"""
 WAKE_NODE_DESC = """Send Wake-on-LAN to a node. Parameters: node*"""
+REBOOT_NODE_DESC = """IRREVERSIBLE: reboot a Proxmox host (Sys.PowerMgmt). Guests go down; MCP may disconnect if this is the API host. confirm* must equal the exact node name. Parameters: node*, confirm*"""
+SHUTDOWN_NODE_DESC = """IRREVERSIBLE: shut down / power off a Proxmox host (Sys.PowerMgmt). Guests go down; MCP may disconnect if this is the API host. confirm* must equal the exact node name. Parameters: node*, confirm*"""
 
 # Console tickets (mint only — no websocket proxy)
 CREATE_VNC_TICKET_VM_DESC = """Mint VNC ticket for a VM (connect externally). Parameters: node*, vmid*, websocket?=true"""
@@ -228,6 +238,8 @@ GET_MCP_CAPABILITIES_DESC = """Self-check: MCP package version, ssh.enabled, par
 GET_CLUSTER_RESOURCES_DESC = """List cluster resources. Parameters: type? (vm|storage|node|sdn)"""
 GET_CLUSTER_LOG_DESC = """Get recent cluster log. Parameters: max_entries?=50"""
 GET_CLUSTER_OPTIONS_DESC = """Get cluster-wide options."""
+GET_CLUSTER_JOIN_INFO_DESC = """Read cluster join info (fingerprints/nodelist) from an existing cluster member — copy fingerprint for join_cluster. Parameters: node?"""
+JOIN_CLUSTER_DESC = """IRREVERSIBLE: join THIS API host into an existing cluster (POST /cluster/config/join). Point MCP at the standalone node being joined, not an existing member. confirm* must be the literal JOIN. Never echo password. Parameters: hostname* (peer), fingerprint*, password*, confirm*; nodeid?, votes?, force?=false"""
 
 # Firewall extras
 LIST_FIREWALL_ALIASES_DESC = """List cluster firewall aliases."""

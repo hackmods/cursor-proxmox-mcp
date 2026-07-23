@@ -27,7 +27,7 @@ python scripts/generate-wiki-tools.py
 
 <!-- BEGIN GENERATED TOOLS -->
 
-_Generated from `tools/inventory.py` — **171** tools. Do not edit by hand; run `python scripts/generate-wiki-tools.py`._
+_Generated from `tools/inventory.py` — **179** tools. Do not edit by hand; run `python scripts/generate-wiki-tools.py`._
 
 ### Nodes
 
@@ -41,20 +41,24 @@ _Generated from `tools/inventory.py` — **171** tools. Do not edit by hand; run
 | `list_node_certificates` | List SSL certificates on a node. Parameters: node* |
 | `list_node_networks` | List network interfaces/bridges on a node (vmbr0, bonds, etc.). |
 | `list_node_services` | List Proxmox-managed services on a node. Parameters: node* |
+| `reboot_node` | IRREVERSIBLE: reboot a Proxmox host (Sys.PowerMgmt). Guests go down; MCP may disconnect if this is the API host. confirm* must equal the exact node name. Parameters: node*, confirm* |
+| `shutdown_node` | IRREVERSIBLE: shut down / power off a Proxmox host (Sys.PowerMgmt). Guests go down; MCP may disconnect if this is the API host. confirm* must equal the exact node name. Parameters: node*, confirm* |
 | `wake_node` | Send Wake-on-LAN to a node. Parameters: node* |
 
 ### Cluster / tasks
 
 | Tool | Description |
 |------|-------------|
+| `get_cluster_join_info` | Read cluster join info (fingerprints/nodelist) from an existing cluster member — copy fingerprint for join_cluster. Parameters: node? |
 | `get_cluster_log` | Get recent cluster log. Parameters: max_entries?=50 |
 | `get_cluster_options` | Get cluster-wide options. |
 | `get_cluster_resources` | List cluster resources. Parameters: type? (vm\|storage\|node\|sdn) |
 | `get_cluster_status` | Get overall Proxmox cluster health and quorum status. |
-| `get_mcp_capabilities` | Self-check: MCP package version, ssh.enabled, paramiko, day-2 tool presence, optional pct version probe. Call after reload/config change. Parameters: probe_node? |
+| `get_mcp_capabilities` | Self-check: MCP package version, ssh.enabled, paramiko, day-2 tool presence, logging (level/verbose/tool_calls/file), optional pct version probe. Call after reload/config change. Parameters: probe_node? |
 | `get_next_vmid` | Get the next free VM/CT ID from the cluster (best-effort — race possible before create). |
 | `get_task_status` | Get status for a task UPID. Parameters: node*, upid* |
 | `get_version` | Get Proxmox VE version/API info. |
+| `join_cluster` | IRREVERSIBLE: join THIS API host into an existing cluster (POST /cluster/config/join). Point MCP at the standalone node being joined, not an existing member. confirm* must be the literal JOIN. Never echo password. Parameters: hostname* (peer), fingerprint*, password*, confirm*; nodeid?, votes?, force?=false |
 | `list_tasks` | List recent tasks on a node. Parameters: node* |
 | `wait_for_task` | Poll a task UPID until it stops (or timeout). Required after create_vm/create_lxc before start — create returns UPID immediately; failures (missing template, etc.) appear here. Parameters: node*, upid*, timeout?=300, poll_interval?=2.0 |
 
@@ -62,6 +66,7 @@ _Generated from `tools/inventory.py` — **171** tools. Do not edit by hand; run
 
 | Tool | Description |
 |------|-------------|
+| `bootstrap_cloudinit_vm` | One-shot cloud-init VM from a template: clone→ci config→start→runtime IP (requires qemu-guest-agent). Prefer sshkeys over cipassword. Not a blank-disk create — clone_from* must be a cloud image template. If tool missing → get_mcp_capabilities + reload MCP. Parameters: node*, name*, clone_from*; vmid?, full?=true, ciuser?, cipassword?, sshkeys?, ipconfig0?, storage?, target?, cores?, memory?, timeout? |
 | `clone_vm` | Clone a VM to a new ID (async UPID — wait_for_task). Parameters: node*, vmid*, newid*, name?, full?=true, target?, storage? |
 | `convert_vm_to_template` | Convert VM to template. Parameters: node*, vmid* |
 | `create_spice_ticket_vm` | Mint SPICE ticket for a VM. Parameters: node*, vmid* |
@@ -70,7 +75,10 @@ _Generated from `tools/inventory.py` — **171** tools. Do not edit by hand; run
 | `create_vnc_ticket_vm` | Mint VNC ticket for a VM (connect externally). Parameters: node*, vmid*, websocket?=true |
 | `delete_vm` | IRREVERSIBLE: permanently delete a QEMU VM and its disks (not LXC). Parameters: node*, vmid*, force?=false |
 | `execute_vm_command` | Execute commands in a VM via QEMU guest agent. |
+| `fsfreeze_vm` | Freeze guest filesystems via QEMU guest-agent (fsfreeze-freeze). Always thaw after backup/snapshot. VM must be running. Parameters: node*, vmid* |
+| `fsthaw_vm` | Thaw guest filesystems via QEMU guest-agent (fsfreeze-thaw). Call after fsfreeze_vm. Parameters: node*, vmid* |
 | `get_vm_config` | Get full QEMU VM configuration. |
+| `get_vm_guest_info` | QEMU guest-agent introspection (info/os/fs/host/timezone/users). Per-section soft-fail; VM must be running with agent. Parameters: node*, vmid*, sections?=os,fs,host,info (comma list) |
 | `get_vm_network` | Get VM network: configured netN from config plus optional runtime interfaces via QEMU guest agent (network-get-interfaces). Agent must be running. Parameters: node*, vmid*, resolve_runtime?=true |
 | `get_vm_rrd_data` | Get RRD metrics for a VM. Parameters: node*, vmid*, timeframe?=hour |
 | `get_vm_status` | Get current runtime status for one VM. Parameters: node*, vmid* |

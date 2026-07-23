@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-07-23
+
+### Added
+
+- **Phase C light + QEMU/cloud-init (rev r16):** eight tools (**179** total):
+  - `get_vm_guest_info`, `fsfreeze_vm`, `fsthaw_vm`
+  - `bootstrap_cloudinit_vm` (clone template → cloud-init → start → runtime IP)
+  - `reboot_node` / `shutdown_node` with `confirm=<exact-node>` (D29)
+  - `get_cluster_join_info` / `join_cluster` with `confirm=JOIN` (MCP must target joining node)
+
+### Changed
+
+- D26 revised: node power + cluster join pulled forward; SDN/ACME/Ceph/VNC/PBS remain deferred.
+
 ## [1.5.2] - 2026-07-23
 
 ### Added

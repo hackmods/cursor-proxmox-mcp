@@ -127,3 +127,65 @@ class ClusterTools(ProxmoxTool):
             return self._format_response(options)
         except Exception as e:
             self._handle_error("get cluster options", e)
+
+    def get_cluster_join_info(self, node: Optional[str] = None) -> List[Content]:
+        """Read join information from an existing cluster member."""
+        try:
+            params = {}
+            if node:
+                params["node"] = node
+            info = self.proxmox.cluster.config.join.get(**params)
+            return self._format_response(info)
+        except Exception as e:
+            self._handle_error("get cluster join info", e)
+
+    def join_cluster(
+        self,
+        hostname: str,
+        fingerprint: str,
+        password: str,
+        confirm: str,
+        nodeid: Optional[int] = None,
+        votes: Optional[int] = None,
+        force: bool = False,
+    ) -> List[Content]:
+        """Join THIS API host into an existing cluster (must target the joining node)."""
+        try:
+            if confirm != "JOIN":
+                raise ValueError(
+                    "confirm must be the literal string 'JOIN' "
+                    f"(got {confirm!r}). Refusing cluster join."
+                )
+            if not hostname or not fingerprint or not password:
+                raise ValueError("hostname, fingerprint, and password are required")
+
+            params: dict = {
+                "hostname": hostname,
+                "fingerprint": fingerprint,
+                "password": password,
+            }
+            if nodeid is not None:
+                params["nodeid"] = int(nodeid)
+            if votes is not None:
+                params["votes"] = int(votes)
+            if force:
+                params["force"] = 1
+
+            result = self.proxmox.cluster.config.join.post(**params)
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        "⚠️ IRREVERSIBLE: cluster join initiated on THIS API host\n"
+                        f"Peer: {hostname}\n"
+                        f"Fingerprint: {fingerprint}\n"
+                        f"Result/UPID: {result}\n"
+                        "💡 Point MCP at the standalone node being joined — not an "
+                        "existing cluster member. After join, verify with get_cluster_status."
+                    ),
+                )
+            ]
+        except ValueError:
+            raise
+        except Exception as e:
+            self._handle_error("join cluster", e)

@@ -25,6 +25,7 @@ DAY2_TOOLS = frozenset(
         "pull_from_lxc",
         "deploy_static_nginx",
         "deploy_node_app",
+        "bootstrap_cloudinit_vm",
         "execute_lxc_command",
         "set_lxc_password",
         "set_lxc_ssh_keys",

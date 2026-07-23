@@ -180,3 +180,53 @@ class NodeTools(ProxmoxTool):
             return [Content(type="text", text=f"Wake-on-LAN sent to {node}\nResult: {result}")]
         except Exception as e:
             self._handle_error(f"wake node {node}", e)
+
+    def reboot_node(self, node: str, confirm: str) -> List[Content]:
+        """Reboot a Proxmox host. confirm must equal the exact node name (D29)."""
+        try:
+            if confirm != node:
+                raise ValueError(
+                    f"confirm must equal the exact node name '{node}' "
+                    f"(got {confirm!r}). Refusing reboot."
+                )
+            self.proxmox.nodes(node).status.post(command="reboot")
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"⚠️ IRREVERSIBLE: node reboot initiated for {node}\n"
+                        f"Guests on this host will go down. If MCP uses this node's API, "
+                        f"the connection may drop until it returns.\n"
+                        f"💡 After recovery: wake_node (if WoL) or wait; get_nodes to verify."
+                    ),
+                )
+            ]
+        except ValueError:
+            raise
+        except Exception as e:
+            self._handle_error(f"reboot node {node}", e)
+
+    def shutdown_node(self, node: str, confirm: str) -> List[Content]:
+        """Shut down / power off a Proxmox host. confirm must equal node name (D29)."""
+        try:
+            if confirm != node:
+                raise ValueError(
+                    f"confirm must equal the exact node name '{node}' "
+                    f"(got {confirm!r}). Refusing shutdown."
+                )
+            self.proxmox.nodes(node).status.post(command="shutdown")
+            return [
+                Content(
+                    type="text",
+                    text=(
+                        f"⚠️ IRREVERSIBLE: node shutdown initiated for {node}\n"
+                        f"Guests on this host will go down. Host will power off "
+                        f"(use wake_node / physical power to recover).\n"
+                        f"If MCP uses this node's API, the connection will drop."
+                    ),
+                )
+            ]
+        except ValueError:
+            raise
+        except Exception as e:
+            self._handle_error(f"shutdown node {node}", e)

@@ -59,7 +59,7 @@ Quick map:
 
 **Phase F / F.1 (done):** LXC day-2 + VM network/push + create `wait=` + `deploy_static_nginx` + `deploy_node_app` + opt-in probes — see [next-expansion.md](../.cursor/research/next-expansion.md).
 
-**Phase C (deferred):** SDN write, ACME order/renew, Ceph OSD, cluster join, websocket console proxy, PBS direct admin, node reboot/shutdown — documented as planned, **not** registered as available tools. See [coverage matrix](../.cursor/research/proxmox-api-coverage.md).
+**Phase C (deferred remainder):** SDN write, ACME order/renew, Ceph OSD, websocket console proxy, PBS direct admin, node network CRUD — documented as planned, **not** registered as available tools. Node power + cluster join shipped v1.6.0. See [coverage matrix](../.cursor/research/proxmox-api-coverage.md).
 
 ## Knowledge pointers
 

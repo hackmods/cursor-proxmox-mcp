@@ -40,6 +40,8 @@ DOMAIN_GROUPS: list[tuple[str, frozenset[str]]] = [
                 "list_node_services",
                 "get_node_time",
                 "wake_node",
+                "reboot_node",
+                "shutdown_node",
             }
         ),
     ),
@@ -57,6 +59,8 @@ DOMAIN_GROUPS: list[tuple[str, frozenset[str]]] = [
                 "get_cluster_resources",
                 "get_cluster_log",
                 "get_cluster_options",
+                "get_cluster_join_info",
+                "join_cluster",
             }
         ),
     ),
@@ -70,6 +74,10 @@ DOMAIN_GROUPS: list[tuple[str, frozenset[str]]] = [
                 "update_vm_config",
                 "execute_vm_command",
                 "get_vm_network",
+                "get_vm_guest_info",
+                "fsfreeze_vm",
+                "fsthaw_vm",
+                "bootstrap_cloudinit_vm",
                 "push_to_vm",
                 "pull_from_vm",
                 "qm_set_vm",

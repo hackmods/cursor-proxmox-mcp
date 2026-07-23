@@ -355,3 +355,22 @@ No structured audit around FastMCP tool dispatch; library loggers inherit root D
 
 - Default-on full command body logging
 - Scraping Cursor chat transcripts into the log file
+
+---
+
+## 2026-07-23 — Phase C light + QEMU/cloud-init (r16)
+
+**Session context:** Operator requested remaining roadmap items 1/2/3 + cluster join.
+
+### Shipped
+
+| Tool | Notes |
+|------|-------|
+| `get_vm_guest_info` / `fsfreeze_vm` / `fsthaw_vm` | Guest-agent stretch |
+| `bootstrap_cloudinit_vm` | Requires `clone_from` template |
+| `reboot_node` / `shutdown_node` | `confirm=<node>` (D29) |
+| `get_cluster_join_info` / `join_cluster` | `confirm=JOIN`; MCP targets joining node |
+
+### Out of scope
+
+SDN write, ACME, Ceph, VNC proxy, PBS, node network CRUD, cloud-image import.

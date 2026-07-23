@@ -19,6 +19,8 @@ detailed VM information might be temporarily unavailable.
 """
 from typing import Any, List, Optional
 import base64
+import json
+import time
 from mcp.types import TextContent as Content
 from .base import ProxmoxTool
 from .console.manager import VMConsoleManager
@@ -39,6 +41,38 @@ from .spec import ToolSpec
 from . import definitions as D
 from ..ssh import PctExecError, PctExecutor, require_host_ssh_message, ssh_configured
 
+# Friendly section name → QEMU guest-agent command
+_GUEST_INFO_SECTIONS = {
+    "info": "info",
+    "os": "get-osinfo",
+    "fs": "get-fsinfo",
+    "host": "get-host-name",
+    "hostname": "get-host-name",
+    "timezone": "get-timezone",
+    "users": "get-users",
+}
+_DEFAULT_GUEST_INFO_SECTIONS = "os,fs,host,info"
+
+
+def _unwrap_agent_result(raw: Any) -> Any:
+    if isinstance(raw, dict):
+        if "result" in raw:
+            return raw["result"]
+        if "data" in raw and len(raw) <= 2:
+            return raw["data"]
+    return raw
+
+
+def _agent_call(agent: Any, command: str, *, post: bool = False) -> Any:
+    endpoint = agent(command)
+    if post:
+        try:
+            return endpoint.post()
+        except Exception:
+            # Some PVE builds expose freeze/thaw as GET
+            return endpoint.get()
+    return endpoint.get()
+
 MAX_VM_PUSH_BYTES = 32 * 1024 * 1024
 
 TOOL_SPECS = [
@@ -48,6 +82,10 @@ TOOL_SPECS = [
     ToolSpec("update_vm_config", D.UPDATE_VM_CONFIG_DESC),
     ToolSpec("execute_vm_command", D.EXECUTE_VM_COMMAND_DESC),
     ToolSpec("get_vm_network", D.GET_VM_NETWORK_DESC),
+    ToolSpec("get_vm_guest_info", D.GET_VM_GUEST_INFO_DESC),
+    ToolSpec("fsfreeze_vm", D.FSFREEZE_VM_DESC),
+    ToolSpec("fsthaw_vm", D.FSTHAW_VM_DESC),
+    ToolSpec("bootstrap_cloudinit_vm", D.BOOTSTRAP_CLOUDINIT_VM_DESC),
     ToolSpec("push_to_vm", D.PUSH_TO_VM_DESC),
     ToolSpec("pull_from_vm", D.PULL_FROM_VM_DESC),
     ToolSpec("qm_set_vm", D.QM_SET_VM_DESC),
@@ -892,6 +930,253 @@ class VMTools(ProxmoxTool):
             if is_missing_resource_error(e):
                 raise ValueError(qemu_not_found_message(vmid, node))
             self._handle_error(f"get network for VM {vmid}", e)
+
+    def get_vm_guest_info(
+        self,
+        node: str,
+        vmid: str,
+        sections: Optional[str] = None,
+    ) -> List[Content]:
+        """QEMU guest-agent introspection with per-section soft-fail."""
+        try:
+            status = self.proxmox.nodes(node).qemu(vmid).status.current.get()
+            if status.get("status") != "running":
+                raise ValueError(f"VM {vmid} is not running on node {node}")
+
+            raw_sections = sections or _DEFAULT_GUEST_INFO_SECTIONS
+            requested = [s.strip().lower() for s in raw_sections.split(",") if s.strip()]
+            if not requested:
+                requested = [s.strip() for s in _DEFAULT_GUEST_INFO_SECTIONS.split(",")]
+
+            agent = self.proxmox.nodes(node).qemu(vmid).agent
+            payload: dict = {
+                "vmid": vmid,
+                "node": node,
+                "status": status.get("status"),
+                "sections": {},
+                "notes": [],
+            }
+            for key in requested:
+                cmd = _GUEST_INFO_SECTIONS.get(key)
+                if not cmd:
+                    payload["notes"].append(f"unknown section '{key}' (skipped)")
+                    continue
+                try:
+                    raw = _agent_call(agent, cmd, post=False)
+                    payload["sections"][key] = _unwrap_agent_result(raw)
+                except Exception as e:
+                    payload["notes"].append(f"{key} ({cmd}) failed: {e}")
+            if not payload["sections"] and not payload["notes"]:
+                payload["notes"].append(
+                    "No guest-agent data — ensure agent=1 and qemu-guest-agent is running."
+                )
+            return self._format_response(payload)
+        except ValueError:
+            raise
+        except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
+            self._handle_error(f"get guest info for VM {vmid}", e)
+
+    def fsfreeze_vm(self, node: str, vmid: str) -> List[Content]:
+        """Freeze guest filesystems via guest-agent."""
+        try:
+            status = self.proxmox.nodes(node).qemu(vmid).status.current.get()
+            if status.get("status") != "running":
+                raise ValueError(f"VM {vmid} is not running on node {node}")
+            agent = self.proxmox.nodes(node).qemu(vmid).agent
+            result = _agent_call(agent, "fsfreeze-freeze", post=True)
+            freeze_status = None
+            try:
+                freeze_status = _unwrap_agent_result(
+                    _agent_call(agent, "fsfreeze-status", post=False)
+                )
+            except Exception:
+                pass
+            lines = [
+                f"❄️ fsfreeze-freeze on VM {vmid}@{node}",
+                f"Result: {_unwrap_agent_result(result)}",
+            ]
+            if freeze_status is not None:
+                lines.append(f"Status: {freeze_status}")
+            lines.append(
+                "⚠️ Always call fsthaw_vm after backup/snapshot "
+                "(Windows may auto-thaw ~10s)."
+            )
+            return [Content(type="text", text="\n".join(lines))]
+        except ValueError:
+            raise
+        except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
+            self._handle_error(f"fsfreeze VM {vmid}", e)
+
+    def fsthaw_vm(self, node: str, vmid: str) -> List[Content]:
+        """Thaw guest filesystems via guest-agent."""
+        try:
+            status = self.proxmox.nodes(node).qemu(vmid).status.current.get()
+            if status.get("status") != "running":
+                raise ValueError(f"VM {vmid} is not running on node {node}")
+            agent = self.proxmox.nodes(node).qemu(vmid).agent
+            result = _agent_call(agent, "fsfreeze-thaw", post=True)
+            freeze_status = None
+            try:
+                freeze_status = _unwrap_agent_result(
+                    _agent_call(agent, "fsfreeze-status", post=False)
+                )
+            except Exception:
+                pass
+            lines = [
+                f"☀️ fsfreeze-thaw on VM {vmid}@{node}",
+                f"Result: {_unwrap_agent_result(result)}",
+            ]
+            if freeze_status is not None:
+                lines.append(f"Status: {freeze_status}")
+            return [Content(type="text", text="\n".join(lines))]
+        except ValueError:
+            raise
+        except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(vmid, node))
+            self._handle_error(f"fsthaw VM {vmid}", e)
+
+    def bootstrap_cloudinit_vm(
+        self,
+        node: str,
+        name: str,
+        clone_from: str,
+        vmid: Optional[str] = None,
+        full: bool = True,
+        ciuser: Optional[str] = None,
+        cipassword: Optional[str] = None,
+        sshkeys: Optional[str] = None,
+        ipconfig0: Optional[str] = None,
+        storage: Optional[str] = None,
+        target: Optional[str] = None,
+        cores: Optional[int] = None,
+        memory: Optional[int] = None,
+        timeout: Optional[int] = None,
+    ) -> List[Content]:
+        """Clone cloud-init template → CI config → start → runtime IP."""
+        try:
+            warnings: List[str] = []
+            steps: List[str] = []
+            settle_timeout = float(timeout or 120)
+
+            if not clone_from:
+                raise ValueError(
+                    "clone_from is required (template VMID with a cloud image). "
+                    "Blank create_vm + cloud-init drive alone is not bootable."
+                )
+            if not sshkeys and not cipassword:
+                warnings.append(
+                    "no sshkeys or cipassword — guest login may be unavailable"
+                )
+            elif cipassword and not sshkeys:
+                warnings.append("prefer sshkeys over cipassword for cloud-init auth")
+
+            if not vmid:
+                vmid = str(self.proxmox.cluster.nextid.get())
+                steps.append(f"allocated vmid={vmid}")
+            else:
+                vmid = str(vmid)
+                assert_id_absent(self.proxmox, node, vmid, "qemu")
+
+            clone_params: dict = {"newid": int(vmid), "full": 1 if full else 0, "name": name}
+            if target:
+                clone_params["target"] = target
+            if storage:
+                clone_params["storage"] = storage
+            clone_upid = self.proxmox.nodes(node).qemu(clone_from).clone.post(**clone_params)
+            wait_for_upid(
+                self.proxmox,
+                node,
+                clone_upid,
+                timeout=min(settle_timeout, 600.0),
+            )
+            steps.append(f"cloned {clone_from} → {vmid}")
+
+            cfg: dict = {}
+            if ciuser is not None:
+                cfg["ciuser"] = ciuser
+            if cipassword is not None:
+                cfg["cipassword"] = cipassword
+            if sshkeys is not None:
+                cfg["sshkeys"] = sshkeys
+            if ipconfig0 is not None:
+                cfg["ipconfig0"] = ipconfig0
+            if cores is not None:
+                cfg["cores"] = int(cores)
+            if memory is not None:
+                cfg["memory"] = int(memory)
+            cfg["agent"] = "1"
+            if cfg:
+                # Don't echo cipassword in update response path — call API directly
+                safe_log = {k: ("***" if k == "cipassword" else v) for k, v in cfg.items()}
+                self.proxmox.nodes(node).qemu(vmid).config.put(**cfg)
+                steps.append(f"cloud-init/config applied: {safe_log}")
+
+            start_node = target or node
+            start_upid = self.proxmox.nodes(start_node).qemu(vmid).status.start.post()
+            wait_for_upid(
+                self.proxmox,
+                start_node,
+                start_upid,
+                timeout=min(settle_timeout, 180.0),
+            )
+            steps.append("start_vm wait finished")
+
+            ip_str: Optional[str] = None
+            deadline = time.time() + settle_timeout
+            while time.time() < deadline:
+                net = self.get_vm_network(start_node, vmid, resolve_runtime=True)
+                try:
+                    net_obj = json.loads(net[0].text)
+                except Exception:
+                    net_obj = {}
+                ips = net_obj.get("runtime_ips") or []
+                if ips:
+                    ip_str = str(ips[0]).split("/")[0]
+                    break
+                time.sleep(2.0)
+            if not ip_str:
+                warnings.append(
+                    "runtime_ip_unavailable — ensure qemu-guest-agent is in the template"
+                )
+            else:
+                steps.append(f"resolved ip={ip_str}")
+
+            user = ciuser or "root"
+            ssh_hint = f"ssh {user}@{ip_str}" if ip_str else None
+            if sshkeys:
+                guest_auth = "sshkeys"
+            elif cipassword:
+                guest_auth = "cipassword"
+            else:
+                guest_auth = "none"
+
+            final = {
+                "vmid": str(vmid),
+                "name": name,
+                "node": start_node,
+                "ip": ip_str,
+                "ssh_hint": ssh_hint,
+                "guest_auth": guest_auth,
+                "warnings": warnings,
+                "steps": steps,
+            }
+            return [
+                Content(
+                    type="text",
+                    text="bootstrap_cloudinit_vm complete\n" + json.dumps(final, indent=2),
+                )
+            ]
+        except ValueError:
+            raise
+        except Exception as e:
+            if is_missing_resource_error(e):
+                raise ValueError(qemu_not_found_message(clone_from, node))
+            self._handle_error(f"bootstrap cloud-init VM {name}", e)
 
     def push_to_vm(
         self,

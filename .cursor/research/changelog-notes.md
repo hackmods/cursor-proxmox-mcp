@@ -1,5 +1,13 @@
 # Changelog / research notes
 
+## 2026-07-23 — Phase C light + QEMU/cloud-init (rev r16) — 179 tools
+
+**Why:** Roadmap leftovers requested: QEMU agent stretch, `bootstrap_cloudinit_vm`, host reboot/shutdown, cluster join — while keeping SDN/ACME/Ceph/VNC/PBS deferred.
+
+**Shipped:** `get_vm_guest_info`, `fsfreeze_vm`, `fsthaw_vm`; `bootstrap_cloudinit_vm` (clone_from required); `reboot_node`/`shutdown_node` (`confirm==node`); `get_cluster_join_info`/`join_cluster` (`confirm=JOIN`); D29 typed confirm; D26 revised.
+
+**Out of scope:** SDN write, ACME write, Ceph, VNC proxy, PBS, node network CRUD, cloud-image download/import, default-on create wait.
+
 ## 2026-07-23 — Tool-call audit + logging QOL (rev r15) — 171 tools
 
 **Why:** `podcast-shorts-factory/proxmox_mcp.log` showed only MCP handshake (ListTools/ListResources) across three startups — zero `CallToolRequest` lines — so usage reviews could not drive enhancements. Root cause: no structured tool invocation logging; DEBUG also drowned in urllib3/asyncio/MCP framework noise.

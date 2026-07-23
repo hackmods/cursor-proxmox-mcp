@@ -70,6 +70,15 @@ See [next-expansion.md](next-expansion.md). Summary:
 | `get_containers` probes (docker/`:80`, opt-in only) | M ~0.5–1d | done |
 | `deploy_node_app` (Node LTS → build → systemd) | M ~0.5d | done (r14) |
 
+### Phase C light — done / v1.6.0
+
+| Item | Status |
+|------|--------|
+| `get_vm_guest_info` / `fsfreeze_vm` / `fsthaw_vm` | done |
+| `bootstrap_cloudinit_vm` | done |
+| `reboot_node` / `shutdown_node` (confirm=node) | done |
+| `get_cluster_join_info` / `join_cluster` (confirm=JOIN) | done |
+
 ### Phase C — Heavy / deferred
 
 | Area | Reason to defer |
@@ -77,11 +86,9 @@ See [next-expansion.md](next-expansion.md). Summary:
 | SDN write CRUD (zones/vnets/subnets) | Multi-object graph + apply orchestration UX |
 | ACME account create + order + renew | Multi-step DNS plugin credentials |
 | Ceph OSD/MON/MGR create/destroy | Cluster-invasive sequenced ops |
-| Cluster join / corosync bootstrap | One-shot, dangerous, no rollback |
 | Full VNC/SPICE websocket proxy | Long-lived stream ≠ MCP request/response |
 | PBS direct admin | Separate product; use storage.type=pbs |
-| Node reboot/shutdown | Physical host power needs extra confirmation UX |
-| QEMU agent helpers beyond network + file push | Richer introspection / fsfreeze / etc. |
+| Node network create/update/reload | Bridge automation labs |
 
 ## Excluded
 

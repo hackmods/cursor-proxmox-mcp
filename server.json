@@ -3,7 +3,7 @@
   "name": "io.github.hackmods/cursor-proxmox-mcp",
   "title": "Cursor Proxmox MCP",
   "description": "Manage Proxmox VE via Cursor: QEMU, LXC, storage, HA, firewall, access.",
-  "version": "1.5.2",
+  "version": "1.6.0",
   "websiteUrl": "https://github.com/hackmods/cursor-proxmox-mcp",
   "repository": {
     "url": "https://github.com/hackmods/cursor-proxmox-mcp",
@@ -14,7 +14,7 @@
     {
       "registryType": "pypi",
       "identifier": "cursor-proxmox-mcp",
-      "version": "1.5.2",
+      "version": "1.6.0",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -46,7 +46,7 @@
     },
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/hackmods/cursor-proxmox-mcp:1.5.2",
+      "identifier": "ghcr.io/hackmods/cursor-proxmox-mcp:1.6.0",
       "transport": {
         "type": "stdio"
       },

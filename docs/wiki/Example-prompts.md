@@ -1,6 +1,6 @@
 # Example prompts
 
-Copy-paste these into Cursor chat once the **proxmox** MCP server shows green (~171 tools). Not wired yet? Start with [Setup](Setup).
+Copy-paste these into Cursor chat once the **proxmox** MCP server shows green (~179 tools). Not wired yet? Start with [Setup](Setup).
 
 Put API tokens in `config.json` / env — not in prompts.
 

@@ -130,7 +130,9 @@ D10 keeps create tools UPID-first. `create_vm` / `create_lxc` accept optional `w
 
 ## D26 — Community announce tooling before Phase C
 
-Ship operator tooling for `docs/community/` drafts (`scripts/post-community.*`) and keep Phase C (SDN/ACME/Ceph/cluster join/VNC proxy/PBS/node power) **deferred** until a concrete lab demand appears. F/F.1 already cover the day-2 path that unblocked Cursor↔Proxmox agents.
+Ship operator tooling for `docs/community/` drafts (`scripts/post-community.*`). Keep heavy Phase C (**SDN write, ACME order/renew, Ceph, VNC websocket proxy, PBS admin, node network CRUD**) deferred until a concrete lab demand appears.
+
+**Revised 2026-07-23 (r16):** node reboot/shutdown and cluster join were pulled forward with typed confirmation (D29). F/F.1 already cover the day-2 guest path.
 
 ## D27 — provision_lxc composite (non-Docker)
 
@@ -152,3 +154,14 @@ Rules:
 - `verbose` may add truncated command/path previews — still redacted for sensitive keys.
 - Keep third-party loggers quiet (`quiet_libraries`) so DEBUG/verbose stays readable; opt into `http_debug` for urllib3.
 - Env overrides (`PROXMOX_MCP_VERBOSE`, `PROXMOX_MCP_LOG_LEVEL`, …) are first-class for Cursor MCP env without editing JSON.
+
+## D29 — Typed confirm for host power and cluster join
+
+Guest `force=True` is too weak for physical host power and cluster membership changes.
+
+Rules:
+- `reboot_node` / `shutdown_node`: `confirm` must equal the **exact** Proxmox node name; reject otherwise.
+- `join_cluster`: `confirm` must be the literal string `JOIN`.
+- Descriptions + responses use `IRREVERSIBLE`; tools are in `DESTRUCTIVE_TOOLS`.
+- `join_cluster` runs on the **joining** node — operators must point MCP at the standalone host.
+- Never log join passwords (tool_audit redaction).

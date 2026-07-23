@@ -74,6 +74,16 @@ _IDENTITY_KEYS = frozenset(
         "userid",
         "role",
         "propagate",
+        "confirm",
+        "clone_from",
+        "fingerprint",
+        "hostname",
+        "sections",
+        "full",
+        "votes",
+        "nodeid",
+        "ciuser",
+        "ipconfig0",
     }
 )
 

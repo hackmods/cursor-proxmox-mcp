@@ -1,6 +1,6 @@
 # Next expansion phases
 
-Living Cursor note for what to build after the current **171-tool** baseline.
+Living Cursor note for what to build after the current **179-tool** baseline.
 Update this file when priorities change; keep [proxmox-api-coverage.md](proxmox-api-coverage.md), [README.md](../../README.md), and [docs/api-coverage.md](../../docs/api-coverage.md) in sync.
 
 **Baseline (done):** Formal Cursor ↔ Proxmox MCP — guest lifecycle, storage, HA, firewall, access, replication, SDN read, ACME read, pools, console tickets, inventory-locked CI.
@@ -12,6 +12,8 @@ Update this file when priorities change; keep [proxmox-api-coverage.md](proxmox-
 **Phase F (done / v1.3.0):** LXC day-2 god mode — paramiko core, `get_mcp_capabilities`, `prepare_lxc_for_docker`, `push_to_lxc`/`pull_from_lxc`, SSH/exec QOL. Lab source: [agent-feedback-log.md](agent-feedback-log.md) (Lumon deploy).
 
 **Phase F.1 (done / v1.4.0):** VM network + create `wait=` + guest-agent push/pull + `deploy_static_nginx` + opt-in container probes.
+
+**Phase C light (done / v1.6.0):** QEMU guest-info/fsfreeze, `bootstrap_cloudinit_vm`, node reboot/shutdown (typed confirm), cluster join info/join.
 
 ---
 
@@ -38,12 +40,11 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 | SDN write CRUD (zones/vnets/subnets) | Medium | Medium | Homelab SDN from chat; always pair with existing `apply_sdn` |
 | ACME account create + order + renew | High | Secrets | Need DNS plugin creds in config — never log |
 | Ceph OSD/MON/MGR create/destroy | High | Cluster-invasive | Prefer Ceph tooling unless operator insists |
-| Cluster join / corosync bootstrap | High | No rollback | Almost never from MCP |
 | Full VNC/SPICE websocket proxy | High | Poor MCP fit | Tickets only (D6) unless a client needs proxy |
 | PBS direct admin | Medium | Separate product | Use `storage.type=pbs` until needed |
-| Node reboot / shutdown | Low code, high risk | Host power | Needs explicit confirmation UX |
 | Node network create/update/reload | Medium | Med | Bridge automation labs |
-| QEMU agent helpers beyond exec | Low–med | Low | **F.1 shipped** network + file; richer agent APIs stay here |
+
+~~Cluster join~~ / ~~Node reboot/shutdown~~ / ~~QEMU agent beyond network/file~~ — **shipped v1.6.0** (D29 typed confirm).
 
 ---
 
@@ -74,9 +75,18 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 | P2 | `deploy_static_nginx` (LXC recipe) | **M ~0.5–1d** | Thin wrap over push + pct; Lumon unblocker | done |
 | P2 | `get_containers` docker/`:80` probes | **M ~0.5–1d** | Opt-in `probes=true` only | done |
 
-**Not done / deferred:** default-on create wait; default-on inventory probes; richer QEMU agent (fsfreeze, guest-info beyond network/file).
+**Not done / deferred:** default-on create wait; default-on inventory probes.
 
-**Explicitly still out:** auto-wait default-on; merge LXC into `get_vms`; DHCP lease scraping; free-form raw LXC config; privileged CT / containerd downgrade as happy path.
+---
+
+## Phase C light — host power + join + QEMU agent (shipped v1.6.0)
+
+| Priority | Item | Status |
+|----------|------|--------|
+| P0 | `get_vm_guest_info`, `fsfreeze_vm`, `fsthaw_vm` | done |
+| P0 | `bootstrap_cloudinit_vm` (clone_from required) | done |
+| P0 | `reboot_node` / `shutdown_node` (`confirm=<node>`) | done (D29) |
+| P0 | `get_cluster_join_info` / `join_cluster` (`confirm=JOIN`) | done (D29) |
 
 ---
 
@@ -116,9 +126,10 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 1. ~~Post-r11 slices 1–5~~ shipped r12 (169 tools): ACL UX, bootstrap_docker_lxc, helpers, qm_set_vm, VM tags
 2. ~~provision_lxc + create_lxc onboot/tags/description~~ shipped r13 (170 tools)
 3. ~~CT111 hygiene + deploy_node_app~~ shipped r14 (171 tools)
-4. Post community drafts when ready
-5. Phase C (SDN/ACME/Ceph/…) stays deferred (D26) until a real use case
-6. Optional later: bootstrap_cloudinit_vm (after lab demand)
+4. ~~Tool-call audit logging~~ shipped r15 (171 tools)
+5. ~~Phase C light + QEMU/cloud-init~~ shipped r16 (179 tools)
+6. Post community drafts when ready
+7. Phase C remainder (SDN/ACME/Ceph/VNC/PBS/node net) stays deferred (D26) until a real use case
 ```
 
 When shipping any new tool: update this file’s status, coverage matrix, changelog-notes, README, and `expected_tools.py` in the same change (api-coverage + keep-docs-aligned rules).
