@@ -15,7 +15,7 @@ Copy `config.example.json` → `config.json` and fill in host + API token fields
 | `auth.user` | yes | `user@realm` only — e.g. `mcp@pve` — **not** `user@realm!token` |
 | `auth.token_name` | yes | Token id only — e.g. `cursor` |
 | `auth.token_value` | yes | Secret UUID shown once at token creation |
-| `logging.*` | optional | `DEBUG` while bringing MCP up; `INFO` after |
+| `logging.*` | optional | See logging table below |
 | `ssh.enabled` | optional | `true` to enable host SSH for `pct` (LXC shell / push / prepare / runtime IP). Default off. |
 | `ssh.user` | if enabled | SSH user on the node (often `root` or a sudo-capable user that can run `pct`) |
 | `ssh.port` | optional | SSH port (default `22`) |
@@ -23,6 +23,36 @@ Copy `config.example.json` → `config.json` and fill in host + API token fields
 | `ssh.host_overrides` | optional | Map node name → SSH address when API host ≠ node, e.g. `{ "pve": "192.168.0.23" }` |
 | `ssh.pct_path` | optional | Default `/usr/sbin/pct` |
 | `ssh.timeout` | optional | Seconds (default `120` for day-2 apt/npm/Docker; override with `PROXMOX_MCP_EXEC_TIMEOUT`) |
+
+## Logging
+
+Every MCP tool invocation emits a one-line audit record when `tool_calls` is true (default):
+
+```text
+INFO - proxmox-mcp.tools - tool_call name=provision_lxc ok=true duration_ms=4210 node=pve vmid=114
+ERROR - proxmox-mcp.tools - tool_call name=execute_lxc_command ok=false duration_ms=120 error=ValueError: … node=pve vmid=114
+```
+
+Passwords, tokens, and SSH key material are redacted (length only). Set a `file` path so usage reviews are not limited to Cursor handshake noise.
+
+| Path | Default | Notes |
+|------|---------|--------|
+| `logging.level` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
+| `logging.file` | `null` | Relative paths resolve from the MCP process cwd |
+| `logging.verbose` | `false` | Richer safe arg detail; bumps `INFO` → `DEBUG` |
+| `logging.tool_calls` | `true` | Structured `tool_call` audit lines |
+| `logging.console_level` | `ERROR` | Keep Cursor stderr quiet unless raised |
+| `logging.quiet_libraries` | `true` | Suppress urllib3 / asyncio / MCP handshake spam |
+| `logging.http_debug` | `false` | Allow urllib3 DEBUG (noisy; for TLS/proxy debugging) |
+
+Env overrides (no config edit / reload-friendly when set in Cursor MCP env):
+
+| Env | Effect |
+|-----|--------|
+| `PROXMOX_MCP_VERBOSE=1` | `verbose=true` (+ DEBUG if level was INFO) |
+| `PROXMOX_MCP_LOG_LEVEL=DEBUG` | Override level |
+| `PROXMOX_MCP_TOOL_CALLS=0` | Disable tool_call audit |
+| `PROXMOX_MCP_CONSOLE_LEVEL=INFO` | Raise stderr verbosity |
 
 ## Privilege Separation
 

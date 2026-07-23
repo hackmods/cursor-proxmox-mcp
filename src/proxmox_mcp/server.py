@@ -14,8 +14,9 @@ from typing import Optional
 from mcp.server.fastmcp import FastMCP
 
 from .config.loader import load_config
-from .core.logging import setup_logging
+from .core.logging import resolve_logging_config, setup_logging
 from .core.proxmox import ProxmoxManager
+from .core.tool_audit import install_tool_call_audit
 from .tools.node import NodeTools
 from .tools.vm import VMTools
 from .tools.container import ContainerTools
@@ -43,6 +44,9 @@ class ProxmoxMCPServer:
 
     def __init__(self, config_path: Optional[str] = None):
         self.config = load_config(config_path)
+        # Resolve env overrides (VERBOSE / LOG_LEVEL / …) once for audit + capabilities.
+        resolved_logging = resolve_logging_config(self.config.logging)
+        self.config = self.config.model_copy(update={"logging": resolved_logging})
         self.logger = setup_logging(self.config.logging)
 
         self.proxmox_manager = ProxmoxManager(self.config.proxmox, self.config.auth)
@@ -64,6 +68,7 @@ class ProxmoxMCPServer:
             self.proxmox,
             ssh_config=self.config.ssh,
             proxmox_host=self.config.proxmox.host,
+            logging_config=self.config.logging,
         )
         self.storage_tools = StorageTools(self.proxmox)
         self.cluster_tools = ClusterTools(self.proxmox)
@@ -82,6 +87,7 @@ class ProxmoxMCPServer:
 
         self.mcp = FastMCP("ProxmoxMCP")
         self._setup_tools()
+        install_tool_call_audit(self.mcp, self.config.logging)
         self._warn_ssh_capabilities()
 
     def _warn_ssh_capabilities(self) -> None:

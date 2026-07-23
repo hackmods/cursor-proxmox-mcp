@@ -326,3 +326,32 @@ Discovery stack; UPID/`wait_for_task`; `get_lxc_network` runtime IPs; `execute_l
 - Free-form `execute_host_command`
 - Baking Node/Next into `create_lxc` itself (recipe tool only)
 - Returning create passwords in tool output
+
+---
+
+## 2026-07-23 — podcast-shorts-factory log review (observability)
+
+**Source:** `podcast-shorts-factory/proxmox_mcp.log` (99 lines; three startups Jul 22–23).
+
+### Symptoms
+
+| Symptom | Impact |
+|---------|--------|
+| Log only shows connect + `ListTools` / `ListPrompts` / `ListResources` | Cannot review which tools agents used or why they failed |
+| No `CallToolRequest` / tool outcome lines | Feedback loops depend on chat transcripts only |
+| `DEBUG` would include urllib3 / asyncio / MCP handshake spam | Operators avoid useful verbosity |
+
+### Root cause
+
+No structured audit around FastMCP tool dispatch; library loggers inherit root DEBUG.
+
+### Fix (rev r15 / v1.5.2)
+
+1. `tool_call` audit via `ToolManager.call_tool` wrap (safe args, duration, ok/error).
+2. `logging.verbose` + env overrides; `quiet_libraries` default on.
+3. Capabilities reports effective logging settings.
+
+### Out of scope
+
+- Default-on full command body logging
+- Scraping Cursor chat transcripts into the log file

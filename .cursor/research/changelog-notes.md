@@ -1,5 +1,13 @@
 # Changelog / research notes
 
+## 2026-07-23 — Tool-call audit + logging QOL (rev r15) — 171 tools
+
+**Why:** `podcast-shorts-factory/proxmox_mcp.log` showed only MCP handshake (ListTools/ListResources) across three startups — zero `CallToolRequest` lines — so usage reviews could not drive enhancements. Root cause: no structured tool invocation logging; DEBUG also drowned in urllib3/asyncio/MCP framework noise.
+
+**Shipped:** Wrap FastMCP `ToolManager.call_tool` → `tool_call name=… ok=… duration_ms=…` (+ safe identity args); `LoggingConfig.verbose` / `tool_calls` / `console_level` / `quiet_libraries` / `http_debug`; env overrides `PROXMOX_MCP_VERBOSE` / `LOG_LEVEL` / `TOOL_CALLS` / `CONSOLE_LEVEL`; capabilities reports logging; D28.
+
+**Out of scope:** Logging full command bodies / file contents by default; raising console above ERROR by default; changing tool inventory.
+
 ## 2026-07-19 — CT111 hygiene + deploy_node_app (rev r14) — 171 tools
 
 **Why:** CT111 behind7proxies Next.js deploy — stale Cursor catalog made Phase F tip names look like ghost tools; private git clone failed; no Node recipe; quorum NOT OK on 1-node lab; ssh.timeout 30 opaque for apt/npm.

@@ -54,10 +54,12 @@ class CapabilitiesTools(ProxmoxTool):
         *,
         ssh_config: Optional[Any] = None,
         proxmox_host: Optional[str] = None,
+        logging_config: Optional[Any] = None,
     ):
         super().__init__(proxmox_api)
         self.ssh_config = ssh_config
         self.proxmox_host = proxmox_host
+        self.logging_config = logging_config
         self._pct: Optional[PctExecutor] = None
         if ssh_configured(ssh_config) and proxmox_host:
             self._pct = PctExecutor(ssh_config, proxmox_host)
@@ -70,6 +72,7 @@ class CapabilitiesTools(ProxmoxTool):
         ssh_on = ssh_configured(self.ssh_config)
         key_path = getattr(self.ssh_config, "private_key_path", None) if self.ssh_config else None
         key_set = bool(key_path)
+        log_cfg = self.logging_config
 
         try:
             import paramiko  # noqa: F401
@@ -92,6 +95,14 @@ class CapabilitiesTools(ProxmoxTool):
             f"  • paramiko: {paramiko_detail}",
             f"  • day2_tools_present: {', '.join(day2_present) or '(none)'}",
         ]
+        if log_cfg is not None:
+            lines.append(
+                "  • logging: "
+                f"level={getattr(log_cfg, 'level', '?')} "
+                f"verbose={getattr(log_cfg, 'verbose', False)} "
+                f"tool_calls={getattr(log_cfg, 'tool_calls', True)} "
+                f"file={getattr(log_cfg, 'file', None) or '(none)'}"
+            )
         if day2_missing:
             lines.append(
                 f"  • day2_tools_MISSING (stale catalog?): {', '.join(day2_missing)}"

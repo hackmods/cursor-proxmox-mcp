@@ -1,5 +1,5 @@
 <!-- channel: github -->
-<!-- version: 1.5.1 -->
+<!-- version: 1.5.2 -->
 <!-- tools: 171 -->
 
 # GitHub Discussion — draft (Announcements)
@@ -28,6 +28,6 @@ Set `PROXMOX_MCP_CONFIG` to your config JSON. Day-2 LXC (`pct` exec / prepare / 
 
 - [SETUP.md](https://github.com/hackmods/cursor-proxmox-mcp/blob/main/SETUP.md)
 - [Wiki](https://github.com/hackmods/cursor-proxmox-mcp/wiki)
-- [Release notes](https://github.com/hackmods/cursor-proxmox-mcp/releases/tag/v1.5.1)
+- [Release notes](https://github.com/hackmods/cursor-proxmox-mcp/releases/tag/v1.5.2)
 
 Feedback welcome on token/privsep patterns and which write APIs to prioritize next (Phase C stays deferred).

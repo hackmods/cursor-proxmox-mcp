@@ -224,7 +224,7 @@ GET_VM_RRD_DATA_DESC = """Get RRD metrics for a VM. Parameters: node*, vmid*, ti
 
 # Cluster extras
 GET_VERSION_DESC = """Get Proxmox VE version/API info."""
-GET_MCP_CAPABILITIES_DESC = """Self-check: MCP package version, ssh.enabled, paramiko, day-2 tool presence, optional pct version probe. Call after reload/config change. Parameters: probe_node?"""
+GET_MCP_CAPABILITIES_DESC = """Self-check: MCP package version, ssh.enabled, paramiko, day-2 tool presence, logging (level/verbose/tool_calls/file), optional pct version probe. Call after reload/config change. Parameters: probe_node?"""
 GET_CLUSTER_RESOURCES_DESC = """List cluster resources. Parameters: type? (vm|storage|node|sdn)"""
 GET_CLUSTER_LOG_DESC = """Get recent cluster log. Parameters: max_entries?=50"""
 GET_CLUSTER_OPTIONS_DESC = """Get cluster-wide options."""

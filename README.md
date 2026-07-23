@@ -5,7 +5,7 @@
 [![PyPI](https://img.shields.io/pypi/v/cursor-proxmox-mcp)](https://pypi.org/project/cursor-proxmox-mcp/)
 [![GHCR](https://img.shields.io/badge/GHCR-cursor--proxmox--mcp-blue)](https://github.com/hackmods/cursor-proxmox-mcp/pkgs/container/cursor-proxmox-mcp)
 
-**Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 171 tools covering QEMU VMs (incl. guest-agent network/file push + `qm_set_vm`), LXC (incl. `provision_lxc`, `bootstrap_docker_lxc`, crun Path B, DNS/SSH helpers, `deploy_node_app`), unified guest power, storage admin, cluster/tasks, snapshots, backups (incl. scheduled jobs), migration, HA, firewall (incl. IPSet CIDRs), access control, replication, SDN (read), ACME (read), pools, and console tickets. **v1.5.1** adds `deploy_node_app` and CT111 tip/timeout/quorum hygiene (r14).
+**Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 171 tools covering QEMU VMs (incl. guest-agent network/file push + `qm_set_vm`), LXC (incl. `provision_lxc`, `bootstrap_docker_lxc`, crun Path B, DNS/SSH helpers, `deploy_node_app`), unified guest power, storage admin, cluster/tasks, snapshots, backups (incl. scheduled jobs), migration, HA, firewall (incl. IPSet CIDRs), access control, replication, SDN (read), ACME (read), pools, and console tickets. **v1.5.2** adds structured `tool_call` audit logging + verbose/env logging QOL (r15).
 
 **Repo:** [hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)
 
@@ -176,10 +176,14 @@ Example `proxmox-config/config.json`:
   "logging": {
     "level": "INFO",
     "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    "file": "proxmox_mcp.log"
+    "file": "proxmox_mcp.log",
+    "verbose": false,
+    "tool_calls": true
   }
 }
 ```
+
+Tool invocations are audited to the log file as `tool_call name=… ok=… duration_ms=…` (secrets redacted). Set `verbose: true` or env `PROXMOX_MCP_VERBOSE=1` for richer diagnostics without urllib3 spam. Details: [`proxmox-config/README.md` — Logging](proxmox-config/README.md#logging).
 
 Create the token in Proxmox UI: Datacenter → Permissions → API Tokens. See **[SETUP.md — API token & Privilege Separation](SETUP.md#1-create-a-proxmox-api-token)** for the full walkthrough.
 
@@ -194,6 +198,7 @@ This server can create/delete guests, change firewall/ACL, and run guest command
 ## Features
 
 - Token auth via proxmoxer (JSON config + optional `${ENV}` secret interpolation)
+- Structured `tool_call` audit logging (redacted) + `verbose` / env log overrides
 - Full guest lifecycle, snapshots, vzdump backups
 - Storage content + definition CRUD + URL download
 - Cluster HA, firewall (rules/aliases/ipsets), access/ACL/tokens

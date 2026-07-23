@@ -14,7 +14,12 @@
     "logging": {
         "level": "INFO",
         "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        "file": "logs/proxmox_mcp.log"
+        "file": "logs/proxmox_mcp.log",
+        "verbose": false,
+        "tool_calls": true,
+        "console_level": "ERROR",
+        "quiet_libraries": true,
+        "http_debug": false
     },
     "ssh": {
         "enabled": false,

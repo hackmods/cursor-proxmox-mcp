@@ -20,6 +20,7 @@ Pair with [changelog-notes.md](changelog-notes.md) (research “why”) and root
 | 2026-07-19 | r12 | Post-r11: ACL UX, bootstrap_docker_lxc, SSH/status helpers, qm_set_vm, VM tags | **169** | Slices 1–5 roadmap |
 | 2026-07-19 | r13 | provision_lxc + create_lxc onboot/tags/description; wget note | **170** | D27; CT110 agent feedback; **v1.5.0** |
 | 2026-07-19 | r14 | CT111: deploy_node_app, tip reload footer, quorum lab note, ssh.timeout 120 | **171** | agent-feedback CT111; **v1.5.1** |
+| 2026-07-23 | r15 | Tool-call audit logging + verbose/env logging QOL | **171** | D28; podcast-shorts log review; **v1.5.2** |
 
 ## How to update
 

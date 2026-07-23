@@ -217,7 +217,9 @@ Edit `proxmox-config/config.json`:
   "logging": {
     "level": "INFO",
     "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    "file": "proxmox_mcp.log"
+    "file": "proxmox_mcp.log",
+    "verbose": false,
+    "tool_calls": true
   }
 }
 ```
@@ -230,6 +232,11 @@ Edit `proxmox-config/config.json`:
 | `user` | Proxmox user, e.g. `mcp@pve` or `root@pam` |
 | `token_name` | Token name only (not `user!token`) |
 | `token_value` | Secret from token creation |
+| `logging.file` | Where audit lines go (relative = MCP process cwd) |
+| `logging.verbose` | Richer (redacted) tool arg detail; bumps INFO→DEBUG |
+| `logging.tool_calls` | One-line `tool_call name=… ok=… duration_ms=…` per invocation (default true) |
+
+Quick verbose without editing JSON: set Cursor MCP env `PROXMOX_MCP_VERBOSE=1` (or `PROXMOX_MCP_LOG_LEVEL=DEBUG`). Full logging field table: [`proxmox-config/README.md`](proxmox-config/README.md#logging).
 
 Do **not** commit `config.json` — it holds credentials. It is gitignored (`proxmox-config/config.json`). Keep using `config.example.json` as the template. See also [`proxmox-config/README.md`](proxmox-config/README.md).
 

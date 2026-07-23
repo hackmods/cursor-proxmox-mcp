@@ -63,14 +63,33 @@ class AuthConfig(BaseModel):
 
 class LoggingConfig(BaseModel):
     """Model for logging configuration.
-    
-    Defines logging parameters with sensible defaults.
-    Supports both file and console logging with
-    customizable format and log levels.
+
+    Supports file + console handlers, structured tool-call audit lines,
+    and a ``verbose`` mode for richer (still redacted) diagnostics.
+
+    Env overrides (applied in ``setup_logging``): ``PROXMOX_MCP_LOG_LEVEL``,
+    ``PROXMOX_MCP_VERBOSE``, ``PROXMOX_MCP_TOOL_CALLS``, ``PROXMOX_MCP_CONSOLE_LEVEL``.
     """
-    level: str = "INFO"  # Optional: Log level (default: INFO)
-    format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"  # Optional: Log format
-    file: Optional[str] = None  # Optional: Log file path (default: None for console logging)
+    level: str = "INFO"  # DEBUG | INFO | WARNING | ERROR
+    format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    file: Optional[str] = None  # Relative paths resolve from process cwd
+    # QOL / observability
+    verbose: bool = False  # Richer tool_call detail; bumps level INFO→DEBUG
+    tool_calls: bool = True  # One-line audit per MCP tool invocation
+    console_level: str = "ERROR"  # Keep Cursor stderr quiet unless raised
+    quiet_libraries: bool = True  # Suppress urllib3/asyncio/mcp handshake spam
+    http_debug: bool = False  # When true, allow urllib3 DEBUG (noisy)
+
+    @model_validator(mode="after")
+    def _normalize_levels(self) -> "LoggingConfig":
+        self.level = self.level.upper()
+        self.console_level = self.console_level.upper()
+        allowed = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        if self.level not in allowed:
+            raise ValueError(f"logging.level must be one of {sorted(allowed)}")
+        if self.console_level not in allowed:
+            raise ValueError(f"logging.console_level must be one of {sorted(allowed)}")
+        return self
 
 
 class SSHConfig(BaseModel):

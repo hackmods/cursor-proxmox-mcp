@@ -4,7 +4,7 @@ Formal **Cursor ↔ [Proxmox VE](https://www.proxmox.com/)** MCP connector — a
 
 | | |
 |--|--|
-| **Version** | [v1.5.1](https://github.com/hackmods/cursor-proxmox-mcp/releases/tag/v1.5.1) |
+| **Version** | [v1.5.2](https://github.com/hackmods/cursor-proxmox-mcp/releases/tag/v1.5.2) |
 | **Tools** | **171** (CI-locked inventory) |
 | **Package** | [`cursor-proxmox-mcp`](https://pypi.org/project/cursor-proxmox-mcp/) on PyPI · [GHCR](https://github.com/hackmods/cursor-proxmox-mcp/pkgs/container/cursor-proxmox-mcp) |
 

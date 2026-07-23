@@ -142,3 +142,13 @@ MCP stance:
 - Keep primitives (`create_lxc`, `wait_for_task`, `start_lxc`, `get_lxc_network`, `configure_lxc_ssh`).
 - Never echo password in tool output; prefer `ssh_public_keys`.
 - `create_lxc` gains `onboot` / `description` / `tags` (parity with `create_vm`); password SSH enablement stays post-start (`configure_lxc_ssh` / `provision_lxc`), not on async create.
+
+## D28 — Structured tool-call audit logging
+
+Usage logs that only show MCP handshake (`ListTools` / `ListResources`) are useless for lab feedback. Always emit one-line `tool_call` audit records (name, ok, duration_ms, safe identity args) by default (`logging.tool_calls=true`).
+
+Rules:
+- Redact passwords / tokens / SSH key material (length only); never log secret values.
+- `verbose` may add truncated command/path previews — still redacted for sensitive keys.
+- Keep third-party loggers quiet (`quiet_libraries`) so DEBUG/verbose stays readable; opt into `http_debug` for urllib3.
+- Env overrides (`PROXMOX_MCP_VERBOSE`, `PROXMOX_MCP_LOG_LEVEL`, …) are first-class for Cursor MCP env without editing JSON.

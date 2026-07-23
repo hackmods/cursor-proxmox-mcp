@@ -3,7 +3,7 @@
   "name": "io.github.hackmods/cursor-proxmox-mcp",
   "title": "Cursor Proxmox MCP",
   "description": "Manage Proxmox VE via Cursor: QEMU, LXC, storage, HA, firewall, access.",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "websiteUrl": "https://github.com/hackmods/cursor-proxmox-mcp",
   "repository": {
     "url": "https://github.com/hackmods/cursor-proxmox-mcp",
@@ -14,7 +14,7 @@
     {
       "registryType": "pypi",
       "identifier": "cursor-proxmox-mcp",
-      "version": "1.5.1",
+      "version": "1.5.2",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -31,12 +31,22 @@
           "description": "API token secret when config uses ${PROXMOX_TOKEN_VALUE}.",
           "isSecret": true,
           "isRequired": false
+        },
+        {
+          "name": "PROXMOX_MCP_VERBOSE",
+          "description": "Set to 1 for verbose tool_call detail (also bumps INFO→DEBUG).",
+          "isRequired": false
+        },
+        {
+          "name": "PROXMOX_MCP_LOG_LEVEL",
+          "description": "Override logging.level (DEBUG|INFO|WARNING|ERROR).",
+          "isRequired": false
         }
       ]
     },
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/hackmods/cursor-proxmox-mcp:1.5.1",
+      "identifier": "ghcr.io/hackmods/cursor-proxmox-mcp:1.5.2",
       "transport": {
         "type": "stdio"
       },

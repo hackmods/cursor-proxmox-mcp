@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-07-23
+
+### Added
+
+- **Tool-call audit logging (rev r15):** every MCP invocation emits
+  `tool_call name=… ok=… duration_ms=…` with safe identity args; secrets redacted.
+- **Logging QOL:** `verbose`, `tool_calls`, `console_level`, `quiet_libraries`,
+  `http_debug` on `logging.*`; env overrides `PROXMOX_MCP_VERBOSE`,
+  `PROXMOX_MCP_LOG_LEVEL`, `PROXMOX_MCP_TOOL_CALLS`, `PROXMOX_MCP_CONSOLE_LEVEL`.
+- `get_mcp_capabilities` reports effective logging settings.
+
+### Changed
+
+- Default keeps urllib3 / asyncio / MCP handshake loggers at WARNING so
+  `DEBUG` / `verbose` stays readable for Proxmox MCP diagnostics.
+
 ## [1.5.1] - 2026-07-19
 
 ### Added

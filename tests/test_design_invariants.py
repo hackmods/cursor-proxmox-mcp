@@ -42,7 +42,9 @@ def test_destructive_descriptions_warn():
 
 def test_server_uses_core_logging_only():
     server_src = Path("src/proxmox_mcp/server.py").read_text(encoding="utf-8")
-    assert "from .core.logging import setup_logging" in server_src
+    assert "from .core.logging import" in server_src
+    assert "setup_logging" in server_src
+    assert "install_tool_call_audit" in server_src
     assert "utils.logging" not in server_src
     assert "utils.auth" not in server_src
 
