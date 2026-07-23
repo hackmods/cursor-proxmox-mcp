@@ -99,11 +99,48 @@ def privsep_empty_hint(resource: str = "results") -> str:
 
 
 def console_ticket_footer(kind: str = "VNC") -> str:
-    """Note that console tools only mint tickets (D6)."""
+    """Note that console tools only mint tickets (D6) — no MCP websocket proxy."""
     return (
         f"💡 Ticket only — connect externally with a {kind} client "
-        "(noVNC / virt-viewer / termproxy). This MCP does not proxy the console."
+        "(noVNC / virt-viewer / termproxy). This MCP does not proxy the console "
+        "(D6). Use get_console_connection for structured ticket + viewer hints."
     )
+
+
+def format_console_connection(
+    *,
+    kind: str,
+    node: str,
+    vmid: str,
+    guest_type: str,
+    ticket_payload: Any,
+    host: Optional[str] = None,
+) -> str:
+    """Structured console connection helper text (still no websocket proxy)."""
+    import json
+
+    payload = ticket_payload if isinstance(ticket_payload, dict) else {"raw": ticket_payload}
+    port = payload.get("port") or payload.get("spiceport")
+    ticket = payload.get("ticket") or payload.get("spice")
+    lines = [
+        f"Console connection ({kind}) for {guest_type} {vmid}@{node}",
+        json.dumps(payload, indent=2, default=str),
+        "",
+        "Viewer hints (external — MCP does not open a websocket):",
+    ]
+    if kind.upper() == "VNC" and port:
+        lines.append(
+            f"  • noVNC / VNC client → host={host or '<proxmox-host>'} port={port} "
+            f"(ticket in JSON above)"
+        )
+    elif kind.upper() == "SPICE":
+        lines.append("  • virt-viewer / remote-viewer with SPICE ticket from JSON")
+    else:
+        lines.append("  • termproxy / serial console client with ticket from JSON")
+    if ticket:
+        lines.append(f"  • ticket present: yes (len={len(str(ticket))})")
+    lines.append(console_ticket_footer(kind))
+    return "\n".join(lines)
 
 
 def privilege_required_note(context: str = "this operation") -> str:

@@ -1,11 +1,12 @@
 """Unified guest power / status / pending / disk-move tools (qemu|lxc)."""
-from typing import List
+from typing import List, Optional
 
 from mcp.types import TextContent as Content
 
 from .base import ProxmoxTool
 from .guest import guest_resource, normalize_guest_type
 from .helpers import (
+    format_console_connection,
     guest_not_found_message,
     is_missing_resource_error,
     upid_response_footer,
@@ -217,3 +218,43 @@ class GuestPowerTools(ProxmoxTool):
         except Exception as e:
             self._raise_guest_not_found(node, vmid, guest_type, e)
             self._handle_error(f"move disk on {guest_type} {vmid}", e)
+
+    def get_console_connection(
+        self,
+        node: str,
+        vmid: str,
+        guest_type: str = "qemu",
+        console: str = "vnc",
+        websocket: bool = True,
+        host: Optional[str] = None,
+    ) -> List[Content]:
+        """Mint a console ticket and return structured viewer hints (no MCP proxy — D6)."""
+        try:
+            gtype = normalize_guest_type(guest_type)
+            resource = guest_resource(self.proxmox, node, vmid, gtype)
+            kind = (console or "vnc").lower()
+            if kind == "vnc":
+                ticket = resource.vncproxy.post(websocket=1 if websocket else 0)
+                label = "VNC"
+            elif kind == "spice":
+                ticket = resource.spiceproxy.post()
+                label = "SPICE"
+            elif kind in ("term", "termproxy", "serial"):
+                ticket = resource.termproxy.post()
+                label = "termproxy"
+            else:
+                raise ValueError("console must be one of: vnc, spice, termproxy")
+            text = format_console_connection(
+                kind=label,
+                node=node,
+                vmid=vmid,
+                guest_type=gtype,
+                ticket_payload=ticket,
+                host=host,
+            )
+            return [Content(type="text", text=text)]
+        except ValueError:
+            raise
+        except Exception as e:
+            self._raise_guest_not_found(node, vmid, guest_type, e)
+            self._handle_error(f"get console connection for {guest_type} {vmid}", e)

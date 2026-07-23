@@ -5,7 +5,7 @@
 [![PyPI](https://img.shields.io/pypi/v/cursor-proxmox-mcp)](https://pypi.org/project/cursor-proxmox-mcp/)
 [![GHCR](https://img.shields.io/badge/GHCR-cursor--proxmox--mcp-blue)](https://github.com/hackmods/cursor-proxmox-mcp/pkgs/container/cursor-proxmox-mcp)
 
-**Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 179 tools covering QEMU VMs (incl. guest-agent network/file/guest-info/fsfreeze + `bootstrap_cloudinit_vm` + `qm_set_vm`), LXC (incl. `provision_lxc`, `bootstrap_docker_lxc`, crun Path B, DNS/SSH helpers, `deploy_node_app`), unified guest power, storage admin, cluster/tasks (incl. join), snapshots, backups, migration, HA, firewall, access control, replication, SDN (read), ACME (read), pools, console tickets, and host reboot/shutdown. **v1.6.0** adds Phase C light (node power + cluster join) + QEMU agent stretch + cloud-init bootstrap (r16).
+**Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 207 tools covering QEMU VMs (incl. guest-agent network/file/guest-info/fsfreeze + `bootstrap_cloudinit_vm` + `qm_set_vm`), LXC (incl. `provision_lxc`, `bootstrap_docker_lxc`, crun Path B, DNS/SSH helpers, `deploy_node_app`), unified guest power, storage admin (incl. PBS plugin + status), cluster/tasks (incl. join), snapshots, backups, migration, HA, firewall, access control, replication, SDN write + apply, ACME order/renew, Ceph status/pools, node network CRUD, console tickets/`get_console_connection`, and host reboot/shutdown. **v1.7.0** ships the Phase C remainder (r17).
 
 **Repo:** [hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)
 
@@ -19,19 +19,20 @@ Registered via `tools/register.py` (called from `ProxmoxMCPServer._setup_tools()
 
 | Domain | Tools |
 |--------|--------|
-| **Nodes** | `get_nodes`, `get_node_status`, `list_node_networks`, `get_node_subscription`, `list_node_certificates`, `get_node_report`, `list_node_services`, `get_node_time`, `wake_node`, `reboot_node` / `shutdown_node` (`confirm=<node>`) |
+| **Nodes** | `get_nodes`, `get_node_status`, `list_node_networks` + create/update/delete + `reload_node_network`, `get_node_subscription`, `list_node_certificates`, `get_node_report`, `list_node_services`, `get_node_time`, `wake_node`, `reboot_node` / `shutdown_node` (`confirm=<node>`) |
 | **Cluster / tasks** | `get_cluster_status`, `get_next_vmid`, `get_task_status`, `list_tasks`, `wait_for_task`, `get_version`, `get_mcp_capabilities`, `get_cluster_resources`, `get_cluster_log`, `get_cluster_options`, `get_cluster_join_info`, `join_cluster` (`confirm=JOIN`) |
 | **QEMU** | lifecycle + config (ISO/cloud-init/net/onboot/tags/description; optional `wait=true`) + `get_vm_network` / `get_vm_guest_info` / `fsfreeze_vm` / `fsthaw_vm` / `push_to_vm` / `pull_from_vm` (guest agent) + `bootstrap_cloudinit_vm` (clone template→CI→IP) + `qm_set_vm` + `get_vm_status`, `get_vm_rrd_data`, console tickets |
 | **LXC** | lifecycle + config + suspend/resume (CRIU warn) + `get_lxc_status` / `get_lxc_network` / `get_lxc_rrd_data` + VNC/SPICE/termproxy; `ssh_public_keys` / `docker_ready` / `nameserver` / `wait` / `onboot` / `description` / `tags` on create; `provision_lxc` (one-shot create→start→IP→SSH) / `bootstrap_docker_lxc` / `prepare_lxc_for_docker` (`docker_mode=auto|keyctl|crun`) / `configure_lxc_dns` / `configure_lxc_ssh` / `get_docker_lxc_status` / `pct_set_lxc` / `push_to_lxc` / `pull_from_lxc` / `deploy_static_nginx` / `deploy_node_app` via opt-in **host** SSH + `pct` ([setup](SETUP.md#ssh-for-lxc-exec-opt-in)); optional `get_containers(probes=true)` |
-| **Guest (unified)** | `start/stop/shutdown/reboot/delete_guest`, `get_guest_status`, `get_guest_pending`, `move_guest_disk` (`guest_type`) |
+| **Guest (unified)** | `start/stop/shutdown/reboot/delete_guest`, `get_guest_status`, `get_guest_pending`, `move_guest_disk`, `get_console_connection` (`guest_type`) |
 | **Snapshots / Backups** | snapshot CRUD/rollback; one-shot backup CRUD; scheduled `list/create/delete_backup_job` |
-| **Storage** | list, content, `list_os_templates`, `list_isos`, download-url, definition CRUD |
+| **Storage** | list, content, `list_os_templates`, `list_isos`, download-url, definition CRUD; PBS via `create_storage(type=pbs)` + `get_pbs_storage_status` |
 | **Migrate / HA** | `migrate_guest`; HA groups + resources CRUD |
 | **Firewall** | cluster + guest rules/options; aliases; IP sets + CIDR members; macros |
 | **Access** | users, groups, roles, ACL, tokens, `get_permissions`, `get_token_permissions` |
 | **Replication** | list/status/run/create/update/delete jobs |
-| **SDN** | list zones/vnets/controllers/ipams/dns + `apply_sdn` |
-| **ACME** | list plugins/accounts/directories (read) |
+| **SDN** | zones/vnets/subnets CRUD + list controllers/ipams/dns + `apply_sdn` |
+| **ACME** | list + create account/plugin, delete plugin, `order_acme_certificate` / `renew_acme_certificate` |
+| **Ceph** | status, list pools/OSDs/MONs/MGRs, create/delete pool (`confirm=<pool>`; no OSD/MON create) |
 | **Pools** | list/get/create/update/delete |
 
 ### Suggested agent flow
@@ -202,16 +203,17 @@ This server can create/delete guests, change firewall/ACL, and run guest command
 - Full guest lifecycle, snapshots, vzdump backups
 - Storage content + definition CRUD + URL download
 - Cluster HA, firewall (rules/aliases/ipsets), access/ACL/tokens
-- Replication jobs, SDN read + apply, ACME read, pools
-- Console **ticket mint** only (VNC/SPICE/termproxy) — no websocket proxy
+- Replication jobs, SDN write + apply, ACME order/renew, Ceph status/pools, pools
+- Console **ticket mint** + `get_console_connection` (VNC/SPICE/termproxy) — no websocket proxy (D6)
+- PBS as PVE storage plugin (not full PBS product admin); node network CRUD + reload
 - uvx / uv / pip / Docker (GHCR) install paths; optional `.[openapi]` for mcpo
 - Local + GitHub CI (`ruff` + `pytest` + coverage + inventory + design invariants)
 
 ### Planned (not implemented yet)
 
-**Phase C remainder:** SDN write CRUD, ACME order/renew, Ceph OSD/MON admin, full VNC/SPICE websocket proxy, PBS direct admin, node network CRUD — see [coverage matrix](.cursor/research/proxmox-api-coverage.md) and [next-expansion.md](.cursor/research/next-expansion.md).
+**Still deferred:** Ceph OSD/MON/MGR create/destroy, full VNC/SPICE websocket proxy, full PBS product admin — see [coverage matrix](.cursor/research/proxmox-api-coverage.md) and [next-expansion.md](.cursor/research/next-expansion.md).
 
-*(Shipped in v1.6.0 / r16: node reboot/shutdown with typed confirm, cluster join info/join, QEMU guest-info/fsfreeze, `bootstrap_cloudinit_vm`.)*
+*(Shipped in v1.7.0 / r17: SDN write, ACME write/order/renew, Ceph read + pool CRUD, console connection helper, PBS storage status, node network CRUD.)*
 
 ## Development
 
@@ -223,14 +225,15 @@ After adding a tool: update `definitions.py`, README table, `.cursor/research/pr
 
 ## Status
 
-- [x] Formal multi-domain Proxmox API coverage (179 tools)
+- [x] Formal multi-domain Proxmox API coverage (207 tools)
 - [x] Phase B + Phase D agent QOL tools
 - [x] Phase F LXC day-2 + Phase F.1 VM network/push + create wait opt-in
 - [x] Phase C light: node reboot/shutdown + cluster join (typed confirm)
+- [x] Phase C remainder: SDN write / ACME / Ceph pools / console helper / PBS storage / node net CRUD
 - [x] v1.0 security hardening, code-design audit, full test suite
 - [x] uvx `cursor-proxmox-mcp` + PyPI/GHCR release workflow
 - [x] Local + GitHub CI with coverage + design invariants
-- [ ] Phase C remainder (SDN write / ACME / Ceph / VNC proxy / PBS / node net CRUD)
+- [ ] Ceph OSD/MON create/destroy, websocket console proxy, full PBS product admin
 
 ## License
 

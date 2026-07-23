@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-07-23
+
+### Added
+
+- **Phase C remainder (rev r17):** **207** tools — SDN zone/vnet/subnet CRUD (+ `apply_sdn`),
+  ACME account/plugin + order/renew, Ceph status + pool list/create/delete (no OSD/MON create),
+  `get_console_connection` (ticket + viewer hints; still no websocket proxy — D6),
+  PBS via `create_storage(type=pbs)` + `get_pbs_storage_status`, node network CRUD + reload.
+
+### Notes
+
+- Ceph OSD/MON/MGR create/destroy and full PBS product admin remain out of scope.
+- Destructive SDN/Ceph/network deletes and `reload_node_network` are marked in inventory.
+
 ## [1.6.0] - 2026-07-23
 
 ### Added

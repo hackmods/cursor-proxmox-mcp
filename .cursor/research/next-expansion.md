@@ -1,9 +1,9 @@
 # Next expansion phases
 
-Living Cursor note for what to build after the current **179-tool** baseline.
+Living Cursor note for what to build after the current **207-tool** baseline.
 Update this file when priorities change; keep [proxmox-api-coverage.md](proxmox-api-coverage.md), [README.md](../../README.md), and [docs/api-coverage.md](../../docs/api-coverage.md) in sync.
 
-**Baseline (done):** Formal Cursor ↔ Proxmox MCP — guest lifecycle, storage, HA, firewall, access, replication, SDN read, ACME read, pools, console tickets, inventory-locked CI.
+**Baseline (done):** Formal Cursor ↔ Proxmox MCP — guest lifecycle, storage, HA, firewall, access, replication, SDN write, ACME write/order, Ceph status/pools, PBS storage plugin, node network CRUD, console tickets + `get_console_connection`, inventory-locked CI.
 
 **Phase D (done):** Agent QOL — `wait_for_task`, ISO/cloud-init/net on create, template/ISO helpers, token ACL helper, SETUP reload + nested Docker prompts, mcpo CI smoke, PyPI publish workflow.
 
@@ -14,6 +14,8 @@ Update this file when priorities change; keep [proxmox-api-coverage.md](proxmox-
 **Phase F.1 (done / v1.4.0):** VM network + create `wait=` + guest-agent push/pull + `deploy_static_nginx` + opt-in container probes.
 
 **Phase C light (done / v1.6.0):** QEMU guest-info/fsfreeze, `bootstrap_cloudinit_vm`, node reboot/shutdown (typed confirm), cluster join info/join.
+
+**Phase C remainder (done / v1.7.0):** SDN write CRUD, ACME account/plugin/order/renew, Ceph status + pool CRUD (no OSD/MON create), `get_console_connection`, PBS storage fields + status, node network CRUD/reload.
 
 ---
 
@@ -35,16 +37,18 @@ Update this file when priorities change; keep [proxmox-api-coverage.md](proxmox-
 
 Keep **out of Available Tools** until deliberately implemented. Full table also in [proxmox-api-coverage.md](proxmox-api-coverage.md).
 
-| Area | Effort | Risk | When to pull forward |
-|------|--------|------|----------------------|
-| SDN write CRUD (zones/vnets/subnets) | Medium | Medium | Homelab SDN from chat; always pair with existing `apply_sdn` |
-| ACME account create + order + renew | High | Secrets | Need DNS plugin creds in config — never log |
-| Ceph OSD/MON/MGR create/destroy | High | Cluster-invasive | Prefer Ceph tooling unless operator insists |
-| Full VNC/SPICE websocket proxy | High | Poor MCP fit | Tickets only (D6) unless a client needs proxy |
-| PBS direct admin | Medium | Separate product | Use `storage.type=pbs` until needed |
-| Node network create/update/reload | Medium | Med | Bridge automation labs |
+| Area | Effort | Risk | Status |
+|------|--------|------|--------|
+| SDN write CRUD (zones/vnets/subnets) | Medium | Medium | **done v1.7.0** (pair with `apply_sdn`) |
+| ACME account create + order + renew | High | Secrets | **done v1.7.0** (never echo plugin `data`) |
+| Ceph status + pool CRUD | Medium | Medium | **done v1.7.0** (no OSD/MON create/destroy) |
+| Ceph OSD/MON/MGR create/destroy | High | Cluster-invasive | deferred — prefer Ceph tooling |
+| Full VNC/SPICE websocket proxy | High | Poor MCP fit | deferred — tickets + `get_console_connection` (D6) |
+| PBS as PVE storage + status | Medium | Separate product | **done v1.7.0** (not full PBS product admin) |
+| Node network create/update/reload | Medium | Med | **done v1.7.0** |
 
 ~~Cluster join~~ / ~~Node reboot/shutdown~~ / ~~QEMU agent beyond network/file~~ — **shipped v1.6.0** (D29 typed confirm).
+~~SDN write / ACME write / Ceph pools / PBS storage / node net~~ — **shipped v1.7.0**.
 
 ---
 

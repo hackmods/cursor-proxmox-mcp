@@ -130,9 +130,11 @@ D10 keeps create tools UPID-first. `create_vm` / `create_lxc` accept optional `w
 
 ## D26 — Community announce tooling before Phase C
 
-Ship operator tooling for `docs/community/` drafts (`scripts/post-community.*`). Keep heavy Phase C (**SDN write, ACME order/renew, Ceph, VNC websocket proxy, PBS admin, node network CRUD**) deferred until a concrete lab demand appears.
+Ship operator tooling for `docs/community/` drafts (`scripts/post-community.*`). Originally kept heavy Phase C deferred until concrete lab demand.
 
-**Revised 2026-07-23 (r16):** node reboot/shutdown and cluster join were pulled forward with typed confirmation (D29). F/F.1 already cover the day-2 guest path.
+**Revised 2026-07-23 (r16):** node reboot/shutdown and cluster join pulled forward with typed confirmation (D29).
+
+**Revised 2026-07-23 (r17 / v1.7.0):** SDN write, ACME write/order/renew, Ceph status+pools, PBS storage status, node network CRUD, and `get_console_connection` shipped. Still deferred: Ceph OSD/MON create/destroy, websocket console proxy (D6), full PBS product admin.
 
 ## D27 — provision_lxc composite (non-Docker)
 

@@ -44,7 +44,7 @@ def test_phase_f_tools_in_inventory():
         "pull_from_lxc",
     ):
         assert name in ALL_TOOL_NAMES
-    assert len(ALL_TOOL_NAMES) == 179
+    assert len(ALL_TOOL_NAMES) == 207
 
 
 def test_package_version_nonzero():

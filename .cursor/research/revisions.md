@@ -22,6 +22,7 @@ Pair with [changelog-notes.md](changelog-notes.md) (research “why”) and root
 | 2026-07-19 | r14 | CT111: deploy_node_app, tip reload footer, quorum lab note, ssh.timeout 120 | **171** | agent-feedback CT111; **v1.5.1** |
 | 2026-07-23 | r15 | Tool-call audit logging + verbose/env logging QOL | **171** | D28; podcast-shorts log review; **v1.5.2** |
 | 2026-07-23 | r16 | Phase C light: guest-info/fsfreeze, bootstrap_cloudinit_vm, node power, cluster join | **179** | D29; D26 revised; **v1.6.0** |
+| 2026-07-23 | r17 | Phase C remainder: SDN write, ACME order/renew, Ceph pools, console helper, PBS status, node net CRUD | **207** | D26 revised; D6 held; **v1.7.0** |
 
 ## How to update
 

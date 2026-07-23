@@ -8,10 +8,11 @@ GET_NODE_STATUS_DESC = """Get detailed status information for a specific Proxmox
 Parameters:
 node* - Name/ID of node to query (e.g. 'pve1')"""
 
-LIST_NODE_NETWORKS_DESC = """List network interfaces/bridges on a node (vmbr0, bonds, etc.).
-
-Parameters:
-node* - Host node name"""
+LIST_NODE_NETWORKS_DESC = """List network interfaces/bridges on a node (vmbr0, bonds, etc.). Parameters: node*"""
+CREATE_NODE_NETWORK_DESC = """Create a node network iface (staged until reload). Parameters: node*, iface*, type* (bridge|bond|eth|vlan|…); bridge_ports?, bridge_stp?, bridge_fd?, address?, netmask?, gateway?, cidr?, autostart?=true, comments?, mtu?, slaves?, bond_mode?, vlan_id?, vlan_raw_device?"""
+UPDATE_NODE_NETWORK_DESC = """Update a node network iface (staged until reload). Parameters: node*, iface*; bridge_ports?, address?, netmask?, gateway?, cidr?, autostart?, comments?, mtu?, slaves?, bond_mode?, delete? (comma props to clear)"""
+DELETE_NODE_NETWORK_DESC = """IRREVERSIBLE: delete a node network iface definition (staged until reload). Parameters: node*, iface*"""
+RELOAD_NODE_NETWORK_DESC = """WARNING: apply pending network config on a node (ifupdown2 reload). Bad config can disconnect the host. Parameters: node*"""
 
 # VM
 GET_VMS_DESC = """List all QEMU virtual machines across the cluster (not LXC — use get_containers, or get_cluster_resources(type=vm) for both). Status and resource usage included."""
@@ -135,7 +136,7 @@ LIST_ISOS_DESC = """List ISO images. Parameters: node*, storage?, filter?"""
 DELETE_STORAGE_CONTENT_DESC = """IRREVERSIBLE: delete a storage volume. Parameters: node*, storage*, volume*"""
 DOWNLOAD_URL_TO_STORAGE_DESC = """Download URL into storage (async UPID — wait_for_task). http/https only; host fetches URL. Parameters: node*, storage*, url*, filename?, content?=iso, verify_certificate?=true, checksum?, checksum_algorithm?"""
 
-CREATE_STORAGE_DESC = """Create cluster storage definition. Parameters: storage*, type*, content?, path?, server?, export?, vgname?, pool?, monhost?, username?, password?, nodes?, disable?"""
+CREATE_STORAGE_DESC = """Create cluster storage definition. For type=pbs pass datastore/fingerprint/server/username/password. Parameters: storage*, type*, content?, path?, server?, export?, vgname?, pool?, monhost?, username?, password?, nodes?, disable?, datastore?, fingerprint?, port?"""
 UPDATE_STORAGE_DESC = """Update storage definition. Parameters: storage*, content?, nodes?, disable?"""
 DELETE_STORAGE_DESC = """IRREVERSIBLE: delete storage definition (not underlying data by default). Parameters: storage*"""
 
@@ -196,6 +197,11 @@ DELETE_REPLICATION_JOB_DESC = """IRREVERSIBLE: delete replication job. Parameter
 LIST_ACME_PLUGINS_DESC = """List ACME challenge plugins."""
 LIST_ACME_ACCOUNTS_DESC = """List ACME accounts."""
 GET_ACME_DIRECTORIES_DESC = """List known ACME directories (Let's Encrypt etc.)."""
+CREATE_ACME_ACCOUNT_DESC = """Create/register an ACME account. Parameters: name*, contact*; directory?, tos_url?"""
+CREATE_ACME_PLUGIN_DESC = """Create ACME challenge plugin (dns/standalone). Credential data is never echoed. Parameters: id*, type*; api?, data?, validation_delay?, disable?=false"""
+DELETE_ACME_PLUGIN_DESC = """IRREVERSIBLE: delete an ACME plugin. Parameters: id*"""
+ORDER_ACME_CERTIFICATE_DESC = """Order ACME certificate for a node (async UPID — wait_for_task). Parameters: node*, force?=false"""
+RENEW_ACME_CERTIFICATE_DESC = """Renew ACME certificate for a node (async UPID — wait_for_task). Parameters: node*, force?=false"""
 
 # SDN
 LIST_SDN_ZONES_DESC = """List SDN zones."""
@@ -204,7 +210,28 @@ LIST_SDN_CONTROLLERS_DESC = """List SDN controllers."""
 LIST_SDN_IPAMS_DESC = """List SDN IPAMs."""
 LIST_SDN_DNS_DESC = """List SDN DNS entries."""
 APPLY_SDN_DESC = """Apply pending SDN configuration cluster-wide (often needs Sys.Modify / elevated privileges)."""
+CREATE_SDN_ZONE_DESC = """Create SDN zone (staged until apply_sdn). Parameters: zone*, type* (simple|vlan|qinq|vxlan|evpn); bridge?, nodes?, mtu?, ipam?, dns?, reversedns?, dnszone?, comment?"""
+UPDATE_SDN_ZONE_DESC = """Update SDN zone (staged until apply_sdn). Parameters: zone*; bridge?, nodes?, mtu?, ipam?, dns?, reversedns?, dnszone?, comment?"""
+DELETE_SDN_ZONE_DESC = """IRREVERSIBLE: delete SDN zone (staged until apply_sdn). Parameters: zone*"""
+CREATE_SDN_VNET_DESC = """Create SDN vnet (staged until apply_sdn). Parameters: vnet*, zone*; alias?, tag?, vlanaware?, comment?"""
+UPDATE_SDN_VNET_DESC = """Update SDN vnet (staged until apply_sdn). Parameters: vnet*; alias?, tag?, vlanaware?, comment?, zone?"""
+DELETE_SDN_VNET_DESC = """IRREVERSIBLE: delete SDN vnet (staged until apply_sdn). Parameters: vnet*"""
+LIST_SDN_SUBNETS_DESC = """List SDN subnets on a vnet. Parameters: vnet*"""
+CREATE_SDN_SUBNET_DESC = """Create SDN subnet (staged until apply_sdn). Parameters: vnet*, subnet* (CIDR); gateway?, snat?, type?=subnet, dnszoneprefix?"""
+UPDATE_SDN_SUBNET_DESC = """Update SDN subnet (staged until apply_sdn). Parameters: vnet*, subnet*; gateway?, snat?, dnszoneprefix?"""
+DELETE_SDN_SUBNET_DESC = """IRREVERSIBLE: delete SDN subnet (staged until apply_sdn). Parameters: vnet*, subnet*"""
 
+# Ceph (no OSD/MON create/destroy)
+GET_CEPH_STATUS_DESC = """Get Ceph cluster health/status (requires Ceph)."""
+LIST_CEPH_POOLS_DESC = """List Ceph pools."""
+LIST_CEPH_OSDS_DESC = """List Ceph OSDs (read-only — create/destroy out of scope)."""
+LIST_CEPH_MONS_DESC = """List Ceph monitors (read-only)."""
+LIST_CEPH_MGRS_DESC = """List Ceph managers (read-only)."""
+CREATE_CEPH_POOL_DESC = """Create a Ceph pool (light write). Parameters: name*; size?, min_size?, pg_num?, application?"""
+DELETE_CEPH_POOL_DESC = """IRREVERSIBLE: delete a Ceph pool. confirm* must equal the pool name. Parameters: name*, confirm*"""
+
+# PBS (via PVE storage plugin — not PBS product admin)
+GET_PBS_STORAGE_STATUS_DESC = """Status for a PVE storage of type=pbs. Parameters: node*, storage*"""
 
 # Pools
 LIST_POOLS_DESC = """List resource pools."""
@@ -229,6 +256,7 @@ CREATE_SPICE_TICKET_VM_DESC = """Mint SPICE ticket for a VM. Parameters: node*, 
 CREATE_TERMPROXY_TICKET_VM_DESC = """Mint termproxy ticket for a VM. Parameters: node*, vmid*"""
 CREATE_VNC_TICKET_LXC_DESC = """Mint VNC ticket for an LXC. Parameters: node*, vmid*, websocket?=true"""
 CREATE_TERMPROXY_TICKET_LXC_DESC = """Mint termproxy ticket for an LXC. Parameters: node*, vmid*"""
+GET_CONSOLE_CONNECTION_DESC = """Mint console ticket + structured viewer hints (no MCP websocket proxy — D6). Parameters: node*, vmid*; guest_type?=qemu|lxc, console?=vnc|spice|termproxy, websocket?=true, host?"""
 GET_VM_STATUS_DESC = """Get current runtime status for one VM. Parameters: node*, vmid*"""
 GET_VM_RRD_DATA_DESC = """Get RRD metrics for a VM. Parameters: node*, vmid*, timeframe?=hour"""
 

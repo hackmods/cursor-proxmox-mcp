@@ -219,8 +219,11 @@ class StorageTools(ProxmoxTool):
         password: Optional[str] = None,
         nodes: Optional[str] = None,
         disable: bool = False,
+        datastore: Optional[str] = None,
+        fingerprint: Optional[str] = None,
+        port: Optional[int] = None,
     ) -> List[Content]:
-        """Create a cluster storage definition."""
+        """Create a cluster storage definition (incl. type=pbs with datastore/fingerprint)."""
         try:
             params = {"storage": storage, "type": type}
             if content is not None:
@@ -245,10 +248,56 @@ class StorageTools(ProxmoxTool):
                 params["nodes"] = nodes
             if disable:
                 params["disable"] = 1
+            if datastore is not None:
+                params["datastore"] = datastore
+            if fingerprint is not None:
+                params["fingerprint"] = fingerprint
+            if port is not None:
+                params["port"] = int(port)
             result = self.proxmox.storage.post(**params)
-            return [Content(type="text", text=f"Storage '{storage}' created\nResult: {result}")]
+            safe = {k: ("***" if k == "password" else v) for k, v in params.items()}
+            tip = ""
+            if type == "pbs":
+                tip = (
+                    "\n💡 PBS storage via PVE plugin — use create_backup/list_backups "
+                    "with this storage; get_pbs_storage_status for status."
+                )
+            return [
+                Content(
+                    type="text",
+                    text=f"Storage '{storage}' created\nParams: {safe}\nResult: {result}{tip}",
+                )
+            ]
         except Exception as e:
             self._handle_error(f"create storage {storage}", e)
+
+    def get_pbs_storage_status(self, node: str, storage: str) -> List[Content]:
+        """Status for a PVE storage of type=pbs (not full PBS product admin)."""
+        try:
+            # Verify type when possible
+            stores = self.proxmox.storage.get() or []
+            meta = next((s for s in stores if s.get("storage") == storage), None)
+            if meta and meta.get("type") not in (None, "pbs"):
+                raise ValueError(
+                    f"Storage '{storage}' has type={meta.get('type')!r}, not pbs. "
+                    "Use get_storage / node storage status for other backends."
+                )
+            status = self.proxmox.nodes(node).storage(storage).status.get()
+            payload = {
+                "storage": storage,
+                "node": node,
+                "type": (meta or {}).get("type", "pbs"),
+                "status": status,
+                "note": (
+                    "PBS product admin (users/remotes/sync) lives on the PBS host — "
+                    "out of MCP scope; use this storage with vzdump tools."
+                ),
+            }
+            return self._format_response(payload)
+        except ValueError:
+            raise
+        except Exception as e:
+            self._handle_error(f"get PBS storage status {storage}", e)
 
     def update_storage(
         self,

@@ -36,6 +36,7 @@ from .tools.sdn import SDNTools
 from .tools.pool import PoolTools
 from .tools.guest_power import GuestPowerTools
 from .tools.capabilities import CapabilitiesTools
+from .tools.ceph import CephTools
 from .ssh import require_host_ssh_message, ssh_configured
 
 
@@ -84,6 +85,7 @@ class ProxmoxMCPServer:
         self.acme_tools = ACMETools(self.proxmox)
         self.sdn_tools = SDNTools(self.proxmox)
         self.pool_tools = PoolTools(self.proxmox)
+        self.ceph_tools = CephTools(self.proxmox)
 
         self.mcp = FastMCP("ProxmoxMCP")
         self._setup_tools()

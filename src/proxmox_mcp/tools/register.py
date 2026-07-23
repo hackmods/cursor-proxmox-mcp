@@ -29,6 +29,66 @@ def register_all(server: ProxmoxMCPServer) -> None:
     ):
         return server.network_tools.list_node_networks(node)
 
+    @server.mcp.tool(description=D.CREATE_NODE_NETWORK_DESC)
+    def create_node_network(
+        node: Annotated[str, Field(description="Node")],
+        iface: Annotated[str, Field(description="Interface name")],
+        type: Annotated[str, Field(description="bridge|bond|eth|vlan|…")],
+        bridge_ports: Annotated[Optional[str], Field(default=None)] = None,
+        bridge_stp: Annotated[Optional[bool], Field(default=None)] = None,
+        bridge_fd: Annotated[Optional[int], Field(default=None)] = None,
+        address: Annotated[Optional[str], Field(default=None)] = None,
+        netmask: Annotated[Optional[str], Field(default=None)] = None,
+        gateway: Annotated[Optional[str], Field(default=None)] = None,
+        cidr: Annotated[Optional[str], Field(default=None)] = None,
+        autostart: Annotated[bool, Field(default=True)] = True,
+        comments: Annotated[Optional[str], Field(default=None)] = None,
+        mtu: Annotated[Optional[int], Field(default=None)] = None,
+        slaves: Annotated[Optional[str], Field(default=None)] = None,
+        bond_mode: Annotated[Optional[str], Field(default=None)] = None,
+        vlan_id: Annotated[Optional[int], Field(default=None)] = None,
+        vlan_raw_device: Annotated[Optional[str], Field(default=None)] = None,
+    ):
+        return server.network_tools.create_node_network(
+            node, iface, type, bridge_ports, bridge_stp, bridge_fd, address,
+            netmask, gateway, cidr, autostart, comments, mtu, slaves, bond_mode,
+            vlan_id, vlan_raw_device,
+        )
+
+    @server.mcp.tool(description=D.UPDATE_NODE_NETWORK_DESC)
+    def update_node_network(
+        node: Annotated[str, Field(description="Node")],
+        iface: Annotated[str, Field(description="Interface")],
+        bridge_ports: Annotated[Optional[str], Field(default=None)] = None,
+        bridge_stp: Annotated[Optional[bool], Field(default=None)] = None,
+        bridge_fd: Annotated[Optional[int], Field(default=None)] = None,
+        address: Annotated[Optional[str], Field(default=None)] = None,
+        netmask: Annotated[Optional[str], Field(default=None)] = None,
+        gateway: Annotated[Optional[str], Field(default=None)] = None,
+        cidr: Annotated[Optional[str], Field(default=None)] = None,
+        autostart: Annotated[Optional[bool], Field(default=None)] = None,
+        comments: Annotated[Optional[str], Field(default=None)] = None,
+        mtu: Annotated[Optional[int], Field(default=None)] = None,
+        slaves: Annotated[Optional[str], Field(default=None)] = None,
+        bond_mode: Annotated[Optional[str], Field(default=None)] = None,
+        delete: Annotated[Optional[str], Field(default=None)] = None,
+    ):
+        return server.network_tools.update_node_network(
+            node, iface, bridge_ports, bridge_stp, bridge_fd, address, netmask,
+            gateway, cidr, autostart, comments, mtu, slaves, bond_mode, delete,
+        )
+
+    @server.mcp.tool(description=D.DELETE_NODE_NETWORK_DESC)
+    def delete_node_network(
+        node: Annotated[str, Field(description="Node")],
+        iface: Annotated[str, Field(description="Interface")],
+    ):
+        return server.network_tools.delete_node_network(node, iface)
+
+    @server.mcp.tool(description=D.RELOAD_NODE_NETWORK_DESC)
+    def reload_node_network(node: Annotated[str, Field(description="Node")]):
+        return server.network_tools.reload_node_network(node)
+
     # --- Cluster / tasks ---
     @server.mcp.tool(description=D.GET_CLUSTER_STATUS_DESC)
     def get_cluster_status():
@@ -847,6 +907,19 @@ def register_all(server: ProxmoxMCPServer) -> None:
             node, vmid, disk, storage, guest_type, delete
         )
 
+    @server.mcp.tool(description=D.GET_CONSOLE_CONNECTION_DESC)
+    def get_console_connection(
+        node: Annotated[str, Field(description="Node")],
+        vmid: Annotated[str, Field(description="Guest ID")],
+        guest_type: Annotated[str, Field(description="qemu or lxc", default="qemu")] = "qemu",
+        console: Annotated[str, Field(description="vnc|spice|termproxy", default="vnc")] = "vnc",
+        websocket: Annotated[bool, Field(description="VNC websocket", default=True)] = True,
+        host: Annotated[Optional[str], Field(description="Hint host for viewer", default=None)] = None,
+    ):
+        return server.guest_power_tools.get_console_connection(
+            node, vmid, guest_type, console, websocket, host
+        )
+
     # --- Snapshots ---
     @server.mcp.tool(description=D.LIST_SNAPSHOTS_DESC)
     def list_snapshots(
@@ -1041,11 +1114,21 @@ def register_all(server: ProxmoxMCPServer) -> None:
         password: Annotated[Optional[str], Field(description="Password", default=None)] = None,
         nodes: Annotated[Optional[str], Field(description="Node list", default=None)] = None,
         disable: Annotated[bool, Field(description="Disable", default=False)] = False,
+        datastore: Annotated[Optional[str], Field(description="PBS datastore", default=None)] = None,
+        fingerprint: Annotated[Optional[str], Field(description="PBS TLS fingerprint", default=None)] = None,
+        port: Annotated[Optional[int], Field(description="PBS port", default=None)] = None,
     ):
         return server.storage_tools.create_storage(
             storage, type, content, path, server, export, vgname, pool,
-            monhost, username, password, nodes, disable,
+            monhost, username, password, nodes, disable, datastore, fingerprint, port,
         )
+
+    @server.mcp.tool(description=D.GET_PBS_STORAGE_STATUS_DESC)
+    def get_pbs_storage_status(
+        node: Annotated[str, Field(description="Node")],
+        storage: Annotated[str, Field(description="PBS storage id")],
+    ):
+        return server.storage_tools.get_pbs_storage_status(node, storage)
 
     @server.mcp.tool(description=D.UPDATE_STORAGE_DESC)
     def update_storage(
@@ -1531,6 +1614,44 @@ def register_all(server: ProxmoxMCPServer) -> None:
     def get_acme_directories():
         return server.acme_tools.get_acme_directories()
 
+    @server.mcp.tool(description=D.CREATE_ACME_ACCOUNT_DESC)
+    def create_acme_account(
+        name: Annotated[str, Field(description="Account name")],
+        contact: Annotated[str, Field(description="Contact email")],
+        directory: Annotated[Optional[str], Field(default=None)] = None,
+        tos_url: Annotated[Optional[str], Field(default=None)] = None,
+    ):
+        return server.acme_tools.create_acme_account(name, contact, directory, tos_url)
+
+    @server.mcp.tool(description=D.CREATE_ACME_PLUGIN_DESC)
+    def create_acme_plugin(
+        id: Annotated[str, Field(description="Plugin id")],
+        type: Annotated[str, Field(description="dns|standalone")],
+        api: Annotated[Optional[str], Field(default=None)] = None,
+        data: Annotated[Optional[str], Field(description="Plugin secrets (never echoed)", default=None)] = None,
+        validation_delay: Annotated[Optional[int], Field(default=None)] = None,
+        disable: Annotated[bool, Field(default=False)] = False,
+    ):
+        return server.acme_tools.create_acme_plugin(id, type, api, data, validation_delay, disable)
+
+    @server.mcp.tool(description=D.DELETE_ACME_PLUGIN_DESC)
+    def delete_acme_plugin(id: Annotated[str, Field(description="Plugin id")]):
+        return server.acme_tools.delete_acme_plugin(id)
+
+    @server.mcp.tool(description=D.ORDER_ACME_CERTIFICATE_DESC)
+    def order_acme_certificate(
+        node: Annotated[str, Field(description="Node")],
+        force: Annotated[bool, Field(default=False)] = False,
+    ):
+        return server.acme_tools.order_acme_certificate(node, force)
+
+    @server.mcp.tool(description=D.RENEW_ACME_CERTIFICATE_DESC)
+    def renew_acme_certificate(
+        node: Annotated[str, Field(description="Node")],
+        force: Annotated[bool, Field(default=False)] = False,
+    ):
+        return server.acme_tools.renew_acme_certificate(node, force)
+
     # --- SDN ---
     @server.mcp.tool(description=D.LIST_SDN_ZONES_DESC)
     def list_sdn_zones():
@@ -1555,6 +1676,139 @@ def register_all(server: ProxmoxMCPServer) -> None:
     @server.mcp.tool(description=D.APPLY_SDN_DESC)
     def apply_sdn():
         return server.sdn_tools.apply_sdn()
+
+    @server.mcp.tool(description=D.CREATE_SDN_ZONE_DESC)
+    def create_sdn_zone(
+        zone: Annotated[str, Field(description="Zone id")],
+        type: Annotated[str, Field(description="simple|vlan|qinq|vxlan|evpn")],
+        bridge: Annotated[Optional[str], Field(default=None)] = None,
+        nodes: Annotated[Optional[str], Field(default=None)] = None,
+        mtu: Annotated[Optional[int], Field(default=None)] = None,
+        ipam: Annotated[Optional[str], Field(default=None)] = None,
+        dns: Annotated[Optional[str], Field(default=None)] = None,
+        reversedns: Annotated[Optional[str], Field(default=None)] = None,
+        dnszone: Annotated[Optional[str], Field(default=None)] = None,
+        comment: Annotated[Optional[str], Field(default=None)] = None,
+    ):
+        return server.sdn_tools.create_sdn_zone(
+            zone, type, bridge, nodes, mtu, ipam, dns, reversedns, dnszone, comment
+        )
+
+    @server.mcp.tool(description=D.UPDATE_SDN_ZONE_DESC)
+    def update_sdn_zone(
+        zone: Annotated[str, Field(description="Zone id")],
+        bridge: Annotated[Optional[str], Field(default=None)] = None,
+        nodes: Annotated[Optional[str], Field(default=None)] = None,
+        mtu: Annotated[Optional[int], Field(default=None)] = None,
+        ipam: Annotated[Optional[str], Field(default=None)] = None,
+        dns: Annotated[Optional[str], Field(default=None)] = None,
+        reversedns: Annotated[Optional[str], Field(default=None)] = None,
+        dnszone: Annotated[Optional[str], Field(default=None)] = None,
+        comment: Annotated[Optional[str], Field(default=None)] = None,
+    ):
+        return server.sdn_tools.update_sdn_zone(
+            zone, bridge, nodes, mtu, ipam, dns, reversedns, dnszone, comment
+        )
+
+    @server.mcp.tool(description=D.DELETE_SDN_ZONE_DESC)
+    def delete_sdn_zone(zone: Annotated[str, Field(description="Zone id")]):
+        return server.sdn_tools.delete_sdn_zone(zone)
+
+    @server.mcp.tool(description=D.CREATE_SDN_VNET_DESC)
+    def create_sdn_vnet(
+        vnet: Annotated[str, Field(description="VNet id")],
+        zone: Annotated[str, Field(description="Zone id")],
+        alias: Annotated[Optional[str], Field(default=None)] = None,
+        tag: Annotated[Optional[int], Field(default=None)] = None,
+        vlanaware: Annotated[Optional[bool], Field(default=None)] = None,
+        comment: Annotated[Optional[str], Field(default=None)] = None,
+    ):
+        return server.sdn_tools.create_sdn_vnet(vnet, zone, alias, tag, vlanaware, comment)
+
+    @server.mcp.tool(description=D.UPDATE_SDN_VNET_DESC)
+    def update_sdn_vnet(
+        vnet: Annotated[str, Field(description="VNet id")],
+        alias: Annotated[Optional[str], Field(default=None)] = None,
+        tag: Annotated[Optional[int], Field(default=None)] = None,
+        vlanaware: Annotated[Optional[bool], Field(default=None)] = None,
+        comment: Annotated[Optional[str], Field(default=None)] = None,
+        zone: Annotated[Optional[str], Field(default=None)] = None,
+    ):
+        return server.sdn_tools.update_sdn_vnet(vnet, alias, tag, vlanaware, comment, zone)
+
+    @server.mcp.tool(description=D.DELETE_SDN_VNET_DESC)
+    def delete_sdn_vnet(vnet: Annotated[str, Field(description="VNet id")]):
+        return server.sdn_tools.delete_sdn_vnet(vnet)
+
+    @server.mcp.tool(description=D.LIST_SDN_SUBNETS_DESC)
+    def list_sdn_subnets(vnet: Annotated[str, Field(description="VNet id")]):
+        return server.sdn_tools.list_sdn_subnets(vnet)
+
+    @server.mcp.tool(description=D.CREATE_SDN_SUBNET_DESC)
+    def create_sdn_subnet(
+        vnet: Annotated[str, Field(description="VNet id")],
+        subnet: Annotated[str, Field(description="CIDR")],
+        gateway: Annotated[Optional[str], Field(default=None)] = None,
+        snat: Annotated[Optional[bool], Field(default=None)] = None,
+        type: Annotated[str, Field(default="subnet")] = "subnet",
+        dnszoneprefix: Annotated[Optional[str], Field(default=None)] = None,
+    ):
+        return server.sdn_tools.create_sdn_subnet(vnet, subnet, gateway, snat, type, dnszoneprefix)
+
+    @server.mcp.tool(description=D.UPDATE_SDN_SUBNET_DESC)
+    def update_sdn_subnet(
+        vnet: Annotated[str, Field(description="VNet id")],
+        subnet: Annotated[str, Field(description="CIDR")],
+        gateway: Annotated[Optional[str], Field(default=None)] = None,
+        snat: Annotated[Optional[bool], Field(default=None)] = None,
+        dnszoneprefix: Annotated[Optional[str], Field(default=None)] = None,
+    ):
+        return server.sdn_tools.update_sdn_subnet(vnet, subnet, gateway, snat, dnszoneprefix)
+
+    @server.mcp.tool(description=D.DELETE_SDN_SUBNET_DESC)
+    def delete_sdn_subnet(
+        vnet: Annotated[str, Field(description="VNet id")],
+        subnet: Annotated[str, Field(description="CIDR")],
+    ):
+        return server.sdn_tools.delete_sdn_subnet(vnet, subnet)
+
+    # --- Ceph ---
+    @server.mcp.tool(description=D.GET_CEPH_STATUS_DESC)
+    def get_ceph_status():
+        return server.ceph_tools.get_ceph_status()
+
+    @server.mcp.tool(description=D.LIST_CEPH_POOLS_DESC)
+    def list_ceph_pools():
+        return server.ceph_tools.list_ceph_pools()
+
+    @server.mcp.tool(description=D.LIST_CEPH_OSDS_DESC)
+    def list_ceph_osds():
+        return server.ceph_tools.list_ceph_osds()
+
+    @server.mcp.tool(description=D.LIST_CEPH_MONS_DESC)
+    def list_ceph_mons():
+        return server.ceph_tools.list_ceph_mons()
+
+    @server.mcp.tool(description=D.LIST_CEPH_MGRS_DESC)
+    def list_ceph_mgrs():
+        return server.ceph_tools.list_ceph_mgrs()
+
+    @server.mcp.tool(description=D.CREATE_CEPH_POOL_DESC)
+    def create_ceph_pool(
+        name: Annotated[str, Field(description="Pool name")],
+        size: Annotated[Optional[int], Field(default=None)] = None,
+        min_size: Annotated[Optional[int], Field(default=None)] = None,
+        pg_num: Annotated[Optional[int], Field(default=None)] = None,
+        application: Annotated[Optional[str], Field(default=None)] = None,
+    ):
+        return server.ceph_tools.create_ceph_pool(name, size, min_size, pg_num, application)
+
+    @server.mcp.tool(description=D.DELETE_CEPH_POOL_DESC)
+    def delete_ceph_pool(
+        name: Annotated[str, Field(description="Pool name")],
+        confirm: Annotated[str, Field(description="Must equal pool name")],
+    ):
+        return server.ceph_tools.delete_ceph_pool(name, confirm)
 
     # --- Pools ---
     @server.mcp.tool(description=D.LIST_POOLS_DESC)

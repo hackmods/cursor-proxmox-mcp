@@ -1,5 +1,13 @@
 # Changelog / research notes
 
+## 2026-07-23 — Phase C remainder (rev r17) — 207 tools
+
+**Why:** User asked to plan/build SDN write, ACME order/renew, Ceph, VNC proxy, PBS admin, node network CRUD — then fully test and push.
+
+**Shipped:** SDN zone/vnet/subnet CRUD (+ apply tip); ACME account/plugin + order/renew (never echo plugin `data`); Ceph status + list + pool create/delete (`confirm=pool`, D29 pattern); `get_console_connection` (ticket + viewer hints — still no MCP websocket proxy, D6); PBS `datastore`/`fingerprint`/`port` on `create_storage` + `get_pbs_storage_status`; node network create/update/delete/reload.
+
+**Out of scope:** Ceph OSD/MON/MGR create/destroy; long-lived VNC/SPICE websocket proxy; full PBS product admin (users/remotes/sync).
+
 ## 2026-07-23 — Phase C light + QEMU/cloud-init (rev r16) — 179 tools
 
 **Why:** Roadmap leftovers requested: QEMU agent stretch, `bootstrap_cloudinit_vm`, host reboot/shutdown, cluster join — while keeping SDN/ACME/Ceph/VNC/PBS deferred.

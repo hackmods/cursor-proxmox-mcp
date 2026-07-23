@@ -27,22 +27,26 @@ python scripts/generate-wiki-tools.py
 
 <!-- BEGIN GENERATED TOOLS -->
 
-_Generated from `tools/inventory.py` — **179** tools. Do not edit by hand; run `python scripts/generate-wiki-tools.py`._
+_Generated from `tools/inventory.py` — **207** tools. Do not edit by hand; run `python scripts/generate-wiki-tools.py`._
 
 ### Nodes
 
 | Tool | Description |
 |------|-------------|
+| `create_node_network` | Create a node network iface (staged until reload). Parameters: node*, iface*, type* (bridge\|bond\|eth\|vlan\|…); bridge_ports?, bridge_stp?, bridge_fd?, address?, netmask?, gateway?, cidr?, autostart?=true, comments?, mtu?, slaves?, bond_mode?, vlan_id?, vlan_raw_device? |
+| `delete_node_network` | IRREVERSIBLE: delete a node network iface definition (staged until reload). Parameters: node*, iface* |
 | `get_node_report` | Get diagnostic report for a node. Parameters: node* |
 | `get_node_status` | Get detailed status information for a specific Proxmox node. |
 | `get_node_subscription` | Get node subscription status (read-only). Parameters: node* |
 | `get_node_time` | Get node timezone and time. Parameters: node* |
 | `get_nodes` | List all nodes in the Proxmox cluster with their status, CPU, memory, and role information. |
 | `list_node_certificates` | List SSL certificates on a node. Parameters: node* |
-| `list_node_networks` | List network interfaces/bridges on a node (vmbr0, bonds, etc.). |
+| `list_node_networks` | List network interfaces/bridges on a node (vmbr0, bonds, etc.). Parameters: node* |
 | `list_node_services` | List Proxmox-managed services on a node. Parameters: node* |
 | `reboot_node` | IRREVERSIBLE: reboot a Proxmox host (Sys.PowerMgmt). Guests go down; MCP may disconnect if this is the API host. confirm* must equal the exact node name. Parameters: node*, confirm* |
+| `reload_node_network` | WARNING: apply pending network config on a node (ifupdown2 reload). Bad config can disconnect the host. Parameters: node* |
 | `shutdown_node` | IRREVERSIBLE: shut down / power off a Proxmox host (Sys.PowerMgmt). Guests go down; MCP may disconnect if this is the API host. confirm* must equal the exact node name. Parameters: node*, confirm* |
+| `update_node_network` | Update a node network iface (staged until reload). Parameters: node*, iface*; bridge_ports?, address?, netmask?, gateway?, cidr?, autostart?, comments?, mtu?, slaves?, bond_mode?, delete? (comma props to clear) |
 | `wake_node` | Send Wake-on-LAN to a node. Parameters: node* |
 
 ### Cluster / tasks
@@ -141,6 +145,7 @@ _Generated from `tools/inventory.py` — **179** tools. Do not edit by hand; run
 | Tool | Description |
 |------|-------------|
 | `delete_guest` | IRREVERSIBLE: permanently delete a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu\|lxc, force?=false |
+| `get_console_connection` | Mint console ticket + structured viewer hints (no MCP websocket proxy — D6). Parameters: node*, vmid*; guest_type?=qemu\|lxc, console?=vnc\|spice\|termproxy, websocket?=true, host? |
 | `get_guest_pending` | Get pending (not-yet-applied) config for a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu\|lxc |
 | `get_guest_status` | Get runtime status for a VM or LXC. Parameters: node*, vmid*, guest_type?=qemu\|lxc |
 | `move_guest_disk` | Move a guest disk/volume to another storage. Parameters: node*, vmid*, disk*, storage*, guest_type?=qemu\|lxc, delete?=true |
@@ -169,10 +174,11 @@ _Generated from `tools/inventory.py` — **179** tools. Do not edit by hand; run
 
 | Tool | Description |
 |------|-------------|
-| `create_storage` | Create cluster storage definition. Parameters: storage*, type*, content?, path?, server?, export?, vgname?, pool?, monhost?, username?, password?, nodes?, disable? |
+| `create_storage` | Create cluster storage definition. For type=pbs pass datastore/fingerprint/server/username/password. Parameters: storage*, type*, content?, path?, server?, export?, vgname?, pool?, monhost?, username?, password?, nodes?, disable?, datastore?, fingerprint?, port? |
 | `delete_storage` | IRREVERSIBLE: delete storage definition (not underlying data by default). Parameters: storage* |
 | `delete_storage_content` | IRREVERSIBLE: delete a storage volume. Parameters: node*, storage*, volume* |
 | `download_url_to_storage` | Download URL into storage (async UPID — wait_for_task). http/https only; host fetches URL. Parameters: node*, storage*, url*, filename?, content?=iso, verify_certificate?=true, checksum?, checksum_algorithm? |
+| `get_pbs_storage_status` | Status for a PVE storage of type=pbs. Parameters: node*, storage* |
 | `get_storage` | List storage pools across the cluster with usage. |
 | `get_storage_content` | List storage content (iso/vztmpl/backup/images). Parameters: node*, storage*, content? |
 | `list_isos` | List ISO images. Parameters: node*, storage?, filter? |
@@ -254,19 +260,46 @@ _Generated from `tools/inventory.py` — **179** tools. Do not edit by hand; run
 | Tool | Description |
 |------|-------------|
 | `apply_sdn` | Apply pending SDN configuration cluster-wide (often needs Sys.Modify / elevated privileges). |
+| `create_sdn_subnet` | Create SDN subnet (staged until apply_sdn). Parameters: vnet*, subnet* (CIDR); gateway?, snat?, type?=subnet, dnszoneprefix? |
+| `create_sdn_vnet` | Create SDN vnet (staged until apply_sdn). Parameters: vnet*, zone*; alias?, tag?, vlanaware?, comment? |
+| `create_sdn_zone` | Create SDN zone (staged until apply_sdn). Parameters: zone*, type* (simple\|vlan\|qinq\|vxlan\|evpn); bridge?, nodes?, mtu?, ipam?, dns?, reversedns?, dnszone?, comment? |
+| `delete_sdn_subnet` | IRREVERSIBLE: delete SDN subnet (staged until apply_sdn). Parameters: vnet*, subnet* |
+| `delete_sdn_vnet` | IRREVERSIBLE: delete SDN vnet (staged until apply_sdn). Parameters: vnet* |
+| `delete_sdn_zone` | IRREVERSIBLE: delete SDN zone (staged until apply_sdn). Parameters: zone* |
 | `list_sdn_controllers` | List SDN controllers. |
 | `list_sdn_dns` | List SDN DNS entries. |
 | `list_sdn_ipams` | List SDN IPAMs. |
+| `list_sdn_subnets` | List SDN subnets on a vnet. Parameters: vnet* |
 | `list_sdn_vnets` | List SDN virtual networks. |
 | `list_sdn_zones` | List SDN zones. |
+| `update_sdn_subnet` | Update SDN subnet (staged until apply_sdn). Parameters: vnet*, subnet*; gateway?, snat?, dnszoneprefix? |
+| `update_sdn_vnet` | Update SDN vnet (staged until apply_sdn). Parameters: vnet*; alias?, tag?, vlanaware?, comment?, zone? |
+| `update_sdn_zone` | Update SDN zone (staged until apply_sdn). Parameters: zone*; bridge?, nodes?, mtu?, ipam?, dns?, reversedns?, dnszone?, comment? |
 
 ### ACME
 
 | Tool | Description |
 |------|-------------|
+| `create_acme_account` | Create/register an ACME account. Parameters: name*, contact*; directory?, tos_url? |
+| `create_acme_plugin` | Create ACME challenge plugin (dns/standalone). Credential data is never echoed. Parameters: id*, type*; api?, data?, validation_delay?, disable?=false |
+| `delete_acme_plugin` | IRREVERSIBLE: delete an ACME plugin. Parameters: id* |
 | `get_acme_directories` | List known ACME directories (Let's Encrypt etc.). |
 | `list_acme_accounts` | List ACME accounts. |
 | `list_acme_plugins` | List ACME challenge plugins. |
+| `order_acme_certificate` | Order ACME certificate for a node (async UPID — wait_for_task). Parameters: node*, force?=false |
+| `renew_acme_certificate` | Renew ACME certificate for a node (async UPID — wait_for_task). Parameters: node*, force?=false |
+
+### Ceph
+
+| Tool | Description |
+|------|-------------|
+| `create_ceph_pool` | Create a Ceph pool (light write). Parameters: name*; size?, min_size?, pg_num?, application? |
+| `delete_ceph_pool` | IRREVERSIBLE: delete a Ceph pool. confirm* must equal the pool name. Parameters: name*, confirm* |
+| `get_ceph_status` | Get Ceph cluster health/status (requires Ceph). |
+| `list_ceph_mgrs` | List Ceph managers (read-only). |
+| `list_ceph_mons` | List Ceph monitors (read-only). |
+| `list_ceph_osds` | List Ceph OSDs (read-only — create/destroy out of scope). |
+| `list_ceph_pools` | List Ceph pools. |
 
 ### Pools
 

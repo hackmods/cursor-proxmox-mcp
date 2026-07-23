@@ -10,20 +10,21 @@ Source of truth for registered names: `ProxmoxMCPServer._setup_tools()` and `tes
 
 | Domain | MCP tools | API (representative) |
 |--------|-----------|----------------------|
-| Nodes | get_nodes, get_node_status, list_node_networks, subscription, certificates, report, services, time, wakeonlan | /nodes... |
+| Nodes | get_nodes, get_node_status, list_node_networks + create/update/delete + reload_node_network, subscription, certificates, report, services, time, wakeonlan, reboot/shutdown (confirm) | /nodes... |
 | LXC | full lifecycle + config + suspend/resume (CRIU warn) + status + **get_lxc_network** + rrd + VNC/SPICE/termproxy + **exec/password/keys via SSH/pct** + **prepare_lxc_for_docker (keyctl\|crun)** + **configure_lxc_dns** + **pct_set_lxc** + **push/pull** + **provision_lxc** + **deploy_static_nginx** + **deploy_node_app** + **ssh_public_keys / docker_ready / nameserver / onboot / description / tags on create** | /nodes/{n}/lxc... + host pct (opt-in ssh) |
-| Cluster | get_cluster_status, get_next_vmid, get_version, **get_mcp_capabilities**, get_cluster_resources, get_cluster_log, get_cluster_options | /cluster..., /version + MCP self-check |
-| Guest unified | start/stop/shutdown/reboot/delete_guest, get_guest_status/pending, move_guest_disk | qemu\|lxc status + pending + move_disk/move_volume |
+| Cluster | get_cluster_status, get_next_vmid, get_version, **get_mcp_capabilities**, get_cluster_resources, get_cluster_log, get_cluster_options, join info/join | /cluster..., /version + MCP self-check |
+| Guest unified | start/stop/shutdown/reboot/delete_guest, get_guest_status/pending, move_guest_disk, **get_console_connection** | qemu\|lxc status + pending + move_disk/move_volume + console tickets |
 | Snapshots | list/create/delete/rollback | .../snapshot |
 | Backups | one-shot create/list/restore/delete + scheduled list/create/delete_backup_job | vzdump + /cluster/backup |
-| Storage | get/content/list_os_templates/list_isos/delete/download-url + definition CRUD | /storage... |
+| Storage | get/content/list_os_templates/list_isos/delete/download-url + definition CRUD + **PBS fields + get_pbs_storage_status** | /storage... |
 | Migrate | migrate_guest | .../migrate |
 | HA | status, groups, resources CRUD | /cluster/ha... |
 | Firewall | cluster+guest rules/options; aliases; ipsets + CIDR members; macros | /cluster/firewall... |
 | Access | users, groups, roles, ACL, tokens, get_permissions, get_token_permissions | /access/... |
 | Replication | list/status/run/create/update/delete | /cluster/replication, /nodes/{n}/replication |
-| ACME | list plugins/accounts/directories (read) | /cluster/acme... |
-| SDN | list zones/vnets/controllers/ipams/dns + apply | /cluster/sdn... |
+| ACME | list + create account/plugin, delete plugin, order/renew certificate | /cluster/acme..., /nodes/{n}/certificates/acme... |
+| SDN | zones/vnets/subnets CRUD + list controllers/ipams/dns + apply | /cluster/sdn... |
+| Ceph | status, list pools/OSDs/MONs/MGRs, create/delete pool (confirm) | /cluster/ceph... |
 | Pools | list/get/create/update/delete | /pools |
 
 ## Planned
@@ -79,16 +80,24 @@ See [next-expansion.md](next-expansion.md). Summary:
 | `reboot_node` / `shutdown_node` (confirm=node) | done |
 | `get_cluster_join_info` / `join_cluster` (confirm=JOIN) | done |
 
-### Phase C — Heavy / deferred
+### Phase C remainder — done / v1.7.0
+
+| Item | Status |
+|------|--------|
+| SDN zone/vnet/subnet CRUD + apply tip | done |
+| ACME account/plugin create, plugin delete, order/renew | done |
+| Ceph status + list pools/OSDs/MONs/MGRs + pool create/delete | done |
+| `get_console_connection` (ticket + viewer hints) | done (still no websocket proxy — D6) |
+| PBS `create_storage` fields + `get_pbs_storage_status` | done |
+| Node network create/update/delete/reload | done |
+
+### Phase C — still deferred
 
 | Area | Reason to defer |
 |------|-----------------|
-| SDN write CRUD (zones/vnets/subnets) | Multi-object graph + apply orchestration UX |
-| ACME account create + order + renew | Multi-step DNS plugin credentials |
-| Ceph OSD/MON/MGR create/destroy | Cluster-invasive sequenced ops |
-| Full VNC/SPICE websocket proxy | Long-lived stream ≠ MCP request/response |
-| PBS direct admin | Separate product; use storage.type=pbs |
-| Node network create/update/reload | Bridge automation labs |
+| Ceph OSD/MON/MGR create/destroy | Cluster-invasive sequenced ops — prefer Ceph tooling |
+| Full VNC/SPICE websocket proxy | Long-lived stream ≠ MCP request/response (D6) |
+| Full PBS product admin (users/remotes/sync) | Separate product; use PVE storage plugin |
 
 ## Excluded
 

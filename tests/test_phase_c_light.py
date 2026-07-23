@@ -27,7 +27,7 @@ NEW_TOOLS = (
 def test_v16_tools_in_inventory():
     for name in NEW_TOOLS:
         assert name in ALL_TOOL_NAMES
-    assert len(ALL_TOOL_NAMES) == 179
+    assert len(ALL_TOOL_NAMES) == 207
     for name in ("reboot_node", "shutdown_node", "join_cluster"):
         assert name in DESTRUCTIVE_TOOLS
 
