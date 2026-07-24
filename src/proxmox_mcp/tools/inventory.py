@@ -211,6 +211,10 @@ ALL_TOOL_NAMES = frozenset(
         "list_ceph_mgrs",
         "create_ceph_pool",
         "delete_ceph_pool",
+        "list_node_disks",
+        "propose_ceph_osd",
+        "create_ceph_osd",
+        "destroy_ceph_osd",
         "list_pools",
         "get_pool",
         "create_pool",
@@ -271,6 +275,8 @@ DESTRUCTIVE_TOOLS = frozenset(
         "delete_ceph_pool",
         "delete_node_network",
         "reload_node_network",
+        "create_ceph_osd",
+        "destroy_ceph_osd",
     }
 )
 

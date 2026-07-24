@@ -1810,6 +1810,62 @@ def register_all(server: ProxmoxMCPServer) -> None:
     ):
         return server.ceph_tools.delete_ceph_pool(name, confirm)
 
+    @server.mcp.tool(description=D.LIST_NODE_DISKS_DESC)
+    def list_node_disks(
+        node: Annotated[str, Field(description="Node")],
+        type: Annotated[Optional[str], Field(description="unused|journal_disks", default=None)] = None,
+        include_partitions: Annotated[bool, Field(default=False)] = False,
+        skipsmart: Annotated[bool, Field(default=False)] = False,
+    ):
+        return server.ceph_tools.list_node_disks(node, type, include_partitions, skipsmart)
+
+    @server.mcp.tool(description=D.PROPOSE_CEPH_OSD_DESC)
+    def propose_ceph_osd(
+        node: Annotated[str, Field(description="Node")],
+        dev: Annotated[str, Field(description="Block device e.g. /dev/sdb")],
+        db_dev: Annotated[Optional[str], Field(default=None)] = None,
+        wal_dev: Annotated[Optional[str], Field(default=None)] = None,
+        encrypted: Annotated[bool, Field(default=False)] = False,
+        crush_device_class: Annotated[Optional[str], Field(default=None)] = None,
+        osds_per_device: Annotated[Optional[int], Field(default=None)] = None,
+    ):
+        return server.ceph_tools.propose_ceph_osd(
+            node, dev, db_dev, wal_dev, encrypted, crush_device_class, osds_per_device
+        )
+
+    @server.mcp.tool(description=D.CREATE_CEPH_OSD_DESC)
+    def create_ceph_osd(
+        node: Annotated[str, Field(description="Node")],
+        dev: Annotated[str, Field(description="Block device e.g. /dev/sdb")],
+        confirm: Annotated[str, Field(description="Must equal exact /dev path")],
+        dry_run: Annotated[bool, Field(description="Default true — no mutation", default=True)] = True,
+        db_dev: Annotated[Optional[str], Field(default=None)] = None,
+        wal_dev: Annotated[Optional[str], Field(default=None)] = None,
+        encrypted: Annotated[bool, Field(default=False)] = False,
+        crush_device_class: Annotated[Optional[str], Field(default=None)] = None,
+        osds_per_device: Annotated[Optional[int], Field(default=None)] = None,
+    ):
+        return server.ceph_tools.create_ceph_osd(
+            node,
+            dev,
+            confirm,
+            dry_run,
+            db_dev,
+            wal_dev,
+            encrypted,
+            crush_device_class,
+            osds_per_device,
+        )
+
+    @server.mcp.tool(description=D.DESTROY_CEPH_OSD_DESC)
+    def destroy_ceph_osd(
+        node: Annotated[str, Field(description="Node")],
+        osdid: Annotated[int, Field(description="OSD id")],
+        confirm: Annotated[str, Field(description="Must equal str(osdid)")],
+        cleanup: Annotated[bool, Field(description="Remove partition table entries", default=False)] = False,
+    ):
+        return server.ceph_tools.destroy_ceph_osd(node, osdid, confirm, cleanup)
+
     # --- Pools ---
     @server.mcp.tool(description=D.LIST_POOLS_DESC)
     def list_pools():

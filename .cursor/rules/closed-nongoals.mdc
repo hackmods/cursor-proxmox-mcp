@@ -1,0 +1,14 @@
+---
+description: Closed MCP non-goals — do not resurface as missing features
+alwaysApply: true
+---
+
+# Closed non-goals (D30)
+
+Do **not** suggest, plan, or document these as missing / planned / Phase C remainder enhancements unless the user explicitly asks to reverse D30:
+
+1. Long-lived VNC/SPICE **websocket proxy** inside MCP (tickets + `get_console_connection` only — D6).
+2. **Full PBS product admin** (separate PBS API: users/remotes/sync/prune). PVE `type=pbs` storage + `get_pbs_storage_status` is the scope.
+3. **Ungated** Ceph OSD/MON/MGR create/destroy. Gated OSD only: `list_node_disks` → `propose_ceph_osd` → `create_ceph_osd`/`destroy_ceph_osd` with typed confirm + dry-run default.
+
+When summarizing gaps or next work, omit these three. See `.cursor/research/decisions.md` D30.

@@ -221,16 +221,20 @@ CREATE_SDN_SUBNET_DESC = """Create SDN subnet (staged until apply_sdn). Paramete
 UPDATE_SDN_SUBNET_DESC = """Update SDN subnet (staged until apply_sdn). Parameters: vnet*, subnet*; gateway?, snat?, dnszoneprefix?"""
 DELETE_SDN_SUBNET_DESC = """IRREVERSIBLE: delete SDN subnet (staged until apply_sdn). Parameters: vnet*, subnet*"""
 
-# Ceph (no OSD/MON create/destroy)
+# Ceph (pools + gated OSD; MON/MGR create out of scope — D30)
 GET_CEPH_STATUS_DESC = """Get Ceph cluster health/status (requires Ceph)."""
 LIST_CEPH_POOLS_DESC = """List Ceph pools."""
-LIST_CEPH_OSDS_DESC = """List Ceph OSDs (read-only — create/destroy out of scope)."""
-LIST_CEPH_MONS_DESC = """List Ceph monitors (read-only)."""
-LIST_CEPH_MGRS_DESC = """List Ceph managers (read-only)."""
+LIST_CEPH_OSDS_DESC = """List Ceph OSDs. For create use list_node_disks → propose_ceph_osd → create_ceph_osd."""
+LIST_CEPH_MONS_DESC = """List Ceph monitors (read-only — MON create/destroy out of MCP scope)."""
+LIST_CEPH_MGRS_DESC = """List Ceph managers (read-only — MGR create/destroy out of MCP scope)."""
 CREATE_CEPH_POOL_DESC = """Create a Ceph pool (light write). Parameters: name*; size?, min_size?, pg_num?, application?"""
 DELETE_CEPH_POOL_DESC = """IRREVERSIBLE: delete a Ceph pool. confirm* must equal the pool name. Parameters: name*, confirm*"""
+LIST_NODE_DISKS_DESC = """List local disks on a node (Ceph OSD prep). Prefer type=unused. Parameters: node*; type?=unused|journal_disks, include_partitions?=false, skipsmart?=false"""
+PROPOSE_CEPH_OSD_DESC = """Dry proposal for Ceph OSD create (no mutation). Validates disk when possible. Parameters: node*, dev*; db_dev?, wal_dev?, encrypted?=false, crush_device_class?, osds_per_device?"""
+CREATE_CEPH_OSD_DESC = """WARNING: create Ceph OSD (wipes/claims device). Defaults dry_run=true. confirm* must equal exact normalized /dev path. Parameters: node*, dev*, confirm*; dry_run?=true, db_dev?, wal_dev?, encrypted?=false, crush_device_class?, osds_per_device?"""
+DESTROY_CEPH_OSD_DESC = """IRREVERSIBLE: destroy Ceph OSD (must be out+down). confirm* must equal str(osdid). Parameters: node*, osdid*, confirm*; cleanup?=false"""
 
-# PBS (via PVE storage plugin — not PBS product admin)
+# PBS (via PVE storage plugin — not PBS product admin; closed non-goal D30)
 GET_PBS_STORAGE_STATUS_DESC = """Status for a PVE storage of type=pbs. Parameters: node*, storage*"""
 
 # Pools

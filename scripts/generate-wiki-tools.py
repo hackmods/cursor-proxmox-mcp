@@ -324,6 +324,10 @@ DOMAIN_GROUPS: list[tuple[str, frozenset[str]]] = [
                 "list_ceph_mgrs",
                 "create_ceph_pool",
                 "delete_ceph_pool",
+                "list_node_disks",
+                "propose_ceph_osd",
+                "create_ceph_osd",
+                "destroy_ceph_osd",
             }
         ),
     ),

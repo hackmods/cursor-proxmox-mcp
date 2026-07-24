@@ -27,7 +27,7 @@ python scripts/generate-wiki-tools.py
 
 <!-- BEGIN GENERATED TOOLS -->
 
-_Generated from `tools/inventory.py` — **207** tools. Do not edit by hand; run `python scripts/generate-wiki-tools.py`._
+_Generated from `tools/inventory.py` — **211** tools. Do not edit by hand; run `python scripts/generate-wiki-tools.py`._
 
 ### Nodes
 
@@ -293,13 +293,17 @@ _Generated from `tools/inventory.py` — **207** tools. Do not edit by hand; run
 
 | Tool | Description |
 |------|-------------|
+| `create_ceph_osd` | WARNING: create Ceph OSD (wipes/claims device). Defaults dry_run=true. confirm* must equal exact normalized /dev path. Parameters: node*, dev*, confirm*; dry_run?=true, db_dev?, wal_dev?, encrypted?=false, crush_device_class?, osds_per_device? |
 | `create_ceph_pool` | Create a Ceph pool (light write). Parameters: name*; size?, min_size?, pg_num?, application? |
 | `delete_ceph_pool` | IRREVERSIBLE: delete a Ceph pool. confirm* must equal the pool name. Parameters: name*, confirm* |
+| `destroy_ceph_osd` | IRREVERSIBLE: destroy Ceph OSD (must be out+down). confirm* must equal str(osdid). Parameters: node*, osdid*, confirm*; cleanup?=false |
 | `get_ceph_status` | Get Ceph cluster health/status (requires Ceph). |
-| `list_ceph_mgrs` | List Ceph managers (read-only). |
-| `list_ceph_mons` | List Ceph monitors (read-only). |
-| `list_ceph_osds` | List Ceph OSDs (read-only — create/destroy out of scope). |
+| `list_ceph_mgrs` | List Ceph managers (read-only — MGR create/destroy out of MCP scope). |
+| `list_ceph_mons` | List Ceph monitors (read-only — MON create/destroy out of MCP scope). |
+| `list_ceph_osds` | List Ceph OSDs. For create use list_node_disks → propose_ceph_osd → create_ceph_osd. |
 | `list_ceph_pools` | List Ceph pools. |
+| `list_node_disks` | List local disks on a node (Ceph OSD prep). Prefer type=unused. Parameters: node*; type?=unused\|journal_disks, include_partitions?=false, skipsmart?=false |
+| `propose_ceph_osd` | Dry proposal for Ceph OSD create (no mutation). Validates disk when possible. Parameters: node*, dev*; db_dev?, wal_dev?, encrypted?=false, crush_device_class?, osds_per_device? |
 
 ### Pools
 

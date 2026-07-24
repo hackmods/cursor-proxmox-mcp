@@ -24,7 +24,7 @@ Source of truth for registered names: `ProxmoxMCPServer._setup_tools()` and `tes
 | Replication | list/status/run/create/update/delete | /cluster/replication, /nodes/{n}/replication |
 | ACME | list + create account/plugin, delete plugin, order/renew certificate | /cluster/acme..., /nodes/{n}/certificates/acme... |
 | SDN | zones/vnets/subnets CRUD + list controllers/ipams/dns + apply | /cluster/sdn... |
-| Ceph | status, list pools/OSDs/MONs/MGRs, create/delete pool (confirm) | /cluster/ceph... |
+| Ceph | status, list pools/OSDs/MONs/MGRs, create/delete pool (confirm); gated OSD list_node_disks / propose / create / destroy | /cluster/ceph..., /nodes/{n}/disks/list, /nodes/{n}/ceph/osd |
 | Pools | list/get/create/update/delete | /pools |
 
 ## Planned
@@ -80,24 +80,25 @@ See [next-expansion.md](next-expansion.md). Summary:
 | `reboot_node` / `shutdown_node` (confirm=node) | done |
 | `get_cluster_join_info` / `join_cluster` (confirm=JOIN) | done |
 
-### Phase C remainder — done / v1.7.0
+### Phase C remainder — done / v1.7.0–v1.8.0
 
 | Item | Status |
 |------|--------|
 | SDN zone/vnet/subnet CRUD + apply tip | done |
 | ACME account/plugin create, plugin delete, order/renew | done |
 | Ceph status + list pools/OSDs/MONs/MGRs + pool create/delete | done |
+| Gated Ceph OSD: list disks / propose / create (dry_run) / destroy | done (v1.8.0 / D30) |
 | `get_console_connection` (ticket + viewer hints) | done (still no websocket proxy — D6) |
 | PBS `create_storage` fields + `get_pbs_storage_status` | done |
 | Node network create/update/delete/reload | done |
 
-### Phase C — still deferred
+### Closed non-goals (D30 — do not list as missing)
 
-| Area | Reason to defer |
-|------|-----------------|
-| Ceph OSD/MON/MGR create/destroy | Cluster-invasive sequenced ops — prefer Ceph tooling |
-| Full VNC/SPICE websocket proxy | Long-lived stream ≠ MCP request/response (D6) |
-| Full PBS product admin (users/remotes/sync) | Separate product; use PVE storage plugin |
+| Area | Stance |
+|------|--------|
+| Full VNC/SPICE websocket proxy | Closed — tickets only (D6) |
+| Full PBS product admin | Closed — PVE storage plugin only; separate product |
+| Ungated Ceph OSD/MON/MGR create/destroy | Closed — gated OSD only; MON/MGR out |
 
 ## Excluded
 

@@ -26,7 +26,7 @@ def test_phase_f1_tools_in_inventory():
         "deploy_node_app",
     ):
         assert name in ALL_TOOL_NAMES
-    assert len(ALL_TOOL_NAMES) == 207
+    assert len(ALL_TOOL_NAMES) == 211
 
 
 def test_parse_qemu_networks_virtio_mac():

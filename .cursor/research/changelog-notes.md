@@ -1,5 +1,13 @@
 # Changelog / research notes
 
+## 2026-07-23 — Gated Ceph OSD + closed non-goals (rev r18) — 211 tools
+
+**Why:** User asked for carefully gated OSD ops (list disks → propose → confirm + dry-run) and a note to stop resurfacing closed exclusions as missing features.
+
+**Shipped:** `list_node_disks`, `propose_ceph_osd`, `create_ceph_osd` (default `dry_run=true`, `confirm` = exact `/dev` path), `destroy_ceph_osd` (`confirm` = `str(osdid)`); D30; `.cursor/rules/closed-nongoals.mdc`.
+
+**Closed non-goals (do not mention as missing again):** VNC websocket proxy, full PBS product admin, ungated Ceph OSD/MON/MGR create/destroy. MON/MGR lifecycle stays out.
+
 ## 2026-07-23 — Phase C remainder (rev r17) — 207 tools
 
 **Why:** User asked to plan/build SDN write, ACME order/renew, Ceph, VNC proxy, PBS admin, node network CRUD — then fully test and push.

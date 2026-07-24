@@ -44,13 +44,17 @@ NEW_TOOLS = (
     "list_ceph_mgrs",
     "create_ceph_pool",
     "delete_ceph_pool",
+    "list_node_disks",
+    "propose_ceph_osd",
+    "create_ceph_osd",
+    "destroy_ceph_osd",
 )
 
 
 def test_v17_tools_in_inventory():
     for name in NEW_TOOLS:
         assert name in ALL_TOOL_NAMES
-    assert len(ALL_TOOL_NAMES) == 207
+    assert len(ALL_TOOL_NAMES) == 211
     for name in (
         "delete_sdn_zone",
         "delete_sdn_vnet",
@@ -59,6 +63,8 @@ def test_v17_tools_in_inventory():
         "delete_ceph_pool",
         "delete_node_network",
         "reload_node_network",
+        "create_ceph_osd",
+        "destroy_ceph_osd",
     ):
         assert name in DESTRUCTIVE_TOOLS
 
@@ -243,7 +249,7 @@ def test_create_ceph_pool_and_lists():
     tools = CephTools(api)
     created = tools.create_ceph_pool("lab", size=3, min_size=2, pg_num=16, application="rbd")[0].text
     assert "lab" in created
-    assert "out of MCP scope" in created
+    assert "propose_ceph_osd" in created or "list_node_disks" in created
     assert "rbd" in json.loads(tools.list_ceph_pools()[0].text)[0]["pool_name"]
     assert tools.list_ceph_osds()[0].text
     assert tools.list_ceph_mons()[0].text
@@ -271,3 +277,64 @@ def test_sdn_vnet_subnet_crud():
     assert "deleted" in tools.delete_sdn_subnet("vnet1", "10.0.0.0/24")[0].text.lower()
     assert "apply_sdn" in tools.update_sdn_zone("zone1", mtu=1400)[0].text
     assert "deleted" in tools.delete_sdn_zone("zone1")[0].text.lower()
+
+
+def test_list_node_disks_and_propose_osd():
+    api = MagicMock()
+    api.nodes.return_value.disks.list.get.return_value = [
+        {
+            "devpath": "/dev/sdb",
+            "size": 10**12,
+            "model": "SSD",
+            "used": "unused",
+            "osdid": -1,
+            "osdid-list": [],
+            "mounted": False,
+            "gpt": True,
+        }
+    ]
+    tools = CephTools(api)
+    listed = json.loads(tools.list_node_disks("pve", type="unused")[0].text)
+    assert listed["free_candidate_count"] == 1
+    assert listed["free_candidates"][0]["devpath"] == "/dev/sdb"
+    prop = tools.propose_ceph_osd("pve", "sdb")[0].text
+    assert "/dev/sdb" in prop
+    assert "dry" in prop.lower() or "no changes" in prop.lower()
+
+
+def test_create_ceph_osd_dry_run_default_and_confirm():
+    api = MagicMock()
+    api.nodes.return_value.disks.list.get.return_value = [
+        {
+            "devpath": "/dev/sdb",
+            "used": "unused",
+            "osdid": -1,
+            "osdid-list": [],
+            "mounted": False,
+            "gpt": True,
+            "size": 100,
+        }
+    ]
+    api.nodes.return_value.ceph.osd.post.return_value = "UPID:pve:osd:"
+    tools = CephTools(api)
+    with pytest.raises(ValueError, match="confirm must equal"):
+        tools.create_ceph_osd("pve", "/dev/sdb", confirm="wrong", dry_run=False)
+    dry = tools.create_ceph_osd("pve", "/dev/sdb", confirm="/dev/sdb")[0].text
+    assert "DRY-RUN" in dry
+    api.nodes.return_value.ceph.osd.post.assert_not_called()
+    real = tools.create_ceph_osd(
+        "pve", "/dev/sdb", confirm="/dev/sdb", dry_run=False
+    )[0].text
+    assert "initiated" in real.lower()
+    api.nodes.return_value.ceph.osd.post.assert_called_once()
+
+
+def test_destroy_ceph_osd_requires_confirm():
+    api = MagicMock()
+    api.nodes.return_value.ceph.osd.return_value.delete.return_value = "UPID:pve:destroy:"
+    tools = CephTools(api)
+    with pytest.raises(ValueError, match="confirm must equal"):
+        tools.destroy_ceph_osd("pve", 3, confirm="osd.3")
+    text = tools.destroy_ceph_osd("pve", 3, confirm="3", cleanup=True)[0].text
+    assert "IRREVERSIBLE" in text
+    api.nodes.return_value.ceph.osd.assert_called_with(3)

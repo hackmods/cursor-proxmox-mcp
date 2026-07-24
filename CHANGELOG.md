@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-07-23
+
+### Added
+
+- **Gated Ceph OSD (rev r18):** `list_node_disks`, `propose_ceph_osd`, `create_ceph_osd`
+  (`confirm` = exact `/dev` path, **`dry_run=true` by default**), `destroy_ceph_osd`
+  (`confirm` = `str(osdid)`). **211** tools.
+
+### Notes
+
+- D30: VNC websocket proxy and full PBS product admin are **closed non-goals** — do not list as missing.
+- MON/MGR create/destroy remain out of scope.
+
 ## [1.7.0] - 2026-07-23
 
 ### Added

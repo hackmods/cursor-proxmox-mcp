@@ -59,7 +59,7 @@ Quick map:
 
 **Phase F / F.1 (done):** LXC day-2 + VM network/push + create `wait=` + `deploy_static_nginx` + `deploy_node_app` + opt-in probes — see [next-expansion.md](../.cursor/research/next-expansion.md).
 
-**Phase C (remainder done v1.7.0):** SDN write, ACME order/renew, Ceph status/pools, PBS storage status, node network CRUD, `get_console_connection` shipped. Still deferred: Ceph OSD/MON create/destroy, websocket console proxy, full PBS product admin. See [coverage matrix](../.cursor/research/proxmox-api-coverage.md).
+**Phase C:** remainder shipped v1.7.0–v1.8.0 (incl. gated Ceph OSD). VNC websocket proxy and full PBS product admin are **closed non-goals** (D30) — not planned gaps. See [coverage matrix](../.cursor/research/proxmox-api-coverage.md).
 
 ## Knowledge pointers
 

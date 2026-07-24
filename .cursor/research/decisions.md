@@ -167,3 +167,17 @@ Rules:
 - Descriptions + responses use `IRREVERSIBLE`; tools are in `DESTRUCTIVE_TOOLS`.
 - `join_cluster` runs on the **joining** node — operators must point MCP at the standalone host.
 - Never log join passwords (tool_audit redaction).
+
+## D30 — Gated Ceph OSD + closed non-goals (do not resurface)
+
+**Shipped (v1.8.0):** carefully gated Ceph OSD path —
+`list_node_disks` → `propose_ceph_osd` → `create_ceph_osd(confirm=<exact-/dev>, dry_run=false)` /
+`destroy_ceph_osd(confirm=<osdid>)`. Default `dry_run=true` on create. MON/MGR create/destroy stay out.
+
+**Closed non-goals for this MCP — do not list as “missing”, “planned”, or “Phase C remainder” again:**
+
+1. **Long-lived VNC/SPICE websocket proxy** — tickets + `get_console_connection` only (D6). Wrong protocol fit for MCP.
+2. **Full PBS product admin** (PBS users/remotes/sync/prune as a separate API) — use PVE `storage.type=pbs` + `get_pbs_storage_status`. A dedicated PBS MCP would be a different project.
+3. **Casual ungated Ceph OSD/MON/MGR create/destroy** — rejected; only the gated OSD flow above.
+
+Agents and docs MUST NOT reopen these as enhancement opportunities unless the user explicitly asks to reverse D30.

@@ -20,7 +20,7 @@ def test_new_tools_in_inventory():
         "qm_set_vm",
     ):
         assert name in ALL_TOOL_NAMES
-    assert len(ALL_TOOL_NAMES) == 207
+    assert len(ALL_TOOL_NAMES) == 211
 
 
 def test_create_lxc_with_tags_description_onboot():

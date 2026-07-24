@@ -5,7 +5,7 @@
 [![PyPI](https://img.shields.io/pypi/v/cursor-proxmox-mcp)](https://pypi.org/project/cursor-proxmox-mcp/)
 [![GHCR](https://img.shields.io/badge/GHCR-cursor--proxmox--mcp-blue)](https://github.com/hackmods/cursor-proxmox-mcp/pkgs/container/cursor-proxmox-mcp)
 
-**Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 207 tools covering QEMU VMs (incl. guest-agent network/file/guest-info/fsfreeze + `bootstrap_cloudinit_vm` + `qm_set_vm`), LXC (incl. `provision_lxc`, `bootstrap_docker_lxc`, crun Path B, DNS/SSH helpers, `deploy_node_app`), unified guest power, storage admin (incl. PBS plugin + status), cluster/tasks (incl. join), snapshots, backups, migration, HA, firewall, access control, replication, SDN write + apply, ACME order/renew, Ceph status/pools, node network CRUD, console tickets/`get_console_connection`, and host reboot/shutdown. **v1.7.0** ships the Phase C remainder (r17).
+**Formal Cursor ↔ [Proxmox VE](https://www.proxmox.com/) MCP integration** — 211 tools covering QEMU VMs (incl. guest-agent network/file/guest-info/fsfreeze + `bootstrap_cloudinit_vm` + `qm_set_vm`), LXC (incl. `provision_lxc`, `bootstrap_docker_lxc`, crun Path B, DNS/SSH helpers, `deploy_node_app`), unified guest power, storage admin (incl. PBS plugin + status), cluster/tasks (incl. join), snapshots, backups, migration, HA, firewall, access control, replication, SDN write + apply, ACME order/renew, Ceph status/pools + gated OSD create/destroy, node network CRUD, console tickets/`get_console_connection`, and host reboot/shutdown. **v1.8.0** adds carefully gated Ceph OSD ops (r18).
 
 **Repo:** [hackmods/cursor-proxmox-mcp](https://github.com/hackmods/cursor-proxmox-mcp)
 
@@ -32,7 +32,7 @@ Registered via `tools/register.py` (called from `ProxmoxMCPServer._setup_tools()
 | **Replication** | list/status/run/create/update/delete jobs |
 | **SDN** | zones/vnets/subnets CRUD + list controllers/ipams/dns + `apply_sdn` |
 | **ACME** | list + create account/plugin, delete plugin, `order_acme_certificate` / `renew_acme_certificate` |
-| **Ceph** | status, list pools/OSDs/MONs/MGRs, create/delete pool (`confirm=<pool>`; no OSD/MON create) |
+| **Ceph** | status, list pools/OSDs/MONs/MGRs, pool CRUD; gated OSD: `list_node_disks` → `propose_ceph_osd` → `create_ceph_osd`/`destroy_ceph_osd` (typed confirm; create defaults `dry_run=true`) |
 | **Pools** | list/get/create/update/delete |
 
 ### Suggested agent flow
@@ -209,11 +209,9 @@ This server can create/delete guests, change firewall/ACL, and run guest command
 - uvx / uv / pip / Docker (GHCR) install paths; optional `.[openapi]` for mcpo
 - Local + GitHub CI (`ruff` + `pytest` + coverage + inventory + design invariants)
 
-### Planned (not implemented yet)
+### Closed non-goals (not missing — D30)
 
-**Still deferred:** Ceph OSD/MON/MGR create/destroy, full VNC/SPICE websocket proxy, full PBS product admin — see [coverage matrix](.cursor/research/proxmox-api-coverage.md) and [next-expansion.md](.cursor/research/next-expansion.md).
-
-*(Shipped in v1.7.0 / r17: SDN write, ACME write/order/renew, Ceph read + pool CRUD, console connection helper, PBS storage status, node network CRUD.)*
+Do not treat these as planned gaps: long-lived VNC/SPICE **websocket proxy** (tickets only — D6), **full PBS product admin**, or **ungated** Ceph OSD/MON/MGR create/destroy. Gated OSD tools are shipped; MON/MGR lifecycle stays on Ceph/PVE tooling.
 
 ## Development
 
@@ -225,15 +223,15 @@ After adding a tool: update `definitions.py`, README table, `.cursor/research/pr
 
 ## Status
 
-- [x] Formal multi-domain Proxmox API coverage (207 tools)
+- [x] Formal multi-domain Proxmox API coverage (211 tools)
 - [x] Phase B + Phase D agent QOL tools
 - [x] Phase F LXC day-2 + Phase F.1 VM network/push + create wait opt-in
 - [x] Phase C light: node reboot/shutdown + cluster join (typed confirm)
 - [x] Phase C remainder: SDN write / ACME / Ceph pools / console helper / PBS storage / node net CRUD
+- [x] Gated Ceph OSD create/destroy (confirm + dry-run default)
 - [x] v1.0 security hardening, code-design audit, full test suite
 - [x] uvx `cursor-proxmox-mcp` + PyPI/GHCR release workflow
 - [x] Local + GitHub CI with coverage + design invariants
-- [ ] Ceph OSD/MON create/destroy, websocket console proxy, full PBS product admin
 
 ## License
 
