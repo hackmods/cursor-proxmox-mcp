@@ -124,6 +124,13 @@ Match roles to what you want the agent to do. Assign them to the **token** when 
 
 Split tokens if useful: one audit token (`PVEAuditor`) for health checks, one write token for create/migrate — both with privsep **Yes**.
 
+**Two ways to use split tokens:**
+
+| Approach | How |
+|----------|-----|
+| **Dual MCP servers** (Cursor) | Two `mcpServers` entries (`proxmox-audit` + `proxmox-write`) each with its own `config.json`. Auto-approve only the audit server; leave write on prompt. See [Dual MCP servers](#dual-mcp-servers-audit--write) below. |
+| **In-process `auth_write`** (D31) | One MCP server; set optional `auth_write` in `config.json`. Inventory can use `auth`; mutations use the elevated write token when configured. Call `get_mcp_capabilities` to confirm `dual_auth`. |
+
 Official reference: [Proxmox VE — User Management / API Tokens](https://pve.proxmox.com/pve-docs/chapter-pveum.html#pveum_tokens).
 
 ### Realms (`@pve` vs `@pam`)
@@ -375,6 +382,56 @@ Prefer **project** MCP config if the token is lab-only and you work on many unre
 
 Use **absolute paths** and forward slashes. After saving, enable the **proxmox** server in Cursor Settings → MCP. A green status and a long tool list mean it’s connected.
 
+### Dual MCP servers (audit + write)
+
+Safer lab pattern: inventory on a narrow token, mutations on a write token, separate Cursor approval.
+
+```json
+{
+  "mcpServers": {
+    "proxmox-audit": {
+      "command": "uvx",
+      "args": ["--from", "C:/Users/YOU/Projects/cursor-proxmox-mcp", "cursor-proxmox-mcp"],
+      "env": {
+        "PROXMOX_MCP_CONFIG": "C:/Users/YOU/Projects/cursor-proxmox-mcp/proxmox-config/config.audit.json"
+      }
+    },
+    "proxmox-write": {
+      "command": "uvx",
+      "args": ["--from", "C:/Users/YOU/Projects/cursor-proxmox-mcp", "cursor-proxmox-mcp"],
+      "env": {
+        "PROXMOX_MCP_CONFIG": "C:/Users/YOU/Projects/cursor-proxmox-mcp/proxmox-config/config.write.json"
+      }
+    }
+  }
+}
+```
+
+`config.audit.json`: `PVEAuditor` on `mcp@pve!audit`. `config.write.json`: `PVEAdmin` / `PVEVMAdmin` on `mcp@pve!write` (privsep **Yes** + token ACL). Auto-approve `proxmox-audit:*` only — see [Cursor approval / auto-run](#cursor-approval--auto-run).
+
+**Or** keep one server and set optional `auth_write` in a single `config.json` (D31) so mutations use the elevated token automatically.
+
+### Cursor approval / auto-run
+
+Per-tool prompts come from **Cursor**, not from this MCP. Connector typed `confirm=` still applies for `reboot_node` / `shutdown_node` / `join_cluster` / Ceph OSD (D29) even when auto-approved.
+
+1. **Cursor Settings → Agents → Approvals & Execution** — use **Auto-review** or **Allowlist** (not Ask Every Time).
+2. Copy [`proxmox-config/permissions.example.json`](proxmox-config/permissions.example.json) to `~/.cursor/permissions.json` (or project `.cursor/permissions.json`).
+3. Match the `server:` prefix to your `mcp.json` name (`proxmox`, `proxmox-write`, etc.).
+4. Do **not** allowlist `reboot_node`, `shutdown_node`, `join_cluster`, `create_ceph_osd`, `destroy_ceph_osd`, `delete_ceph_pool`, or a blanket `proxmox:*` unless this is a disposable lab.
+
+Docs: [Cursor permissions.json](https://cursor.com/docs/reference/permissions).
+
+### Deploy pipeline (node example)
+
+Inventory → guest → app (node name often `pve`):
+
+1. `get_nodes` → `list_os_templates` / `list_isos` → `get_next_vmid`
+2. **LXC:** `provision_lxc` → optional `prepare_lxc_for_docker` / `bootstrap_docker_lxc` → `push_to_lxc` → `deploy_node_app` or `deploy_static_nginx`
+3. **VM:** `provision_vm` (or `bootstrap_cloudinit_vm` when cloning a cloud-init template) → guest-agent `push_to_vm` / `execute_vm_command`
+
+Call `get_mcp_capabilities` after reload to confirm SSH + day-2 tools. Prefer composite tools over many round-trips.
+
 ### Alternative — editable Python install
 
 ```bash
@@ -495,7 +552,7 @@ Not everything the model *suggests* is available via the Proxmox API (host packa
 For create / change tasks, steer the agent toward this order:
 
 1. `get_next_vmid` → `list_os_templates` / `list_isos` → `list_node_networks`
-2. `provision_lxc` (preferred one-shot small CT) or `create_lxc` / `create_vm` → `wait_for_task` → start
+2. `provision_lxc` / `provision_vm` (preferred one-shot) or `create_lxc` / `create_vm` → `wait_for_task` → start
 3. `create_snapshot` before risky config changes → then update / power tools
 4. Migrate, HA, firewall, access, and replication only when you explicitly need them
 
@@ -554,14 +611,14 @@ Local verification:
 
 ## What’s next
 
-**Product roadmap (what we build next in this repo):** [.cursor/research/next-expansion.md](.cursor/research/next-expansion.md)
+**Product roadmap:** [.cursor/research/next-expansion.md](.cursor/research/next-expansion.md)
 
-- **Phase D (agent QOL):** `wait_for_task`, richer create (ISO / cloud-init / net), token ACL smoke, optional PyPI
-- **Phase C (deferred):** SDN write, ACME order, Ceph, cluster join, websocket console proxy
+Phases D–F and Phase C (including gated Ceph OSD) are **shipped** through v1.8+. Closed non-goals (D30): VNC websocket proxy, full PBS product admin, ungated Ceph MON/MGR. Optional **dual-credential elevated mode** (`auth_write`, D31) and Cursor `permissions.json` auto-approve for day-2 pipelines are documented above.
 
 **Things you can do with the MCP today:**
 
 - Daily health prompts (cluster status, storage pressure, odd SDN / HA state)
+- `provision_lxc` / `provision_vm` → push → `deploy_node_app` / Docker-in-LXC recipes
 - Template → clone → configure flows for disposable lab VMs
 - More MCP servers alongside Proxmox (Docker, GitHub, monitoring) as your home-lab agent surface grows
 
@@ -569,7 +626,7 @@ Project docs:
 
 - [README](README.md) — tool inventory and install paths
 - [API coverage](docs/api-coverage.md) — what’s implemented vs planned + knowledge pointers
-- [Next expansion](.cursor/research/next-expansion.md) — Phase D / C roadmap and insights
+- [Next expansion](.cursor/research/next-expansion.md) — living roadmap
 - Research matrix: [`.cursor/research/proxmox-api-coverage.md`](.cursor/research/proxmox-api-coverage.md)
 - Decisions: [`.cursor/research/decisions.md`](.cursor/research/decisions.md)
 

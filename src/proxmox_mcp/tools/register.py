@@ -303,6 +303,60 @@ def register_all(server: ProxmoxMCPServer) -> None:
             timeout,
         )
 
+    @server.mcp.tool(description=D.PROVISION_VM_DESC)
+    def provision_vm(
+        node: Annotated[str, Field(description="Node")],
+        name: Annotated[str, Field(description="VM name")],
+        vmid: Annotated[Optional[str], Field(description="New VMID (auto nextid)", default=None)] = None,
+        clone_from: Annotated[
+            Optional[str], Field(description="Cloud-init template VMID (preferred)", default=None)
+        ] = None,
+        full: Annotated[bool, Field(description="Full clone when clone_from set", default=True)] = True,
+        cpus: Annotated[int, Field(description="vCPU cores", default=2)] = 2,
+        memory: Annotated[int, Field(description="Memory MB", default=2048)] = 2048,
+        disk_size: Annotated[int, Field(description="Disk GB (create path)", default=20)] = 20,
+        storage: Annotated[Optional[str], Field(description="Storage", default=None)] = None,
+        ostype: Annotated[Optional[str], Field(description="OS type", default=None)] = None,
+        bridge: Annotated[Optional[str], Field(description="Bridge", default=None)] = None,
+        net0: Annotated[Optional[str], Field(description="net0 override", default=None)] = None,
+        iso: Annotated[Optional[str], Field(description="ISO volume for create path", default=None)] = None,
+        boot: Annotated[Optional[str], Field(description="Boot order", default=None)] = None,
+        ciuser: Annotated[Optional[str], Field(description="cloud-init user", default=None)] = None,
+        cipassword: Annotated[Optional[str], Field(description="cloud-init password", default=None)] = None,
+        sshkeys: Annotated[Optional[str], Field(description="cloud-init SSH public keys", default=None)] = None,
+        ipconfig0: Annotated[Optional[str], Field(description="cloud-init ipconfig0", default=None)] = None,
+        onboot: Annotated[Optional[bool], Field(description="Start on boot", default=None)] = None,
+        description: Annotated[Optional[str], Field(description="Description", default=None)] = None,
+        tags: Annotated[Optional[str], Field(description="Tags", default=None)] = None,
+        target: Annotated[Optional[str], Field(description="Target node for clone", default=None)] = None,
+        timeout: Annotated[Optional[int], Field(description="Settle timeout seconds", default=None)] = None,
+    ):
+        return server.vm_tools.provision_vm(
+            node,
+            name,
+            vmid,
+            clone_from,
+            full,
+            cpus,
+            memory,
+            disk_size,
+            storage,
+            ostype,
+            bridge,
+            net0,
+            iso,
+            boot,
+            ciuser,
+            cipassword,
+            sshkeys,
+            ipconfig0,
+            onboot,
+            description,
+            tags,
+            target,
+            timeout,
+        )
+
     @server.mcp.tool(description=D.PUSH_TO_VM_DESC)
     def push_to_vm(
         node: Annotated[str, Field(description="Node")],

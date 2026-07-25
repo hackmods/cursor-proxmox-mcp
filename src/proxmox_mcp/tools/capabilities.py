@@ -1,14 +1,18 @@
-"""MCP self-check / capabilities (Phase F)."""
+"""MCP self-check / capabilities (Phase F + D31)."""
 from __future__ import annotations
 
 import importlib.metadata
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from mcp.types import TextContent as Content
 
 from ..ssh import PctExecutor, ssh_configured
 from .base import ProxmoxTool
-from .inventory import ALL_TOOL_NAMES
+from .inventory import (
+    ALL_TOOL_NAMES,
+    SAFE_DAY2_TOOLS,
+    TYPED_CONFIRM_TOOLS,
+)
 
 
 DAY2_TOOLS = frozenset(
@@ -21,6 +25,7 @@ DAY2_TOOLS = frozenset(
         "get_docker_lxc_status",
         "bootstrap_docker_lxc",
         "provision_lxc",
+        "provision_vm",
         "push_to_lxc",
         "pull_from_lxc",
         "deploy_static_nginx",
@@ -47,7 +52,7 @@ def package_version() -> str:
 
 
 class CapabilitiesTools(ProxmoxTool):
-    """Report MCP package / SSH / day-2 readiness."""
+    """Report MCP package / SSH / day-2 / dual-auth readiness."""
 
     def __init__(
         self,
@@ -56,11 +61,19 @@ class CapabilitiesTools(ProxmoxTool):
         ssh_config: Optional[Any] = None,
         proxmox_host: Optional[str] = None,
         logging_config: Optional[Any] = None,
+        auth_summary: Optional[Dict[str, Any]] = None,
+        proxmox_write_api: Optional[Any] = None,
+        proxmox_read_api: Optional[Any] = None,
     ):
-        super().__init__(proxmox_api)
+        super().__init__(
+            proxmox_api,
+            proxmox_write_api=proxmox_write_api,
+            proxmox_read_api=proxmox_read_api,
+        )
         self.ssh_config = ssh_config
         self.proxmox_host = proxmox_host
         self.logging_config = logging_config
+        self.auth_summary = auth_summary or {"dual_auth": False, "mutating_api": "primary"}
         self._pct: Optional[PctExecutor] = None
         if ssh_configured(ssh_config) and proxmox_host:
             self._pct = PctExecutor(ssh_config, proxmox_host)
@@ -68,12 +81,13 @@ class CapabilitiesTools(ProxmoxTool):
     def get_mcp_capabilities(
         self, probe_node: Optional[str] = None
     ) -> List[Content]:
-        """Self-check: version, ssh, paramiko, optional pct probe, day-2 tools."""
+        """Self-check: version, ssh, dual auth, tool tiers, optional pct probe."""
         ver = package_version()
         ssh_on = ssh_configured(self.ssh_config)
         key_path = getattr(self.ssh_config, "private_key_path", None) if self.ssh_config else None
         key_set = bool(key_path)
         log_cfg = self.logging_config
+        auth = self.auth_summary
 
         try:
             import paramiko  # noqa: F401
@@ -86,16 +100,35 @@ class CapabilitiesTools(ProxmoxTool):
 
         day2_present = sorted(DAY2_TOOLS & ALL_TOOL_NAMES)
         day2_missing = sorted(DAY2_TOOLS - ALL_TOOL_NAMES)
+        safe_present = sorted(SAFE_DAY2_TOOLS & ALL_TOOL_NAMES)
+        typed_confirm = sorted(TYPED_CONFIRM_TOOLS & ALL_TOOL_NAMES)
 
         lines = [
             "MCP capabilities (cursor-proxmox-mcp)",
             f"  • package_version: {ver}",
             f"  • tool_inventory_count: {len(ALL_TOOL_NAMES)}",
-            f"  • ssh.enabled: {ssh_on}",
-            f"  • ssh.private_key_path set: {key_set}",
-            f"  • paramiko: {paramiko_detail}",
-            f"  • day2_tools_present: {', '.join(day2_present) or '(none)'}",
+            f"  • dual_auth: {auth.get('dual_auth', False)}",
+            f"  • auth_identity: {auth.get('auth_identity', '(unknown)')}",
         ]
+        if auth.get("dual_auth"):
+            lines.append(
+                f"  • auth_write_identity: {auth.get('auth_write_identity', '(unknown)')}"
+            )
+            lines.append(f"  • mutating_api: {auth.get('mutating_api', 'write')}")
+        else:
+            lines.append("  • mutating_api: primary (single token)")
+        lines.extend(
+            [
+                f"  • ssh.enabled: {ssh_on}",
+                f"  • ssh.private_key_path set: {key_set}",
+                f"  • paramiko: {paramiko_detail}",
+                f"  • day2_tools_present: {', '.join(day2_present) or '(none)'}",
+                f"  • safe_day2_tools_count: {len(safe_present)} "
+                "(Cursor mcpAllowlist candidates — see permissions.example.json)",
+                f"  • typed_confirm_tools: {', '.join(typed_confirm)} "
+                "(never auto-bypass confirm=)",
+            ]
+        )
         if log_cfg is not None:
             lines.append(
                 "  • logging: "

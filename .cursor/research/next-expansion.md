@@ -1,6 +1,6 @@
 # Next expansion phases
 
-Living Cursor note for what to build after the current **211-tool** baseline.
+Living Cursor note for what to build after the current **212-tool** baseline.
 Update this file when priorities change; keep [proxmox-api-coverage.md](proxmox-api-coverage.md), [README.md](../../README.md), and [docs/api-coverage.md](../../docs/api-coverage.md) in sync.
 
 **Baseline (done):** Formal Cursor ↔ Proxmox MCP — guest lifecycle, storage, HA, firewall, access, replication, SDN write, ACME write/order, Ceph status/pools + gated OSD, PBS storage plugin, node network CRUD, console tickets + `get_console_connection`, inventory-locked CI.
@@ -16,6 +16,8 @@ Update this file when priorities change; keep [proxmox-api-coverage.md](proxmox-
 **Phase C light (done / v1.6.0):** QEMU guest-info/fsfreeze, `bootstrap_cloudinit_vm`, node reboot/shutdown (typed confirm), cluster join info/join.
 
 **Phase C remainder (done / v1.7.0–v1.8.0):** SDN write CRUD, ACME account/plugin/order/renew, Ceph status + pool CRUD + gated OSD, `get_console_connection`, PBS storage fields + status, node network CRUD/reload.
+
+**Elevated mode (done / v1.9.0):** optional `auth_write` dual credential (D31), `provision_vm`, Cursor `permissions.example.json` + SETUP dual-server/auto-approve docs, capability tiers.
 
 **D30 closed non-goals — do not resurface as missing features:** VNC websocket proxy, full PBS product admin, ungated Ceph OSD/MON/MGR create/destroy.
 
@@ -137,8 +139,10 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 3. ~~CT111 hygiene + deploy_node_app~~ shipped r14 (171 tools)
 4. ~~Tool-call audit logging~~ shipped r15 (171 tools)
 5. ~~Phase C light + QEMU/cloud-init~~ shipped r16 (179 tools)
-6. Post community drafts when ready
-7. Phase C remainder (SDN/ACME/Ceph/VNC/PBS/node net) stays deferred (D26) until a real use case
+6. ~~Phase C remainder + gated OSD~~ shipped r17–r18 (211 tools)
+7. ~~Elevated mode auth_write + provision_vm + Cursor permissions~~ shipped r19 (212 tools)
+8. Post community drafts when ready
+9. DX only if lab demands: default-on create wait / inventory probes (D10/D25 deferred)
 ```
 
 When shipping any new tool: update this file’s status, coverage matrix, changelog-notes, README, and `expected_tools.py` in the same change (api-coverage + keep-docs-aligned rules).

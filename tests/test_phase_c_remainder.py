@@ -54,7 +54,7 @@ NEW_TOOLS = (
 def test_v17_tools_in_inventory():
     for name in NEW_TOOLS:
         assert name in ALL_TOOL_NAMES
-    assert len(ALL_TOOL_NAMES) == 211
+    assert len(ALL_TOOL_NAMES) == 212
     for name in (
         "delete_sdn_zone",
         "delete_sdn_vnet",

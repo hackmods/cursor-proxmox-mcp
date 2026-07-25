@@ -27,7 +27,7 @@ python scripts/generate-wiki-tools.py
 
 <!-- BEGIN GENERATED TOOLS -->
 
-_Generated from `tools/inventory.py` — **211** tools. Do not edit by hand; run `python scripts/generate-wiki-tools.py`._
+_Generated from `tools/inventory.py` — **212** tools. Do not edit by hand; run `python scripts/generate-wiki-tools.py`._
 
 ### Nodes
 
@@ -58,7 +58,7 @@ _Generated from `tools/inventory.py` — **211** tools. Do not edit by hand; run
 | `get_cluster_options` | Get cluster-wide options. |
 | `get_cluster_resources` | List cluster resources. Parameters: type? (vm\|storage\|node\|sdn) |
 | `get_cluster_status` | Get overall Proxmox cluster health and quorum status. |
-| `get_mcp_capabilities` | Self-check: MCP package version, ssh.enabled, paramiko, day-2 tool presence, logging (level/verbose/tool_calls/file), optional pct version probe. Call after reload/config change. Parameters: probe_node? |
+| `get_mcp_capabilities` | Self-check: MCP package version, dual_auth / auth identities (D31), ssh.enabled, paramiko, day-2 tools, safe_day2 + typed_confirm tiers, logging, optional pct version probe. Call after reload/config change. Parameters: probe_node? |
 | `get_next_vmid` | Get the next free VM/CT ID from the cluster (best-effort — race possible before create). |
 | `get_task_status` | Get status for a task UPID. Parameters: node*, upid* |
 | `get_version` | Get Proxmox VE version/API info. |
@@ -87,6 +87,7 @@ _Generated from `tools/inventory.py` — **211** tools. Do not edit by hand; run
 | `get_vm_rrd_data` | Get RRD metrics for a VM. Parameters: node*, vmid*, timeframe?=hour |
 | `get_vm_status` | Get current runtime status for one VM. Parameters: node*, vmid* |
 | `get_vms` | List all QEMU virtual machines across the cluster (not LXC — use get_containers, or get_cluster_resources(type=vm) for both). Status and resource usage included. |
+| `provision_vm` | One-shot VM provision (D31): if clone_from set → same as bootstrap_cloudinit_vm; else create_vm(wait=true)→start→resolve guest-agent IP. Prefer clone_from for bootable cloud images (blank disk+ISO alone is not an OS install). Never echoes cipassword. Parameters: node*, name*; vmid?, clone_from?, full?=true, cpus?=2, memory?=2048, disk_size?=20, storage?, ostype?, bridge?, net0?, iso?, boot?, ciuser?, cipassword?, sshkeys?, ipconfig0?, onboot?, description?, tags?, target?, timeout? |
 | `pull_from_vm` | Pull a file from a running VM via QEMU guest agent file-read. Writes local_path when set; otherwise returns base64. Parameters: node*, vmid*, remote_path*; local_path? |
 | `push_to_vm` | Push a file into a running VM via QEMU guest agent file-write. Provide local_path or content_base64. Max 32 MiB. Parameters: node*, vmid*, remote_path*; local_path?, content_base64? |
 | `qm_set_vm` | Allowlisted host qm set when REST token lacks ACL (requires ssh). Keys: onboot, description, tags. Not free-form shell. Prefer update_vm_config first. Parameters: node*, vmid*; onboot?, description?, tags? |

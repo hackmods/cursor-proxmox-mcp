@@ -4,13 +4,14 @@ Living inventory for cursor-proxmox-mcp. Status: **done** | **planned** | **excl
 
 Source of truth for registered names: `ProxmoxMCPServer._setup_tools()` and `tests/expected_tools.py`.
 
-**Auth note:** MCP uses API tokens (`config.json`). Proxmox default **Privilege Separation=Yes** requires ACL on `user@realm!tokenid` (not only the user). See `SETUP.md` and decision D8. Some interactive console endpoints are token-incompatible per upstream PVE docs; we mint tickets only.
+**Auth note:** MCP uses API tokens (`config.json`). Proxmox default **Privilege Separation=Yes** requires ACL on `user@realm!tokenid` (not only the user). See `SETUP.md` and decision D8. Optional **`auth_write`** (D31) elevates mutations to a second token. Some interactive console endpoints are token-incompatible per upstream PVE docs; we mint tickets only.
 
 ## Done
 
 | Domain | MCP tools | API (representative) |
 |--------|-----------|----------------------|
 | Nodes | get_nodes, get_node_status, list_node_networks + create/update/delete + reload_node_network, subscription, certificates, report, services, time, wakeonlan, reboot/shutdown (confirm) | /nodes... |
+| QEMU | full lifecycle + config + network/guest-info/fsfreeze + push/pull + **bootstrap_cloudinit_vm** + **provision_vm** + qm_set_vm + status/rrd/tickets | /nodes/{n}/qemu... + guest agent |
 | LXC | full lifecycle + config + suspend/resume (CRIU warn) + status + **get_lxc_network** + rrd + VNC/SPICE/termproxy + **exec/password/keys via SSH/pct** + **prepare_lxc_for_docker (keyctl\|crun)** + **configure_lxc_dns** + **pct_set_lxc** + **push/pull** + **provision_lxc** + **deploy_static_nginx** + **deploy_node_app** + **ssh_public_keys / docker_ready / nameserver / onboot / description / tags on create** | /nodes/{n}/lxc... + host pct (opt-in ssh) |
 | Cluster | get_cluster_status, get_next_vmid, get_version, **get_mcp_capabilities**, get_cluster_resources, get_cluster_log, get_cluster_options, join info/join | /cluster..., /version + MCP self-check |
 | Guest unified | start/stop/shutdown/reboot/delete_guest, get_guest_status/pending, move_guest_disk, **get_console_connection** | qemu\|lxc status + pending + move_disk/move_volume + console tickets |
@@ -91,6 +92,15 @@ See [next-expansion.md](next-expansion.md). Summary:
 | `get_console_connection` (ticket + viewer hints) | done (still no websocket proxy — D6) |
 | PBS `create_storage` fields + `get_pbs_storage_status` | done |
 | Node network create/update/delete/reload | done |
+
+### Elevated mode — done / v1.9.0 (D31)
+
+| Item | Status |
+|------|--------|
+| Optional `auth_write` dual credential | done |
+| `get_mcp_capabilities` dual_auth + tool tiers | done |
+| `provision_vm` | done |
+| Cursor `permissions.example.json` + SETUP dual-server docs | done |
 
 ### Closed non-goals (D30 — do not list as missing)
 

@@ -15,6 +15,7 @@ Copy `config.example.json` → `config.json` and fill in host + API token fields
 | `auth.user` | yes | `user@realm` only — e.g. `mcp@pve` — **not** `user@realm!token` |
 | `auth.token_name` | yes | Token id only — e.g. `cursor` |
 | `auth.token_value` | yes | Secret UUID shown once at token creation |
+| `auth_write` | optional | Second `AuthConfig` (same shape as `auth`) for elevated mutations (D31). When set, mutating API calls use this token; omit/`null` = single-token mode |
 | `logging.*` | optional | See logging table below |
 | `ssh.enabled` | optional | `true` to enable host SSH for `pct` (LXC shell / push / prepare / runtime IP). Default off. |
 | `ssh.user` | if enabled | SSH user on the node (often `root` or a sudo-capable user that can run `pct`) |
@@ -57,6 +58,17 @@ Env overrides (no config edit / reload-friendly when set in Cursor MCP env):
 ## Privilege Separation
 
 Proxmox tokens default to **Privilege Separation = Yes**: the token has **no** rights until you ACL `user@realm!tokenid`. Setting Privilege Separation to **No** inherits the parent user’s full permissions (lab shortcut).
+
+### Dual credential (`auth_write`, D31)
+
+Optional elevated token for mutations while keeping `auth` as the primary identity:
+
+```json
+"auth": { "user": "mcp@pve", "token_name": "audit", "token_value": "${PROXMOX_TOKEN_AUDIT}" },
+"auth_write": { "user": "mcp@pve", "token_name": "write", "token_value": "${PROXMOX_TOKEN_WRITE}" }
+```
+
+Both tokens need privsep **Yes** and their own ACLs (`mcp@pve!audit`, `mcp@pve!write`). Call `get_mcp_capabilities` — look for `dual_auth: true`. Cursor auto-approve: see [`permissions.example.json`](permissions.example.json) and [SETUP.md](../SETUP.md#cursor-approval--auto-run).
 
 Full walkthrough: [SETUP.md §1](../SETUP.md#1-create-a-proxmox-api-token).
 

@@ -40,6 +40,13 @@ def test_destructive_descriptions_warn():
         assert "IRREVERSIBLE" in desc or "WARNING" in desc, name
 
 
+def test_typed_confirm_tools_subset():
+    from proxmox_mcp.tools.inventory import TYPED_CONFIRM_TOOLS
+
+    assert TYPED_CONFIRM_TOOLS <= DESTRUCTIVE_TOOLS
+    assert TYPED_CONFIRM_TOOLS <= ALL_TOOL_NAMES
+
+
 def test_server_uses_core_logging_only():
     server_src = Path("src/proxmox_mcp/server.py").read_text(encoding="utf-8")
     assert "from .core.logging import" in server_src

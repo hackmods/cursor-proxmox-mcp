@@ -50,42 +50,64 @@ class ProxmoxMCPServer:
         self.config = self.config.model_copy(update={"logging": resolved_logging})
         self.logger = setup_logging(self.config.logging)
 
-        self.proxmox_manager = ProxmoxManager(self.config.proxmox, self.config.auth)
-        self.proxmox = self.proxmox_manager.get_api()
+        self.proxmox_manager = ProxmoxManager(
+            self.config.proxmox,
+            self.config.auth,
+            auth_write=self.config.auth_write,
+        )
+        # D31: tools use write API when auth_write is set (falls back to primary).
+        self.proxmox = self.proxmox_manager.get_write_api()
+        self.proxmox_read = self.proxmox_manager.get_api()
 
-        self.node_tools = NodeTools(self.proxmox)
+        self.node_tools = NodeTools(
+            self.proxmox,
+            proxmox_write_api=self.proxmox,
+            proxmox_read_api=self.proxmox_read,
+        )
         self.vm_tools = VMTools(
             self.proxmox,
             ssh_config=self.config.ssh,
             proxmox_host=self.config.proxmox.host,
+            proxmox_write_api=self.proxmox,
+            proxmox_read_api=self.proxmox_read,
         )
         self.container_tools = ContainerTools(
             self.proxmox,
             ssh_config=self.config.ssh,
             proxmox_host=self.config.proxmox.host,
+            proxmox_write_api=self.proxmox,
+            proxmox_read_api=self.proxmox_read,
         )
-        self.guest_power_tools = GuestPowerTools(self.proxmox)
+        self.guest_power_tools = GuestPowerTools(
+            self.proxmox,
+            proxmox_write_api=self.proxmox,
+            proxmox_read_api=self.proxmox_read,
+        )
         self.capabilities_tools = CapabilitiesTools(
             self.proxmox,
             ssh_config=self.config.ssh,
             proxmox_host=self.config.proxmox.host,
             logging_config=self.config.logging,
+            auth_summary=self.proxmox_manager.auth_summary(),
+            proxmox_write_api=self.proxmox,
+            proxmox_read_api=self.proxmox_read,
         )
-        self.storage_tools = StorageTools(self.proxmox)
-        self.cluster_tools = ClusterTools(self.proxmox)
-        self.task_tools = TaskTools(self.proxmox)
-        self.snapshot_tools = SnapshotTools(self.proxmox)
-        self.backup_tools = BackupTools(self.proxmox)
-        self.migrate_tools = MigrateTools(self.proxmox)
-        self.ha_tools = HATools(self.proxmox)
-        self.firewall_tools = FirewallTools(self.proxmox)
-        self.access_tools = AccessTools(self.proxmox)
-        self.network_tools = NetworkTools(self.proxmox)
-        self.replication_tools = ReplicationTools(self.proxmox)
-        self.acme_tools = ACMETools(self.proxmox)
-        self.sdn_tools = SDNTools(self.proxmox)
-        self.pool_tools = PoolTools(self.proxmox)
-        self.ceph_tools = CephTools(self.proxmox)
+        _kw = {"proxmox_write_api": self.proxmox, "proxmox_read_api": self.proxmox_read}
+        self.storage_tools = StorageTools(self.proxmox, **_kw)
+        self.cluster_tools = ClusterTools(self.proxmox, **_kw)
+        self.task_tools = TaskTools(self.proxmox, **_kw)
+        self.snapshot_tools = SnapshotTools(self.proxmox, **_kw)
+        self.backup_tools = BackupTools(self.proxmox, **_kw)
+        self.migrate_tools = MigrateTools(self.proxmox, **_kw)
+        self.ha_tools = HATools(self.proxmox, **_kw)
+        self.firewall_tools = FirewallTools(self.proxmox, **_kw)
+        self.access_tools = AccessTools(self.proxmox, **_kw)
+        self.network_tools = NetworkTools(self.proxmox, **_kw)
+        self.replication_tools = ReplicationTools(self.proxmox, **_kw)
+        self.acme_tools = ACMETools(self.proxmox, **_kw)
+        self.sdn_tools = SDNTools(self.proxmox, **_kw)
+        self.pool_tools = PoolTools(self.proxmox, **_kw)
+        self.ceph_tools = CephTools(self.proxmox, **_kw)
 
         self.mcp = FastMCP("ProxmoxMCP")
         self._setup_tools()

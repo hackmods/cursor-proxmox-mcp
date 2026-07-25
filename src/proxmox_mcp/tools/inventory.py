@@ -46,6 +46,7 @@ ALL_TOOL_NAMES = frozenset(
         "fsfreeze_vm",
         "fsthaw_vm",
         "bootstrap_cloudinit_vm",
+        "provision_vm",
         "push_to_vm",
         "pull_from_vm",
         "qm_set_vm",
@@ -277,6 +278,69 @@ DESTRUCTIVE_TOOLS = frozenset(
         "reload_node_network",
         "create_ceph_osd",
         "destroy_ceph_osd",
+    }
+)
+
+# D29 / D30 — connector-enforced typed confirm=; never suggest Cursor auto-bypass
+TYPED_CONFIRM_TOOLS = frozenset(
+    {
+        "reboot_node",
+        "shutdown_node",
+        "join_cluster",
+        "delete_ceph_pool",
+        "create_ceph_osd",
+        "destroy_ceph_osd",
+    }
+)
+
+# Day-2 / inventory candidates for Cursor mcpAllowlist (see permissions.example.json)
+SAFE_DAY2_TOOLS = frozenset(
+    {
+        "get_nodes",
+        "get_node_status",
+        "get_cluster_status",
+        "get_cluster_resources",
+        "get_version",
+        "get_mcp_capabilities",
+        "get_next_vmid",
+        "get_task_status",
+        "list_tasks",
+        "wait_for_task",
+        "get_vms",
+        "get_vm_config",
+        "get_vm_status",
+        "get_vm_network",
+        "get_containers",
+        "get_lxc_config",
+        "get_lxc_status",
+        "get_lxc_network",
+        "get_storage",
+        "get_storage_content",
+        "list_os_templates",
+        "list_isos",
+        "list_node_networks",
+        "get_permissions",
+        "get_token_permissions",
+        "provision_lxc",
+        "provision_vm",
+        "bootstrap_cloudinit_vm",
+        "bootstrap_docker_lxc",
+        "prepare_lxc_for_docker",
+        "push_to_lxc",
+        "pull_from_lxc",
+        "push_to_vm",
+        "pull_from_vm",
+        "deploy_node_app",
+        "deploy_static_nginx",
+        "execute_lxc_command",
+        "execute_vm_command",
+        "start_lxc",
+        "start_vm",
+        "start_guest",
+        "create_lxc",
+        "create_vm",
+        "configure_lxc_ssh",
+        "configure_lxc_dns",
     }
 )
 

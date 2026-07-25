@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-07-25
+
+### Added
+
+- **Dual credential elevated mode (D31):** optional `auth_write` in config; mutations use
+  the write token when set; `get_mcp_capabilities` reports `dual_auth` / identities.
+- **`provision_vm`:** one-shot VM create or cloud-init clone→start→IP (**212** tools).
+- **Capability tiers:** `TYPED_CONFIRM_TOOLS` / `SAFE_DAY2_TOOLS` exported via capabilities;
+  [`proxmox-config/permissions.example.json`](proxmox-config/permissions.example.json) for
+  Cursor auto-approve of day-2 pipelines.
+- SETUP: dual MCP servers, deploy pipeline recipe, Cursor Approvals & Execution guidance.
+
+### Notes
+
+- Typed `confirm=` for node power / cluster join / Ceph OSD is unchanged (D29/D30).
+- Prefer Cursor `mcpAllowlist` for day-2 tools; do not blanket-allow `proxmox:*` on production.
+
 ## [1.8.0] - 2026-07-23
 
 ### Added

@@ -11,6 +11,8 @@
         "token_name": "cursor",
         "token_value": "${PROXMOX_TOKEN_VALUE}"
     },
+    "auth_write": null,
+
     "logging": {
         "level": "INFO",
         "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",

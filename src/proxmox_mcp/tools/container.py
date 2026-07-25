@@ -86,8 +86,14 @@ class ContainerTools(ProxmoxTool):
         proxmox_api: Any,
         ssh_config: Optional[Any] = None,
         proxmox_host: Optional[str] = None,
+        proxmox_write_api: Optional[Any] = None,
+        proxmox_read_api: Optional[Any] = None,
     ):
-        super().__init__(proxmox_api)
+        super().__init__(
+            proxmox_api,
+            proxmox_write_api=proxmox_write_api,
+            proxmox_read_api=proxmox_read_api,
+        )
         self.ssh_config = ssh_config
         self.proxmox_host = proxmox_host or ""
         self._pct: Optional[PctExecutor] = None

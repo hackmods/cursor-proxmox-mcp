@@ -39,6 +39,8 @@ FSTHAW_VM_DESC = """Thaw guest filesystems via QEMU guest-agent (fsfreeze-thaw).
 
 BOOTSTRAP_CLOUDINIT_VM_DESC = """One-shot cloud-init VM from a template: clone→ci config→start→runtime IP (requires qemu-guest-agent). Prefer sshkeys over cipassword. Not a blank-disk create — clone_from* must be a cloud image template. If tool missing → get_mcp_capabilities + reload MCP. Parameters: node*, name*, clone_from*; vmid?, full?=true, ciuser?, cipassword?, sshkeys?, ipconfig0?, storage?, target?, cores?, memory?, timeout?"""
 
+PROVISION_VM_DESC = """One-shot VM provision (D31): if clone_from set → same as bootstrap_cloudinit_vm; else create_vm(wait=true)→start→resolve guest-agent IP. Prefer clone_from for bootable cloud images (blank disk+ISO alone is not an OS install). Never echoes cipassword. Parameters: node*, name*; vmid?, clone_from?, full?=true, cpus?=2, memory?=2048, disk_size?=20, storage?, ostype?, bridge?, net0?, iso?, boot?, ciuser?, cipassword?, sshkeys?, ipconfig0?, onboot?, description?, tags?, target?, timeout?"""
+
 PUSH_TO_VM_DESC = """Push a file into a running VM via QEMU guest agent file-write. Provide local_path or content_base64. Max 32 MiB. Parameters: node*, vmid*, remote_path*; local_path?, content_base64?"""
 
 PULL_FROM_VM_DESC = """Pull a file from a running VM via QEMU guest agent file-read. Writes local_path when set; otherwise returns base64. Parameters: node*, vmid*, remote_path*; local_path?"""
@@ -266,7 +268,7 @@ GET_VM_RRD_DATA_DESC = """Get RRD metrics for a VM. Parameters: node*, vmid*, ti
 
 # Cluster extras
 GET_VERSION_DESC = """Get Proxmox VE version/API info."""
-GET_MCP_CAPABILITIES_DESC = """Self-check: MCP package version, ssh.enabled, paramiko, day-2 tool presence, logging (level/verbose/tool_calls/file), optional pct version probe. Call after reload/config change. Parameters: probe_node?"""
+GET_MCP_CAPABILITIES_DESC = """Self-check: MCP package version, dual_auth / auth identities (D31), ssh.enabled, paramiko, day-2 tools, safe_day2 + typed_confirm tiers, logging, optional pct version probe. Call after reload/config change. Parameters: probe_node?"""
 GET_CLUSTER_RESOURCES_DESC = """List cluster resources. Parameters: type? (vm|storage|node|sdn)"""
 GET_CLUSTER_LOG_DESC = """Get recent cluster log. Parameters: max_entries?=50"""
 GET_CLUSTER_OPTIONS_DESC = """Get cluster-wide options."""

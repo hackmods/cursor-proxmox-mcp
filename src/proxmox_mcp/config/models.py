@@ -127,6 +127,7 @@ class Config(BaseModel):
     proper server operation.
     """
     proxmox: ProxmoxConfig  # Required: Proxmox connection settings
-    auth: AuthConfig  # Required: Authentication credentials
+    auth: AuthConfig  # Required: primary Authentication credentials
+    auth_write: Optional[AuthConfig] = None  # Optional: elevated token for mutations (D31)
     logging: LoggingConfig  # Required: Logging configuration
     ssh: Optional[SSHConfig] = None  # Optional: host SSH for pct exec

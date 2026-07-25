@@ -32,5 +32,6 @@ Empty API results / odd 401–403 with a “valid” token almost always mean pr
 ## Safety
 
 - Prefer dedicated `mcp@pve` over `root@pam` tokens.
+- Optional `auth_write` (D31) elevates mutations; keep privsep=Yes + ACL on both token identities.
 - `config.json` must stay gitignored.
 - `create_token` returns the secret once — never log it at INFO.

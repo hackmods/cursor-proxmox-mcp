@@ -82,6 +82,7 @@ DOMAIN_GROUPS: list[tuple[str, frozenset[str]]] = [
                 "fsfreeze_vm",
                 "fsthaw_vm",
                 "bootstrap_cloudinit_vm",
+                "provision_vm",
                 "push_to_vm",
                 "pull_from_vm",
                 "qm_set_vm",

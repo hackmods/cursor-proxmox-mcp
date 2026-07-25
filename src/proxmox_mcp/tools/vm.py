@@ -86,6 +86,7 @@ TOOL_SPECS = [
     ToolSpec("fsfreeze_vm", D.FSFREEZE_VM_DESC),
     ToolSpec("fsthaw_vm", D.FSTHAW_VM_DESC),
     ToolSpec("bootstrap_cloudinit_vm", D.BOOTSTRAP_CLOUDINIT_VM_DESC),
+    ToolSpec("provision_vm", D.PROVISION_VM_DESC),
     ToolSpec("push_to_vm", D.PUSH_TO_VM_DESC),
     ToolSpec("pull_from_vm", D.PULL_FROM_VM_DESC),
     ToolSpec("qm_set_vm", D.QM_SET_VM_DESC),
@@ -115,8 +116,14 @@ class VMTools(ProxmoxTool):
         proxmox_api,
         ssh_config: Optional[Any] = None,
         proxmox_host: Optional[str] = None,
+        proxmox_write_api: Optional[Any] = None,
+        proxmox_read_api: Optional[Any] = None,
     ):
-        super().__init__(proxmox_api)
+        super().__init__(
+            proxmox_api,
+            proxmox_write_api=proxmox_write_api,
+            proxmox_read_api=proxmox_read_api,
+        )
         self.console_manager = VMConsoleManager(proxmox_api)
         self.ssh_config = ssh_config
         self.proxmox_host = proxmox_host or ""
@@ -1177,6 +1184,166 @@ class VMTools(ProxmoxTool):
             if is_missing_resource_error(e):
                 raise ValueError(qemu_not_found_message(clone_from, node))
             self._handle_error(f"bootstrap cloud-init VM {name}", e)
+
+    def provision_vm(
+        self,
+        node: str,
+        name: str,
+        vmid: Optional[str] = None,
+        clone_from: Optional[str] = None,
+        full: bool = True,
+        cpus: int = 2,
+        memory: int = 2048,
+        disk_size: int = 20,
+        storage: Optional[str] = None,
+        ostype: Optional[str] = None,
+        bridge: Optional[str] = None,
+        net0: Optional[str] = None,
+        iso: Optional[str] = None,
+        boot: Optional[str] = None,
+        ciuser: Optional[str] = None,
+        cipassword: Optional[str] = None,
+        sshkeys: Optional[str] = None,
+        ipconfig0: Optional[str] = None,
+        onboot: Optional[bool] = None,
+        description: Optional[str] = None,
+        tags: Optional[str] = None,
+        target: Optional[str] = None,
+        timeout: Optional[int] = None,
+    ) -> List[Content]:
+        """One-shot VM: clone cloud-init path or create→start→IP (mirrors provision_lxc)."""
+        try:
+            if clone_from:
+                result = self.bootstrap_cloudinit_vm(
+                    node=node,
+                    name=name,
+                    clone_from=clone_from,
+                    vmid=vmid,
+                    full=full,
+                    ciuser=ciuser,
+                    cipassword=cipassword,
+                    sshkeys=sshkeys,
+                    ipconfig0=ipconfig0,
+                    storage=storage,
+                    target=target,
+                    cores=cpus,
+                    memory=memory,
+                    timeout=timeout,
+                )
+                # Re-label for agent clarity
+                text = result[0].text if result else ""
+                text = text.replace(
+                    "bootstrap_cloudinit_vm complete",
+                    "provision_vm complete (via bootstrap_cloudinit_vm)",
+                    1,
+                )
+                return [Content(type="text", text=text)]
+
+            warnings: List[str] = []
+            steps: List[str] = []
+            settle_timeout = float(timeout or 120)
+
+            if not iso and not any([ciuser, cipassword, sshkeys, ipconfig0]):
+                warnings.append(
+                    "blank create without iso/cloud-init — guest may not boot an OS; "
+                    "prefer clone_from= cloud-init template"
+                )
+            if not sshkeys and not cipassword:
+                warnings.append("no sshkeys or cipassword — guest login may be unavailable")
+
+            if not vmid:
+                vmid = str(self.proxmox.cluster.nextid.get())
+                steps.append(f"allocated vmid={vmid}")
+            else:
+                vmid = str(vmid)
+
+            self.create_vm(
+                node=node,
+                vmid=vmid,
+                name=name,
+                cpus=cpus,
+                memory=memory,
+                disk_size=disk_size,
+                storage=storage,
+                ostype=ostype,
+                bridge=bridge,
+                net0=net0,
+                iso=iso,
+                boot=boot,
+                ciuser=ciuser,
+                cipassword=cipassword,
+                sshkeys=sshkeys,
+                ipconfig0=ipconfig0,
+                wait=True,
+                onboot=onboot,
+                description=description,
+                tags=tags,
+            )
+            steps.append("create_vm wait=true finished")
+
+            vm_status = self.proxmox.nodes(node).qemu(vmid).status.current.get()
+            if (vm_status or {}).get("status") == "running":
+                steps.append("already running")
+            else:
+                start_upid = self.proxmox.nodes(node).qemu(vmid).status.start.post()
+                wait_for_upid(
+                    self.proxmox,
+                    node,
+                    start_upid,
+                    timeout=min(settle_timeout, 180.0),
+                )
+                steps.append("start_vm wait finished")
+
+            ip_str: Optional[str] = None
+            deadline = time.time() + settle_timeout
+            while time.time() < deadline:
+                net = self.get_vm_network(node, vmid, resolve_runtime=True)
+                try:
+                    net_obj = json.loads(net[0].text)
+                except Exception:
+                    net_obj = {}
+                ips = net_obj.get("runtime_ips") or []
+                if ips:
+                    ip_str = str(ips[0]).split("/")[0]
+                    break
+                time.sleep(2.0)
+            if not ip_str:
+                warnings.append(
+                    "runtime_ip_unavailable — ensure qemu-guest-agent is installed/running"
+                )
+            else:
+                steps.append(f"resolved ip={ip_str}")
+
+            user = ciuser or "root"
+            ssh_hint = f"ssh {user}@{ip_str}" if ip_str else None
+            if sshkeys:
+                guest_auth = "sshkeys"
+            elif cipassword:
+                guest_auth = "cipassword"
+            else:
+                guest_auth = "none"
+
+            final = {
+                "vmid": str(vmid),
+                "name": name,
+                "node": node,
+                "ip": ip_str,
+                "ssh_hint": ssh_hint,
+                "guest_auth": guest_auth,
+                "mode": "create",
+                "warnings": warnings,
+                "steps": steps,
+            }
+            return [
+                Content(
+                    type="text",
+                    text="provision_vm complete\n" + json.dumps(final, indent=2),
+                )
+            ]
+        except ValueError:
+            raise
+        except Exception as e:
+            self._handle_error(f"provision VM {name}", e)
 
     def push_to_vm(
         self,

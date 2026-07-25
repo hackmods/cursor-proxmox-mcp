@@ -181,3 +181,16 @@ Rules:
 3. **Casual ungated Ceph OSD/MON/MGR create/destroy** — rejected; only the gated OSD flow above.
 
 Agents and docs MUST NOT reopen these as enhancement opportunities unless the user explicitly asks to reverse D30.
+
+## D31 — Dual credential elevated mode + provision_vm
+
+Operators often want a narrow primary token plus an elevated write token without running two MCP processes.
+
+Rules:
+- Optional root config field `auth_write` (same shape as `auth`). Omit/`null` = single-token (backward compatible).
+- When set, `ProxmoxManager` opens both clients; tools use the **write** API for Proxmox calls so mutations succeed under the elevated token.
+- `get_mcp_capabilities` reports `dual_auth`, masked `auth_identity` / `auth_write_identity`, and `mutating_api`.
+- `api_for(mutating=…)` on `ProxmoxTool` preserves primary vs write for future fine-grained routing.
+- Cursor per-tool approval stays client-side (`permissions.json` / Auto-review); connector typed `confirm=` (D29) is never bypassed.
+- `provision_vm` mirrors `provision_lxc`: clone cloud-init template when `clone_from` set, else `create_vm(wait=true)`→start→guest-agent IP.
+- Document dual MCP servers (`proxmox-audit` + `proxmox-write`) as the alternative when Cursor allowlists differ by server.

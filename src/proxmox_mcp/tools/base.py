@@ -16,11 +16,28 @@ from .helpers import acl_denied_message, is_permission_denied_error
 
 
 class ProxmoxTool:
-    """Base class for Proxmox MCP tools."""
+    """Base class for Proxmox MCP tools.
 
-    def __init__(self, proxmox_api: ProxmoxAPI):
+    Dual auth (D31): server injects the write API as ``proxmox_api`` when
+    ``auth_write`` is configured (so existing mutation paths are elevated).
+    ``proxmox_read_api`` retains the primary identity for ``api_for(mutating=False)``.
+    """
+
+    def __init__(
+        self,
+        proxmox_api: ProxmoxAPI,
+        proxmox_write_api: Optional[ProxmoxAPI] = None,
+        proxmox_read_api: Optional[ProxmoxAPI] = None,
+        **_kwargs: Any,
+    ):
         self.proxmox = proxmox_api
+        self.proxmox_write = proxmox_write_api or proxmox_api
+        self.proxmox_read = proxmox_read_api or proxmox_api
         self.logger = logging.getLogger(f"proxmox-mcp.{self.__class__.__name__.lower()}")
+
+    def api_for(self, mutating: bool = False) -> ProxmoxAPI:
+        """Return write client for mutations; primary/read otherwise."""
+        return self.proxmox_write if mutating else self.proxmox_read
 
     def _format_response(self, data: Any, resource_type: Optional[str] = None) -> List[Content]:
         if resource_type == "nodes":

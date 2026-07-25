@@ -1,5 +1,13 @@
 # Changelog / research notes
 
+## 2026-07-25 — Elevated mode + provision_vm (rev r19) — 212 tools
+
+**Why:** Operator asked for elevated/write mode to deploy pipelines without constant Cursor approval, plus dual-credential expansion of the connector.
+
+**Shipped:** optional `auth_write` (D31) with dual `ProxmoxManager` clients; tools use write API when set; `get_mcp_capabilities` dual_auth + `TYPED_CONFIRM_TOOLS` / `SAFE_DAY2_TOOLS` tiers; `provision_vm`; SETUP dual MCP servers + deploy pipeline + Cursor `permissions.example.json`; v1.9.0.
+
+**Out of scope:** Removing typed confirm (D29); free-form `execute_host_command`; blanket auto-approve of destructive host/Ceph tools; reversing D30.
+
 ## 2026-07-23 — Gated Ceph OSD + closed non-goals (rev r18) — 211 tools
 
 **Why:** User asked for carefully gated OSD ops (list disks → propose → confirm + dry-run) and a note to stop resurfacing closed exclusions as missing features.

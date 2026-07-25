@@ -1,0 +1,59 @@
+{
+  "_comment": "Copy to ~/.cursor/permissions.json or <project>/.cursor/permissions.json. Match the MCP server name in mcp.json (often \"proxmox\"). Requires Cursor Run Mode Auto-review or Allowlist. See https://cursor.com/docs/reference/permissions",
+  "mcpAllowlist": [
+    "proxmox:get_nodes",
+    "proxmox:get_node_status",
+    "proxmox:get_cluster_status",
+    "proxmox:get_cluster_resources",
+    "proxmox:get_version",
+    "proxmox:get_mcp_capabilities",
+    "proxmox:get_next_vmid",
+    "proxmox:get_task_status",
+    "proxmox:list_tasks",
+    "proxmox:wait_for_task",
+    "proxmox:get_vms",
+    "proxmox:get_vm_config",
+    "proxmox:get_vm_status",
+    "proxmox:get_vm_network",
+    "proxmox:get_containers",
+    "proxmox:get_lxc_config",
+    "proxmox:get_lxc_status",
+    "proxmox:get_lxc_network",
+    "proxmox:get_storage",
+    "proxmox:get_storage_content",
+    "proxmox:list_os_templates",
+    "proxmox:list_isos",
+    "proxmox:list_node_networks",
+    "proxmox:get_permissions",
+    "proxmox:get_token_permissions",
+    "proxmox:provision_lxc",
+    "proxmox:provision_vm",
+    "proxmox:bootstrap_cloudinit_vm",
+    "proxmox:bootstrap_docker_lxc",
+    "proxmox:prepare_lxc_for_docker",
+    "proxmox:push_to_lxc",
+    "proxmox:pull_from_lxc",
+    "proxmox:push_to_vm",
+    "proxmox:pull_from_vm",
+    "proxmox:deploy_node_app",
+    "proxmox:deploy_static_nginx",
+    "proxmox:execute_lxc_command",
+    "proxmox:execute_vm_command",
+    "proxmox:start_lxc",
+    "proxmox:start_vm",
+    "proxmox:start_guest",
+    "proxmox:create_lxc",
+    "proxmox:create_vm",
+    "proxmox:configure_lxc_ssh",
+    "proxmox:configure_lxc_dns"
+  ],
+  "autoRun": {
+    "allow_instructions": [
+      "Allow Proxmox MCP inventory, wait_for_task, provision/deploy/push/exec day-2 tools without prompting when they match the mcpAllowlist."
+    ],
+    "block_instructions": [
+      "Always pause before reboot_node, shutdown_node, join_cluster, create_ceph_osd, destroy_ceph_osd, delete_ceph_pool, delete_vm, delete_lxc, delete_guest, and any tool that permanently deletes cluster resources.",
+      "Never auto-approve broad proxmox:* wildcards for destructive host or Ceph operations."
+    ]
+  }
+}
