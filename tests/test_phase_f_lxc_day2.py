@@ -334,6 +334,12 @@ def test_server_warn_ssh_off(tmp_path, monkeypatch):
     )
     with patch("proxmox_mcp.server.ProxmoxManager") as mgr:
         mgr.return_value.get_api.return_value = MagicMock()
+        mgr.return_value.get_write_api.return_value = MagicMock()
+        mgr.return_value.auth_summary.return_value = {
+            "dual_auth": False,
+            "auth_identity": "u@pve!t",
+            "mutating_api": "primary",
+        }
         from proxmox_mcp.server import ProxmoxMCPServer
 
         server = ProxmoxMCPServer(str(cfg))

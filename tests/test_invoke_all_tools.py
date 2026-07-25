@@ -27,6 +27,12 @@ def server():
         "proxmox_mcp.server.ProxmoxManager"
     ) as mgr:
         mgr.return_value.get_api.return_value = api
+        mgr.return_value.get_write_api.return_value = api
+        mgr.return_value.auth_summary.return_value = {
+            "dual_auth": False,
+            "auth_identity": "u@pve!t",
+            "mutating_api": "primary",
+        }
         return ProxmoxMCPServer("dummy.json")
 
 
