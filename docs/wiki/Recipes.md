@@ -78,4 +78,4 @@ Prompt-style recipe: [SETUP.md — Provision a nested Docker LXC](https://github
 
 ## See also
 
-[Example prompts](Example-prompts) · [Setup](Setup) · [Troubleshooting](Troubleshooting) · [Home](Home)
+[Example prompts](Example-prompts) · [Setup](Setup) · [Elevated mode](Elevated-mode) · [Troubleshooting](Troubleshooting) · [Home](Home)

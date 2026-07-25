@@ -49,12 +49,14 @@ Prefer **only** `PROXMOX_MCP_CONFIG` (tokens in the JSON file / `${ENV}` interpo
 ## After `git pull` — reload checklist
 
 1. Settings → MCP → **Disable** proxmox → **Enable**.
-2. Confirm tool count ~**171**. If still ~13–14 tools or missing day-2 tools (`push_to_lxc`, `deploy_node_app`), fully quit Cursor and reopen (stale catalog). Call `get_mcp_capabilities` after reload.
+2. Confirm tool count ~**212**. If still ~13–14 tools or missing day-2 tools (`push_to_lxc`, `deploy_node_app`, `provision_vm`), fully quit Cursor and reopen (stale catalog). Call `get_mcp_capabilities` after reload.
 3. Smoke: `get_nodes`, `get_version`, `get_containers` / `get_vms`.
 
 ## Auth / Privilege Separation
 
 Proxmox tokens default to **privsep=Yes**: ACL must be on `user@realm!tokenid`. Empty lists often mean missing token ACL — use `get_token_permissions`.
+
+**Elevated write / fewer Cursor prompts:** optional `auth_write`, dual MCP servers (`proxmox-audit` + `proxmox-write`), and `permissions.json` — see **[Elevated mode](Elevated-mode)**.
 
 ## Opt-in host SSH (LXC exec)
 
@@ -68,6 +70,7 @@ Full checklist: [SETUP.md — SSH for LXC exec](https://github.com/hackmods/curs
 
 ## Next
 
+- [Elevated mode](Elevated-mode) — `auth_write`, dual servers, Cursor auto-approve  
 - [Example prompts](Example-prompts) — copy-paste starters + DevOps  
 - [Tools](Tools) — full inventory  
 - [Recipes](Recipes) — create / Docker / ACL playbooks  

@@ -15,6 +15,8 @@
 | `get_vms` empty but containers exist | Expected — `get_vms` is QEMU-only; use `get_containers` or `get_cluster_resources` |
 | LXC suspend/resume fails | CRIU best-effort; prefer `shutdown_lxc` / `shutdown_guest` |
 | Wrong package installed | Uninstall `proxmox-mcp-server` from Gethos; install **`cursor-proxmox-mcp`** |
+| Always asked to approve every MCP call | Cursor Approvals — use Auto-review/Allowlist + [Elevated mode](Elevated-mode) (`permissions.example.json`) |
+| Need elevated write without second MCP process | Set optional `auth_write` in config — [Elevated mode](Elevated-mode) |
 | SSL errors | Lab: `verify_ssl: false` in config (warned at startup); prod: fix CA / enable verify |
 
-More: [SETUP.md troubleshooting](https://github.com/hackmods/cursor-proxmox-mcp/blob/main/SETUP.md) · [SECURITY.md](https://github.com/hackmods/cursor-proxmox-mcp/blob/main/SECURITY.md) · [Recipes](Recipes).
+More: [SETUP.md troubleshooting](https://github.com/hackmods/cursor-proxmox-mcp/blob/main/SETUP.md) · [SECURITY.md](https://github.com/hackmods/cursor-proxmox-mcp/blob/main/SECURITY.md) · [Elevated mode](Elevated-mode) · [Recipes](Recipes).
