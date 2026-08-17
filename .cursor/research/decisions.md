@@ -194,3 +194,9 @@ Rules:
 - Cursor per-tool approval stays client-side (`permissions.json` / Auto-review); connector typed `confirm=` (D29) is never bypassed.
 - `provision_vm` mirrors `provision_lxc`: clone cloud-init template when `clone_from` set, else `create_vm(wait=true)`→start→guest-agent IP.
 - Document dual MCP servers (`proxmox-audit` + `proxmox-write`) as the alternative when Cursor allowlists differ by server.
+
+## D32 — Stay on MCP Python SDK v1 (`mcp<2`) until a dedicated migration
+
+SDK v2.0.0 removed `mcp.server.fastmcp.FastMCP` (now `mcp.server.mcpserver.MCPServer`) with no compatibility shim. This server still uses FastMCP construction, `mcp.types.TextContent`, and D28’s ToolManager `call_tool` wrap.
+
+Rule: keep `mcp>=0.2.0,<2.0.0` in `pyproject.toml` (match other deps’ major caps). Do not “just upgrade mcp” in CI or install docs. A v2 port is a separate change: import paths, snake_case protocol fields, constructor kwargs moving to `run()`, and re-validating tool-call audit.

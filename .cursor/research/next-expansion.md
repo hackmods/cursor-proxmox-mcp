@@ -143,6 +143,7 @@ Keep **out of Available Tools** until deliberately implemented. Full table also 
 7. ~~Elevated mode auth_write + provision_vm + Cursor permissions~~ shipped r19 (212 tools)
 8. Post community drafts when ready
 9. DX only if lab demands: default-on create wait / inventory probes (D10/D25 deferred)
+10. MCP Python SDK v2 (`FastMCP` → `MCPServer`) — deferred; pin `mcp<2` (D32)
 ```
 
 When shipping any new tool: update this file’s status, coverage matrix, changelog-notes, README, and `expected_tools.py` in the same change (api-coverage + keep-docs-aligned rules).

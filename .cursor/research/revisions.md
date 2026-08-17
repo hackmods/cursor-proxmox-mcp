@@ -25,6 +25,7 @@ Pair with [changelog-notes.md](changelog-notes.md) (research “why”) and root
 | 2026-07-23 | r17 | Phase C remainder: SDN write, ACME order/renew, Ceph pools, console helper, PBS status, node net CRUD | **207** | D26 revised; D6 held; **v1.7.0** |
 | 2026-07-23 | r18 | Gated Ceph OSD (list/propose/create dry-run/destroy) + D30 closed non-goals | **211** | D30; **v1.8.0** |
 | 2026-07-25 | r19 | Dual auth (`auth_write`), provision_vm, capability tiers, Cursor permissions example | **212** | D31; **v1.9.0** |
+| 2026-08-17 | r20 | Pin `mcp<2` after SDK v2 removed FastMCP; CI ruff unused import | **212** | D32 |
 
 ## How to update
 

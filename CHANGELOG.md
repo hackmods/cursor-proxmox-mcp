@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- CI: unused `pytest` import in `tests/test_d31_elevated.py` (Ruff F401).
+- Pin `mcp>=0.2.0,<2.0.0` so installs do not pull SDK v2, which removed `mcp.server.fastmcp`.
+
 ## [1.9.0] - 2026-07-25
 
 ### Added

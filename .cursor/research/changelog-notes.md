@@ -1,5 +1,13 @@
 # Changelog / research notes
 
+## 2026-08-17 — Pin MCP SDK <2 (CI entrypoint)
+
+**Why:** GitHub CI on `main` died at Ruff F401 (`import pytest` unused in `test_d31_elevated.py`). After that fix, the next run installed `mcp==2.0.0` (`mcp>=0.2.0` had no upper bound) and failed entrypoint smoke: `ModuleNotFoundError: No module named 'mcp.server.fastmcp'`. SDK v2 renamed FastMCP → MCPServer with no shim.
+
+**Shipped:** drop unused import; pin `mcp>=0.2.0,<2.0.0` (same major-cap pattern as proxmoxer/pydantic/paramiko). Stay on FastMCP + ToolManager audit wrap (D28) until a dedicated v2 migration (D32).
+
+**Out of scope:** Migrating to `MCPServer` / protocol 2026-07-28 in this change.
+
 ## 2026-07-25 — Elevated mode + provision_vm (rev r19) — 212 tools
 
 **Why:** Operator asked for elevated/write mode to deploy pipelines without constant Cursor approval, plus dual-credential expansion of the connector.
