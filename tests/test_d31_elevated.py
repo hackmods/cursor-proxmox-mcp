@@ -4,8 +4,6 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from proxmox_mcp.config.loader import load_config
 from proxmox_mcp.config.models import AuthConfig, ProxmoxConfig
 from proxmox_mcp.core.proxmox import ProxmoxManager
